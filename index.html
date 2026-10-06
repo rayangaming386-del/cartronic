@@ -969,7 +969,8 @@ legend { padding: 0; }
 .compat-panel .cp-head .who { font-size: 14.5px; font-weight: 650; letter-spacing: -.01em; }
 .compat-panel .cp-head .who small { display: block; font-size: 12.5px; color: var(--muted); font-weight: 500; letter-spacing: 0; margin-top: 2px; }
 .compat-panel .cp-body { padding: 16px 20px 18px; font-size: 13.5px; color: var(--ink-2); line-height: 1.6; }
-.compat-panel .cp-models { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.compat-panel .cp-models, .detail-block > .cp-models { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
 .benefits { list-style: none; display: grid; gap: 12px; }
 .benefits li { display: flex; gap: 12px; font-size: 15px; line-height: 1.55; color: var(--ink-2); }
 .benefits svg { width: 18px; height: 18px; color: var(--red); flex: none; margin-top: 2px; }
@@ -2099,6 +2100,7 @@ const Router = (() => {
   let cleanup = null;
   let guard = null;
   let lastHash = location.hash;
+  const redirects = [];
 
   function add(pattern, page) {
     const keys = [];
@@ -2157,8 +2159,14 @@ const Router = (() => {
     lastHash = location.hash;
     render();
   }
+  /** fn(path) → new path or null. Old URLs are replaced in history, so Back skips them. */
+  function redirect(fn) { redirects.push(fn); }
   async function render({ force = false } = {}) {
     const { path, query } = parse();
+    for (const fn of redirects) {
+      const to = fn(path);
+      if (to && to !== path) { history.replaceState(null, '', buildHash(to, query)); lastHash = location.hash; return render({ force }); }
+    }
     const m = match(path) || { route: routes.find((r) => r.pattern === '*'), params: {} };
     const page = m.route.page;
     const ctx = { path, query, params: m.params, hash: location.hash };
@@ -2208,7 +2216,7 @@ const Router = (() => {
     render();
   }
   return {
-    add, start, go, setQuery, parse, buildHash, render,
+    add, redirect, start, go, setQuery, parse, buildHash, render,
     get current() { return current; },
     setGuard(fn) { guard = fn; },
   };
@@ -2241,9 +2249,9 @@ const Seo = {
    Company facts: from cartronic.nl (contact page / footer). Verify before going live:
    the opening hours are published as "dinsdag – zaterdag 9:30 – 17:00" on cartronic.nl,
    while new.cartronic.nl lists 09:00 – 17:00.
-   Retrofit catalog: a selection of real catalog entries from cartronic.nl / new.cartronic.nl
-   (product titles + the short descriptions published there). Prices for retrofits are NOT
-   published online ("prijs op aanvraag"), so none are shown.
+   Retrofit catalog: the CarTronic catalog (cartronic.nl / new.cartronic.nl), merged from the
+   approved selection and the full product list. Most retrofits are "prijs op aanvraag"; a price is
+   only shown where CarTronic publishes one for that option.
    ===================================================================== */
 const COMPANY = {
   name: 'CarTronic',
@@ -2284,6 +2292,7 @@ const BRAND = byKey(BRANDS);
 const MODELS = [
   // Volkswagen
   { id: 'golf-7', brand: 'volkswagen', name: 'Golf 7', base: 'Golf', from: 2012, to: 2020, match: ['GOLF'], exclude: ['GOLFSPORTSVAN', 'GOLFPLUS'], types: ['AU'] },
+  { id: 'golf-sportsvan', brand: 'volkswagen', name: 'Golf 7 Sportsvan', base: 'Golf Sportsvan', from: 2014, to: 2020, match: ['GOLFSPORTSVAN'], types: [] },
   { id: 'golf-8', brand: 'volkswagen', name: 'Golf 8', base: 'Golf', from: 2020, to: null, match: ['GOLF'], exclude: ['GOLFSPORTSVAN', 'GOLFPLUS'], types: ['CD'] },
   { id: 'polo-aw', brand: 'volkswagen', name: 'Polo AW', base: 'Polo', from: 2017, to: null, match: ['POLO'], types: ['AW'] },
   { id: 't-roc', brand: 'volkswagen', name: 'T-Roc', base: 'T-Roc', from: 2017, to: null, match: ['TROC'], types: ['A1'] },
@@ -2292,19 +2301,29 @@ const MODELS = [
   { id: 'id-3', brand: 'volkswagen', name: 'ID.3', base: 'ID.3', from: 2020, to: null, match: ['ID3'], types: [] },
   { id: 'id-4', brand: 'volkswagen', name: 'ID.4', base: 'ID.4', from: 2021, to: null, match: ['ID4'], types: [] },
   { id: 'up', brand: 'volkswagen', name: 'up!', base: 'up!', from: 2011, to: 2023, match: ['UP'], types: [] },
+  // Caddy SA = Caddy 4 (2015–2020); the Caddy 5 (SB) is not in the catalog.
+  { id: 'caddy-sa', brand: 'volkswagen', name: 'Caddy SA', base: 'Caddy', from: 2015, to: 2020, match: ['CADDY'], types: [] },
   { id: 'transporter-t6', brand: 'volkswagen', name: 'Transporter T6', base: 'Transporter', from: 2015, to: 2024, match: ['TRANSPORTER', 'MULTIVAN', 'CARAVELLE'], types: [] },
+  { id: 'crafter-sy', brand: 'volkswagen', name: 'Crafter SY', base: 'Crafter', from: 2017, to: null, match: ['CRAFTER'], types: [] },
   // Audi
+  { id: 'a1-8x', brand: 'audi', name: 'A1 8X', base: 'A1', from: 2010, to: 2018, match: ['A1', 'S1'], types: ['8X'] },
+  { id: 'a1-gb', brand: 'audi', name: 'A1 GB', base: 'A1', from: 2018, to: null, match: ['A1'], types: ['GB'] },
   { id: 'a3-8v', brand: 'audi', name: 'A3 8V', base: 'A3', from: 2012, to: 2020, match: ['A3', 'S3', 'RS3'], types: ['8V'] },
   { id: 'a3-8y', brand: 'audi', name: 'A3 8Y', base: 'A3', from: 2020, to: null, match: ['A3', 'S3', 'RS3'], types: ['GY'] },
   { id: 'a4-b9', brand: 'audi', name: 'A4 B9/8W', base: 'A4', from: 2015, to: 2024, match: ['A4', 'S4', 'RS4'], types: ['8W'] },
   { id: 'a5-f5', brand: 'audi', name: 'A5 F5', base: 'A5', from: 2016, to: 2024, match: ['A5', 'S5', 'RS5'], types: ['F5'] },
   { id: 'q2-ga', brand: 'audi', name: 'Q2 GA', base: 'Q2', from: 2016, to: null, match: ['Q2', 'SQ2'], types: ['GA'] },
+  { id: 'q3-f3', brand: 'audi', name: 'Q3 F3', base: 'Q3', from: 2018, to: null, match: ['Q3', 'RSQ3'], types: ['F3'] },
   { id: 'q4-etron', brand: 'audi', name: 'Q4 e-tron', base: 'Q4 e-tron', from: 2021, to: null, match: ['Q4'], types: ['F4'] },
+  { id: 'q5-fy', brand: 'audi', name: 'Q5 FY', base: 'Q5', from: 2017, to: 2024, match: ['Q5', 'SQ5'], types: ['FY'] },
+  { id: 'q7-4m', brand: 'audi', name: 'Q7 4M', base: 'Q7', from: 2015, to: null, match: ['Q7', 'SQ7'], types: ['4M'] },
   // SEAT
   { id: 'ibiza-kj', brand: 'seat', name: 'Ibiza KJ', base: 'Ibiza', from: 2017, to: null, match: ['IBIZA'], types: ['KJ'] },
   { id: 'arona', brand: 'seat', name: 'Arona', base: 'Arona', from: 2017, to: null, match: ['ARONA'], types: [] },
   { id: 'leon-5f', brand: 'seat', name: 'Leon 5F', base: 'Leon', from: 2013, to: 2020, match: ['LEON'], types: ['5F'] },
+  { id: 'ateca', brand: 'seat', name: 'Ateca', base: 'Ateca', from: 2016, to: null, match: ['ATECA'], types: [] },
   { id: 'tarraco', brand: 'seat', name: 'Tarraco', base: 'Tarraco', from: 2018, to: null, match: ['TARRACO'], types: [] },
+  { id: 'mii', brand: 'seat', name: 'Mii', base: 'Mii', from: 2012, to: 2021, match: ['MII'], types: [] },
   // Škoda
   { id: 'octavia-5e', brand: 'skoda', name: 'Octavia 5E', base: 'Octavia', from: 2013, to: 2020, match: ['OCTAVIA'], types: ['5E'] },
   { id: 'kodiaq', brand: 'skoda', name: 'Kodiaq', base: 'Kodiaq', from: 2017, to: null, match: ['KODIAQ'], types: [] },
@@ -2350,142 +2369,440 @@ const GROUPS = [
 const GROUP = byKey(GROUPS);
 
 /* ---------- Retrofit catalog ----------
+   One dataset (RETROFITS) for every catalog page. It merges the approved selection with the full
+   CarTronic catalog (2026 reconciliation): an entry names its `feature`, and FEATURES supplies the
+   shared name, category, illustration, description and search terms. Anything set on an entry
+   itself (title, text, years, specs, price…) always wins over the feature defaults.
+   Descriptions follow the product texts on cartronic.nl; prices are only shown where CarTronic
+   publishes one, otherwise "Op aanvraag". `aliases` are older/archived URLs that redirect.
+
    status rules (computed per vehicle, see Compat):
    - listed for the model (and year in range)          → BESCHIKBAAR VOOR DIT MODEL
    - listed, but with a variant note                    → UITVOERING AFHANKELIJK
    - listed with a year range, vehicle year unknown     → CONTROLE VEREIST
    - brand-wide entry ("de meeste modellen")            → CONTROLE VEREIST
    - listed for the model, vehicle year outside range   → NEEM CONTACT OP */
-const SRC_OLD = 'https://www.cartronic.nl/producten/';
-const SRC_NEW = 'https://new.cartronic.nl/producten/';
+const KW_CAMERA = ['camera', 'achteruitrijcamera', 'parkeercamera', 'rear view'];
+const KW_PDC = ['parkeerhulp', 'parkeersensoren', 'pdc', 'park assist', 'sensoren'];
+const KW_CRUISE = ['cruise control', 'cruise', 'cruisecontrol', 'snelheidsregelaar'];
+const KW_LED = ['led', 'verlichting'];
+const FEATURES = {
+  achteruitrijcamera: { name: 'Achteruitrijcamera', cat: 'camera-parkeren', art: 'camera', keywords: KW_CAMERA,
+    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.' },
+  'achteruitrijcamera-achterdeuren': { name: 'Achteruitrijcamera (achterdeuren)', cat: 'camera-parkeren', art: 'camera', keywords: [...KW_CAMERA, 'achterdeuren', 'bus', 'bestelauto'],
+    short: 'Originele camera voor auto’s met achterdeuren, ingebouwd in de linker achterdeur. Het beeld verschijnt op het multimediascherm.',
+    variantNote: 'Uitvoering voor auto’s met achterdeuren; voor een achterklep is er een aparte uitvoering.' },
+  'achteruitrijcamera-achterklep': { name: 'Achteruitrijcamera (achterklep)', cat: 'camera-parkeren', art: 'camera', keywords: [...KW_CAMERA, 'achterklep', 'bus', 'bestelauto'],
+    short: 'Originele camera voor auto’s met een achterklep. Het beeld verschijnt op het multimediascherm.',
+    variantNote: 'Uitvoering voor auto’s met een achterklep; voor achterdeuren is er een aparte uitvoering.' },
+  'area-view': { name: 'Area View 360°-camera', cat: 'camera-parkeren', art: 'camera', keywords: [...KW_CAMERA, '360 camera', '360 graden', 'area view', 'rondomzicht'],
+    short: 'Origineel parkeerhulpsysteem met vier camera’s rondom de auto. Het nauwkeurige beeld van de omgeving maakt parkeren en manoeuvreren eenvoudiger.' },
+  'top-view': { name: 'Top View 360°-camera', cat: 'camera-parkeren', art: 'camera', keywords: [...KW_CAMERA, '360 camera', '360 graden', 'top view', 'rondomzicht'],
+    short: 'Origineel parkeerhulpsysteem met vier camera’s rondom de auto. Het nauwkeurige beeld van de omgeving maakt parkeren en manoeuvreren eenvoudiger.' },
+  'parkeerhulp-achter': { name: 'Parkeerhulp achterzijde', cat: 'camera-parkeren', art: 'sensor', keywords: KW_PDC,
+    short: 'Parkeerhulpsysteem met ultrasone sensoren voor achteruit parkeren.' },
+  'parkeerhulp-voor-achter': { name: 'Parkeerhulp voor- en achterzijde', cat: 'camera-parkeren', art: 'sensor', keywords: KW_PDC,
+    short: 'Parkeerhulp met ultrasone sensoren aan de voor- en achterzijde.' },
+  'parkeerhulp-voor-upgrade': { name: 'Parkeerhulp voorzijde', title: 'Parkeerhulp voorzijde (upgrade)', cat: 'camera-parkeren', art: 'sensor', keywords: [...KW_PDC, 'parkeersensoren voor'],
+    short: 'Uitbreiding van de bestaande parkeerhulp met sensoren aan de voorzijde.', variantNote: 'Upgrade voor auto’s met parkeerhulp achter.' },
+  'app-connect': { name: 'App Connect', cat: 'infotainment', art: 'connect', image: 'cat_appconnect', keywords: ['carplay', 'apple carplay', 'android auto', 'app connect'],
+    short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.' },
+  'smartphone-interface': { name: 'Smartphone Interface', cat: 'infotainment', art: 'connect', image: 'cat_audi_carplay', keywords: ['carplay', 'apple carplay', 'android auto', 'smartphone interface', 'mmi'],
+    short: 'Apple CarPlay en Android Auto via het originele MMI: uw smartphone verbindt via USB, waarna u navigatie, muziek en apps via het MMI bedient.',
+    variantNote: 'Werkt alleen als de auto MMI-navigatie heeft; zowel de basisversie als MMI Navigatie plus is geschikt.' },
+  'discover-media': { name: 'Discover Media', cat: 'infotainment', art: 'nav', keywords: ['navigatie', 'navi', 'discover media', 'multimedia'],
+    short: 'Origineel Volkswagen-navigatiesysteem: navigatie, multimedia en telefoon bedient u via een 8-inch kleurentouchscreen.' },
+  'discover-pro': { name: 'Discover Pro', cat: 'infotainment', art: 'nav', image: 'cat_nav', keywords: ['navigatie', 'navi', 'discover pro'],
+    short: 'Origineel Discover Pro navigatie- en multimediasysteem.' },
+  'discover-carplay': { name: 'Discover navigatie met CarPlay', cat: 'infotainment', art: 'nav', keywords: ['navigatie', 'navi', 'discover', 'carplay', 'android auto', 'aanbieding'],
+    short: 'Het originele Volkswagen Discover-navigatiesysteem van de nieuwe generatie, met Apple CarPlay en Android Auto. Bedoeld voor wie een oudere Discover Pro heeft; het originele scherm blijft zitten.' },
+  'mmi-plus': { name: 'MMI Navigatie plus', cat: 'infotainment', art: 'nav', keywords: ['navigatie', 'mmi', 'navi', 'mmi plus'],
+    short: 'Het MMI Navigatie plus-systeem, origineel ingebouwd: navigeren, handsfree bellen en muziek afspelen.' },
+  'active-info-display': { name: 'Active Info Display', cat: 'cockpit', art: 'cockpit', keywords: ['active info display', 'aid', 'virtual cockpit', 'digitale cockpit', 'digitaal dashboard'],
+    short: 'Origineel digitaal instrumentenpaneel in plaats van de analoge tellers.', variantNote: 'Afhankelijk van bouwjaar en het aanwezige multimediasysteem.' },
+  'virtual-cockpit': { name: 'Virtual Cockpit', cat: 'cockpit', art: 'cockpit', keywords: ['virtual cockpit', 'digitale cockpit', 'digitaal dashboard'],
+    short: 'Volledig digitaal instrumentenpaneel met een 12,3-inch TFT-scherm: navigatie, muziek, telefoon en assistentiesystemen in uw gezichtsveld.' },
+  dodehoek: { name: 'Dodehoekassistent', titleByBrand: { volkswagen: 'Dodehoekassistent (Side Assist)', audi: 'Dodehoekassistent (Audi side assist)' }, cat: 'assistentie', art: 'assist',
+    keywords: ['side assist', 'dode hoek', 'blind spot', 'dodehoekassistent'], short: 'Waarschuwt voor voertuigen in de dode hoek.' },
+  'lane-assist': { name: 'Active Lane Assist', cat: 'assistentie', art: 'assist', keywords: ['lane assist', 'rijstrookassistent', 'lane keeping', 'rijbaan'],
+    short: 'Helpt u binnen de rijstrook te blijven door de auto met korte, subtiele stuurcorrecties bij te sturen.' },
+  verkeersbordherkenning: { name: 'Verkeersbordherkenning', cat: 'assistentie', art: 'assist', keywords: ['verkeersborden', 'snelheidsborden', 'bordherkenning'],
+    short: 'Herkent verkeersborden en toont ze in het instrumentenpaneel.' },
+  wegrijassistent: { name: 'Wegrijassistent', cat: 'assistentie', art: 'assist', keywords: ['wegrijassistent', 'auto hold', 'helling', 'hellingproef'],
+    short: 'Origineel Audi-assistentiesysteem dat met Auto Hold voorkomt dat de auto op een helling achteruit rolt. U schakelt het in met een druk op de knop; het blijft actief tot u het uitschakelt.' },
+  'cruise-control': { name: 'Cruise control', cat: 'assistentie', art: 'gauge', keywords: KW_CRUISE,
+    short: 'Originele cruise control om een ingestelde snelheid vast te houden.' },
+  'cruise-control-stuur': { name: 'Cruise control (bediening op het stuur)', cat: 'assistentie', art: 'gauge', keywords: [...KW_CRUISE, 'stuur', 'stuurknoppen'],
+    short: 'Originele cruise control die u met de knoppen op het stuur bedient: snelheid vasthouden, verhogen of verlagen.',
+    variantNote: 'Uitvoering met bediening op het stuur; er is ook een uitvoering met bediening via de knipperlichthendel.' },
+  'cruise-control-hendel': { name: 'Cruise control (bediening via hendel)', cat: 'assistentie', art: 'gauge', keywords: [...KW_CRUISE, 'hendel'],
+    short: 'Originele cruise control die u bedient via de knipperlichthendel.',
+    variantNote: 'Uitvoering met bediening via de knipperlichthendel; er is ook een uitvoering met bediening op het stuur.' },
+  'inklapbare-spiegels': { name: 'Inklapbare spiegels', cat: 'comfort', art: 'mirror', image: 'cat_mirror', keywords: ['inklapbare spiegels', 'inklapspiegels', 'spiegels', 'buitenspiegels'],
+    short: 'Elektrisch inklapbare buitenspiegels. Inklapbare spiegels helpen schade aan de buitenspiegels te voorkomen.' },
+  'dimmende-binnenspiegel': { name: 'Dimmende binnenspiegel', title: 'Automatisch dimmende binnenspiegel', cat: 'comfort', art: 'mirrorInterior', keywords: ['binnenspiegel', 'dimmend', 'spiegel'],
+    short: 'Originele, automatisch dimmende binnenspiegel die verblinding door achteropkomend verkeer voorkomt.' },
+  achterklep: { name: 'Elektrische achterklep', cat: 'comfort', art: 'tailgate', keywords: ['achterklep', 'kofferklep', 'elektrische achterklep'],
+    short: 'Maakt van de handmatige achterklep een volledig elektrische: openen met de greep of de afstandsbediening, sluiten met de knop in de bekleding of via de afstandsbediening.' },
+  keyless: { name: 'Comfortsleutel', title: 'Comfortsleutel (keyless entry)', cat: 'comfort', art: 'key', keywords: ['keyless', 'keyless entry', 'comfortsleutel', 'sleutelloos'],
+    short: 'De auto herkent de sleutel die u bij u draagt en ontgrendelt zodra u aan de portiergreep trekt. Vergrendelen doet u door over de greep te strijken.' },
+  homelink: { name: 'Garagedeuropener', title: 'Garagedeuropener (HomeLink)', cat: 'comfort', art: 'garage', keywords: ['homelink', 'garagedeur', 'garagedeuropener', 'poort'],
+    short: 'Volledig geïntegreerde, programmeerbare afstandsbediening voor garagedeuren en toegangspoorten, met de bedieningsknoppen in de dakmodule voorin.' },
+  '230v': { name: '230V-aansluiting', cat: 'comfort', art: 'socket', keywords: ['230v', '230 volt', 'stopcontact', 'opladen'],
+    short: 'Originele 230V-aansluiting aan de achterzijde van de middenconsole: laad uw apparaten op zoals u thuis gewend bent.' },
+  rijprofielen: { name: 'Rijprofielen', title: 'Rijprofielkeuze', cat: 'comfort', art: 'gauge', keywords: ['rijprofiel', 'rijprofielen', 'rijprofielkeuze', 'rijmodus'],
+    short: 'Originele Volkswagen-rijprofielkeuze: kies uit vijf rijprofielen — Eco, Sport, Normal, Individual en Comfort.' },
+  stuurwiel: { name: 'Multifunctioneel stuurwiel', cat: 'comfort', art: 'wheel', keywords: ['stuurwiel', 'stuur', 'multifunctiestuur'],
+    short: 'Origineel multifunctioneel stuurwiel met bedieningsknoppen.' },
+  'licht-regensensor': { name: 'Licht- en regensensor', cat: 'comfort', art: 'sensorRain', keywords: ['regensensor', 'lichtsensor'],
+    short: 'Automatische verlichting en ruitenwissers.' },
+  'led-koplampen': { name: 'LED-koplampen', cat: 'verlichting', art: 'light', keywords: [...KW_LED, 'koplampen', 'led koplampen'],
+    short: 'Originele LED-koplampen met LED-dagrijverlichting, ter vervanging van de halogeenkoplampen.' },
+  xenon: { name: 'Xenonkoplampen', cat: 'verlichting', art: 'light', keywords: ['xenon', 'koplampen', 'verlichting'],
+    short: 'Originele xenonkoplampen met LED-dagrijverlichting, ter vervanging van de halogeenkoplampen.' },
+  'led-achterlichten': { name: 'LED-achterlichten', cat: 'verlichting', art: 'light', keywords: [...KW_LED, 'achterlichten'],
+    short: 'Originele LED-achterlichten ter vervanging van de huidige achterlichten.' },
+  'led-achterlichten-donker': { name: 'LED-achterlichten donker', title: 'LED-achterlichten (donker)', cat: 'verlichting', art: 'light', keywords: [...KW_LED, 'achterlichten', 'donker'],
+    short: 'Originele LED-achterlichten in een donkere uitvoering, ter vervanging van de huidige achterlichten.' },
+  'led-dynamisch': { name: 'LED-achterlichten dynamisch', title: 'LED-achterlichten met dynamisch knipperlicht', cat: 'verlichting', art: 'light', keywords: [...KW_LED, 'achterlichten', 'dynamisch knipperlicht'],
+    short: 'Originele LED-achterlichten met dynamisch knipperlicht.' },
+  instapverlichting: { name: 'Instapverlichting Audi-ringen', title: 'Instapverlichting met Audi-ringen', cat: 'verlichting', art: 'light', keywords: ['instapverlichting', 'audi ringen', 'logo projectie', 'portierverlichting'],
+    short: 'Originele Audi-instapverlichting die het logo met de Audi-ringen projecteert wanneer u het portier opent.' },
+  'trekhaak-afneembaar': { name: 'Afneembare trekhaak', cat: 'trekhaken', art: 'towbar', keywords: ['trekhaak', 'afneembaar', 'afneembare trekhaak'],
+    short: 'Originele trekhaak die eenvoudig is aan te brengen en te verwijderen.' },
+  'trekhaak-zwenkbaar': { name: 'Zwenkbare trekhaak', title: 'Zwenkbare/wegklapbare trekhaak', cat: 'trekhaken', art: 'towbar', keywords: ['trekhaak', 'wegklapbaar', 'zwenkbaar', 'wegklapbare trekhaak'],
+    short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.' },
+  alarm: { name: 'Origineel alarm met SCM-certificaat', cat: 'beveiliging', art: 'alarm', keywords: ['alarm', 'beveiliging', 'scm'] },
+};
+/* Body/generation variants that share a model generation. */
+const VARIANTS = {
+  avant: { label: 'Avant', body: 'stationwagen', note: 'Vermeld voor de A4 Avant (stationwagen).' },
+  limousine: { label: 'Limousine', body: 'sedan', note: 'Vermeld voor de A4 Limousine (sedan).' },
+  ii: { label: '', years: [2013, 2017] },
+};
 const RETROFITS = [
   // ---- Volkswagen
-  { slug: 'volkswagen-golf-7-active-info-display', brand: 'volkswagen', models: ['golf-7'], cat: 'cockpit', title: 'Volkswagen Golf 7 – Active Info Display', name: 'Active Info Display', art: 'cockpit', image: 'cat_aid',
-    short: 'Origineel digitaal instrumentenpaneel in plaats van de analoge tellers.', variantNote: 'Afhankelijk van bouwjaar en het aanwezige multimediasysteem.', keywords: ['virtual cockpit', 'digitale cockpit', 'aid', 'digitaal dashboard'], source: SRC_NEW },
-  { slug: 'volkswagen-golf-7-app-connect', brand: 'volkswagen', models: ['golf-7'], cat: 'infotainment', title: 'Volkswagen Golf 7 – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect',
-    short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto', 'app connect'], source: `${SRC_NEW}volkswagen-golf-7-app-connect/` },
-  { slug: 'volkswagen-golf-8-app-connect', brand: 'volkswagen', models: ['golf-8'], cat: 'infotainment', title: 'Volkswagen Golf 8 – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect',
-    short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto'], source: `${SRC_NEW}volkswagen-golf-8-app-connect/` },
-  { slug: 'volkswagen-golf-8-parkeerhulp-voor-en-achterzijde', brand: 'volkswagen', models: ['golf-8'], cat: 'camera-parkeren', title: 'Volkswagen Golf 8 – Parkeerhulp voor- en achterzijde', name: 'Parkeerhulp voor- en achterzijde', art: 'sensor',
-    short: 'Parkeerhulp met ultrasone sensoren aan de voor- en achterzijde.', keywords: ['parkeersensoren', 'pdc', 'park assist'], source: `${SRC_NEW}volkswagen-golf-8-parkeerhulp-voor-en-achterzijde/` },
-  { slug: 'volkswagen-golf-8-zwenkbare-wegklapbare-trekhaak', brand: 'volkswagen', models: ['golf-8'], cat: 'trekhaken', title: 'Volkswagen Golf 8 – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar',
-    short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak', 'wegklapbaar'], source: `${SRC_NEW}volkswagen-golf-8-zwenkbare-wegklapbare-trekhaak/` },
-  { slug: 'volkswagen-golf-8-inklapbare-spiegels', brand: 'volkswagen', models: ['golf-8'], cat: 'comfort', title: 'Volkswagen Golf 8 – Inklapbare spiegels', name: 'Inklapbare spiegels', art: 'mirror', image: 'cat_mirror',
-    short: 'Buitenspiegels die inklappen bij het vergrendelen en weer uitklappen bij het starten.', keywords: ['inklapspiegels', 'spiegels'], source: `${SRC_NEW}volkswagen-golf-8-inklapbare-spiegels/` },
-  { slug: 'volkswagen-polo-aw-app-connect', brand: 'volkswagen', models: ['polo-aw'], cat: 'infotainment', title: 'Volkswagen Polo AW – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect',
-    short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto'], source: `${SRC_OLD}volkswagen-polo-aw-app-connect/` },
-  { slug: 'volkswagen-t-roc-app-connect', brand: 'volkswagen', models: ['t-roc'], cat: 'infotainment', title: 'Volkswagen T-Roc – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect',
-    short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto'], source: `${SRC_OLD}volkswagen-t-roc-app-connect/` },
-  { slug: 'volkswagen-t-roc-achteruitrijcamera', brand: 'volkswagen', models: ['t-roc'], cat: 'camera-parkeren', title: 'Volkswagen T-Roc – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: `${SRC_NEW}volkswagen-t-roc-achteruitrijcamera/` },
-  { slug: 'volkswagen-t-roc-elektrische-achterklep', brand: 'volkswagen', models: ['t-roc'], cat: 'comfort', title: 'Volkswagen T-Roc – Elektrische achterklep', name: 'Elektrische achterklep', art: 'tailgate',
-    short: 'Achterklep elektrisch openen en sluiten.', keywords: ['achterklep', 'kofferklep'], source: `${SRC_OLD}volkswagen-t-roc-elektrische-achterklep/` },
-  { slug: 'volkswagen-tiguan-ad-app-connect', brand: 'volkswagen', models: ['tiguan-ad'], cat: 'infotainment', title: 'Volkswagen Tiguan AD – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect',
-    short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto'], source: `${SRC_OLD}volkswagen-tiguan-ad-app-connect/` },
-  { slug: 'volkswagen-tiguan-ad-dode-hoek-assistent', brand: 'volkswagen', models: ['tiguan-ad'], cat: 'assistentie', title: 'Volkswagen Tiguan AD – Dodehoekassistent (Side Assist)', name: 'Dodehoekassistent', art: 'assist',
-    short: 'Waarschuwt voor voertuigen in de dode hoek.', keywords: ['side assist', 'dode hoek', 'blind spot'], source: `${SRC_NEW}volkswagen-tiguan-ad-dode-hoek-assistent/` },
-  { slug: 'volkswagen-passat-b8-app-connect', brand: 'volkswagen', models: ['passat-b8'], cat: 'infotainment', title: 'Volkswagen Passat B8 – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect',
-    short: 'Smartphone via USB verbinden en navigatie, muziek en apps bedienen via het scherm.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto'], source: `${SRC_OLD}volkswagen-passat-b8-app-connect/` },
-  { slug: 'volkswagen-passat-b8-discover-pro', brand: 'volkswagen', models: ['passat-b8'], cat: 'infotainment', title: 'Volkswagen Passat B8 – Discover Pro', name: 'Discover Pro', art: 'nav', image: 'cat_nav',
-    short: 'Origineel Discover Pro navigatie- en multimediasysteem.', keywords: ['navigatie', 'navi', 'discover pro'], source: `${SRC_OLD}volkswagen-passat-b8-discover-pro/` },
-  { slug: 'volkswagen-passat-b8-dode-hoek-assistent', brand: 'volkswagen', models: ['passat-b8'], cat: 'assistentie', title: 'Volkswagen Passat B8 – Dodehoekassistent (Side Assist)', name: 'Dodehoekassistent', art: 'assist',
-    short: 'Waarschuwt voor voertuigen in de dode hoek.', keywords: ['side assist', 'dode hoek', 'blind spot'], source: `${SRC_OLD}volkswagen-passat-b8-dode-hoek-assistent/` },
-  { slug: 'volkswagen-id3-parkeerhulp-voor-en-achterzijde', brand: 'volkswagen', models: ['id-3'], cat: 'camera-parkeren', title: 'Volkswagen ID.3 – Parkeerhulp voor- en achterzijde', name: 'Parkeerhulp voor- en achterzijde', art: 'sensor',
-    short: 'Parkeerhulp met ultrasone sensoren aan de voor- en achterzijde.', keywords: ['parkeersensoren', 'pdc'], source: `${SRC_NEW}volkswagen-id3-parkeerhulp-voor-en-achterzijde/` },
-  { slug: 'volkswagen-id3-zwenkbare-wegklapbare-trekhaak', brand: 'volkswagen', models: ['id-3'], cat: 'trekhaken', title: 'Volkswagen ID.3 – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar',
-    short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: `${SRC_NEW}volkswagen-id3-zwenkbare-wegklapbare-trekhaak/` },
-  { slug: 'volkswagen-id4-parkeerhulp-voor-en-achterzijde', brand: 'volkswagen', models: ['id-4'], cat: 'camera-parkeren', title: 'Volkswagen ID.4 – Parkeerhulp voor- en achterzijde', name: 'Parkeerhulp voor- en achterzijde', art: 'sensor',
-    short: 'Parkeerhulp met ultrasone sensoren aan de voor- en achterzijde.', keywords: ['parkeersensoren', 'pdc'], source: `${SRC_NEW}volkswagen-id4-parkeerhulp-voor-en-achterzijde/` },
-  { slug: 'volkswagen-id4-zwenkbare-wegklapbare-trekhaak', brand: 'volkswagen', models: ['id-4'], cat: 'trekhaken', title: 'Volkswagen ID.4 – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar',
-    short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: `${SRC_NEW}volkswagen-id4-zwenkbare-wegklapbare-trekhaak/` },
-  { slug: 'volkswagen-up-multifunctioneel-stuurwiel', brand: 'volkswagen', models: ['up'], cat: 'comfort', title: 'Volkswagen up! – Multifunctioneel stuurwiel', name: 'Multifunctioneel stuurwiel', art: 'wheel',
-    short: 'Origineel multifunctioneel stuurwiel met bedieningsknoppen.', keywords: ['stuurwiel', 'stuur'], source: `${SRC_OLD}volkswagen-up-multifunctioneel-stuurwiel/` },
-  { slug: 'volkswagen-transporter-t6-inklapbare-spiegels', brand: 'volkswagen', models: ['transporter-t6'], cat: 'comfort', title: 'Volkswagen Transporter T6 – Inklapbare spiegels', name: 'Inklapbare spiegels', art: 'mirror', image: 'cat_mirror',
-    short: 'Elektrisch inklapbare buitenspiegels.', keywords: ['inklapspiegels', 'spiegels', 'bus'], source: `${SRC_NEW}volkswagen-transporter-t6-inklapbare-spiegels/` },
+  { slug: 'volkswagen-golf-7-active-info-display', feature: 'active-info-display', brand: 'volkswagen', models: ['golf-7'], years: [2013, 2019], cat: 'cockpit', title: 'Volkswagen Golf 7 – Active Info Display', name: 'Active Info Display', art: 'cockpit', image: 'cat_aid', short: 'Origineel digitaal instrumentenpaneel in plaats van de analoge tellers.', variantNote: 'Afhankelijk van bouwjaar en het aanwezige multimediasysteem.', specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'Golf 7 2013–2019 (ook GTI, GTD, R en R-line)']], keywords: ['virtual cockpit', 'digitale cockpit', 'aid', 'digitaal dashboard'], warranty: '3 jaar', price: '€ 1.099 excl. btw', offer: '€ 1.499 inclusief montage', aliases: ['aanbieding-1-volkswagen-golf-7-active-info-display'], source: 'https://new.cartronic.nl/producten/' },
+  { slug: 'volkswagen-golf-7-app-connect', feature: 'app-connect', brand: 'volkswagen', models: ['golf-7'], cat: 'infotainment', title: 'Volkswagen Golf 7 – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect', short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto', 'app connect'], warranty: '3 jaar', offer: 'Vanaf € 199 inclusief montage (Golf 2015–2020)', source: 'https://new.cartronic.nl/producten/volkswagen-golf-7-app-connect/' },
+  { slug: 'volkswagen-golf-8-app-connect', feature: 'app-connect', brand: 'volkswagen', models: ['golf-8'], cat: 'infotainment', title: 'Volkswagen Golf 8 – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect', short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto'], source: 'https://new.cartronic.nl/producten/volkswagen-golf-8-app-connect/' },
+  { slug: 'volkswagen-golf-8-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['golf-8'], cat: 'camera-parkeren', title: 'Volkswagen Golf 8 – Parkeerhulp voor- en achterzijde', name: 'Parkeerhulp voor- en achterzijde', art: 'sensor', short: 'Parkeerhulp met ultrasone sensoren aan de voor- en achterzijde.', keywords: ['parkeersensoren', 'pdc', 'park assist'], source: 'https://new.cartronic.nl/producten/volkswagen-golf-8-parkeerhulp-voor-en-achterzijde/' },
+  { slug: 'volkswagen-golf-8-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'volkswagen', models: ['golf-8'], cat: 'trekhaken', title: 'Volkswagen Golf 8 – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar', short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak', 'wegklapbaar'], source: 'https://new.cartronic.nl/producten/volkswagen-golf-8-zwenkbare-wegklapbare-trekhaak/' },
+  { slug: 'volkswagen-golf-8-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'volkswagen', models: ['golf-8'], cat: 'comfort', title: 'Volkswagen Golf 8 – Inklapbare spiegels', name: 'Inklapbare spiegels', art: 'mirror', image: 'cat_mirror', short: 'Buitenspiegels die inklappen bij het vergrendelen en weer uitklappen bij het starten.', keywords: ['inklapspiegels', 'spiegels'], warranty: '3 jaar', source: 'https://new.cartronic.nl/producten/volkswagen-golf-8-inklapbare-spiegels/' },
+  { slug: 'volkswagen-polo-aw-app-connect', feature: 'app-connect', brand: 'volkswagen', models: ['polo-aw'], cat: 'infotainment', title: 'Volkswagen Polo AW – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect', short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto'], warranty: '3 jaar', offer: 'Vanaf € 199 inclusief montage (Polo t/m 2020)', source: 'https://www.cartronic.nl/producten/volkswagen-polo-aw-app-connect/' },
+  { slug: 'volkswagen-t-roc-app-connect', feature: 'app-connect', brand: 'volkswagen', models: ['t-roc'], cat: 'infotainment', title: 'Volkswagen T-Roc – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect', short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto'], warranty: '3 jaar', offer: 'Vanaf € 199 inclusief montage', aliases: ['aanbieding-3-volkswagen-app-connect'], source: 'https://www.cartronic.nl/producten/volkswagen-t-roc-app-connect/' },
+  { slug: 'volkswagen-t-roc-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['t-roc'], cat: 'camera-parkeren', title: 'Volkswagen T-Roc – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], warranty: '3 jaar', source: 'https://new.cartronic.nl/producten/volkswagen-t-roc-achteruitrijcamera/' },
+  { slug: 'volkswagen-t-roc-elektrische-achterklep', feature: 'achterklep', brand: 'volkswagen', models: ['t-roc'], cat: 'comfort', title: 'Volkswagen T-Roc – Elektrische achterklep', name: 'Elektrische achterklep', art: 'tailgate', short: 'Achterklep elektrisch openen en sluiten.', keywords: ['achterklep', 'kofferklep'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/volkswagen-t-roc-elektrische-achterklep/' },
+  { slug: 'volkswagen-tiguan-ad-app-connect', feature: 'app-connect', brand: 'volkswagen', models: ['tiguan-ad'], cat: 'infotainment', title: 'Volkswagen Tiguan AD – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect', short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto'], offer: 'Vanaf € 199 inclusief montage (Tiguan 2017–2020)', source: 'https://www.cartronic.nl/producten/volkswagen-tiguan-ad-app-connect/' },
+  { slug: 'volkswagen-tiguan-ad-dode-hoek-assistent', feature: 'dodehoek', brand: 'volkswagen', models: ['tiguan-ad'], cat: 'assistentie', title: 'Volkswagen Tiguan AD – Dodehoekassistent (Side Assist)', name: 'Dodehoekassistent', art: 'assist', short: 'Waarschuwt voor voertuigen in de dode hoek.', keywords: ['side assist', 'dode hoek', 'blind spot'], source: 'https://new.cartronic.nl/producten/volkswagen-tiguan-ad-dode-hoek-assistent/' },
+  { slug: 'volkswagen-passat-b8-app-connect', feature: 'app-connect', brand: 'volkswagen', models: ['passat-b8'], cat: 'infotainment', title: 'Volkswagen Passat B8 – App Connect', name: 'App Connect', art: 'connect', image: 'cat_appconnect', short: 'Smartphone via USB verbinden en navigatie, muziek en apps bedienen via het scherm.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.', keywords: ['carplay', 'android auto'], warranty: '3 jaar', offer: 'Vanaf € 199 inclusief montage (Passat 2015–2020)', source: 'https://www.cartronic.nl/producten/volkswagen-passat-b8-app-connect/' },
+  { slug: 'volkswagen-passat-b8-discover-pro', feature: 'discover-pro', brand: 'volkswagen', models: ['passat-b8'], cat: 'infotainment', title: 'Volkswagen Passat B8 – Discover Pro', name: 'Discover Pro', art: 'nav', image: 'cat_nav', short: 'Origineel Discover Pro navigatie- en multimediasysteem.', keywords: ['navigatie', 'navi', 'discover pro'], source: 'https://www.cartronic.nl/producten/volkswagen-passat-b8-discover-pro/' },
+  { slug: 'volkswagen-passat-b8-dode-hoek-assistent', feature: 'dodehoek', brand: 'volkswagen', models: ['passat-b8'], cat: 'assistentie', title: 'Volkswagen Passat B8 – Dodehoekassistent (Side Assist)', name: 'Dodehoekassistent', art: 'assist', short: 'Waarschuwt voor voertuigen in de dode hoek.', keywords: ['side assist', 'dode hoek', 'blind spot'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/volkswagen-passat-b8-dode-hoek-assistent/' },
+  { slug: 'volkswagen-id3-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['id-3'], cat: 'camera-parkeren', title: 'Volkswagen ID.3 – Parkeerhulp voor- en achterzijde', name: 'Parkeerhulp voor- en achterzijde', art: 'sensor', short: 'Parkeerhulp met ultrasone sensoren aan de voor- en achterzijde.', keywords: ['parkeersensoren', 'pdc'], source: 'https://new.cartronic.nl/producten/volkswagen-id3-parkeerhulp-voor-en-achterzijde/' },
+  { slug: 'volkswagen-id3-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'volkswagen', models: ['id-3'], cat: 'trekhaken', title: 'Volkswagen ID.3 – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar', short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: 'https://new.cartronic.nl/producten/volkswagen-id3-zwenkbare-wegklapbare-trekhaak/' },
+  { slug: 'volkswagen-id4-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['id-4'], cat: 'camera-parkeren', title: 'Volkswagen ID.4 – Parkeerhulp voor- en achterzijde', name: 'Parkeerhulp voor- en achterzijde', art: 'sensor', short: 'Parkeerhulp met ultrasone sensoren aan de voor- en achterzijde.', keywords: ['parkeersensoren', 'pdc'], source: 'https://new.cartronic.nl/producten/volkswagen-id4-parkeerhulp-voor-en-achterzijde/' },
+  { slug: 'volkswagen-id4-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'volkswagen', models: ['id-4'], cat: 'trekhaken', title: 'Volkswagen ID.4 – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar', short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: 'https://new.cartronic.nl/producten/volkswagen-id4-zwenkbare-wegklapbare-trekhaak/' },
+  { slug: 'volkswagen-up-multifunctioneel-stuurwiel', feature: 'stuurwiel', brand: 'volkswagen', models: ['up'], cat: 'comfort', title: 'Volkswagen up! – Multifunctioneel stuurwiel', name: 'Multifunctioneel stuurwiel', art: 'wheel', short: 'Origineel multifunctioneel stuurwiel met bedieningsknoppen.', keywords: ['stuurwiel', 'stuur'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/volkswagen-up-multifunctioneel-stuurwiel/' },
+  { slug: 'volkswagen-transporter-t6-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'volkswagen', models: ['transporter-t6'], cat: 'comfort', title: 'Volkswagen Transporter T6 – Inklapbare spiegels', name: 'Inklapbare spiegels', art: 'mirror', image: 'cat_mirror', short: 'Elektrisch inklapbare buitenspiegels.', keywords: ['inklapspiegels', 'spiegels', 'bus'], warranty: '3 jaar', source: 'https://new.cartronic.nl/producten/volkswagen-transporter-t6-inklapbare-spiegels/' },
   // ---- Audi
-  { slug: 'audi-a3-8v-virtual-cockpit', brand: 'audi', models: ['a3-8v'], years: [2017, 2019], cat: 'cockpit', title: 'Audi A3 8V – Virtual Cockpit', name: 'Virtual Cockpit', art: 'cockpit',
-    short: 'Volledig digitaal instrumentenpaneel met een 12,3-inch TFT-scherm: navigatie, muziek, telefoon en assistentiesystemen in uw gezichtsveld.',
-    variantNote: 'Vermeld voor de A3 8V van 2017 tot en met 2019, ook voor S3, RS3 en S-line.', specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'A3 8V 2017–2019 (ook S3, RS3, S-line)'], ['Garantie', '3 jaar (volgens CarTronic-productinformatie)'], ['Prijs', 'Op aanvraag']],
-    keywords: ['digitale cockpit', 'virtual cockpit', 'digitaal dashboard'], source: `${SRC_OLD}audi-a3-8v-virtual-cockpit/` },
-  { slug: 'audi-a3-8v-verkeersbordherkenning', brand: 'audi', models: ['a3-8v'], cat: 'assistentie', title: 'Audi A3 8V – Verkeersbordherkenning', name: 'Verkeersbordherkenning', art: 'assist',
-    short: 'Herkent verkeersborden en toont ze in het instrumentenpaneel.', keywords: ['verkeersborden', 'snelheidsborden'], source: `${SRC_OLD}audi-a3-8v-verkeersbordherkenning/` },
-  { slug: 'audi-a3-8v-cruise-control', brand: 'audi', models: ['a3-8v'], cat: 'assistentie', title: 'Audi A3 8V – Cruise control', name: 'Cruise control', art: 'gauge',
-    short: 'Originele cruise control om een ingestelde snelheid vast te houden.', keywords: ['cruise', 'snelheidsregelaar'], source: `${SRC_OLD}audi-a3-8v-cruise-control/` },
-  { slug: 'audi-a3-8v-mmi-plus-navigatiesysteem', brand: 'audi', models: ['a3-8v'], cat: 'infotainment', title: 'Audi A3 8V – MMI Navigatie plus', name: 'MMI Navigatie plus', art: 'nav',
-    short: 'Origineel MMI Navigatie plus-systeem.', keywords: ['navigatie', 'mmi', 'navi'], source: `${SRC_NEW}audi-a3-8v-mmi-plus-navigatiesysteem/` },
-  { slug: 'audi-a3-8v-licht-en-regensensor', brand: 'audi', models: ['a3-8v'], cat: 'comfort', title: 'Audi A3 8V – Licht- en regensensor', name: 'Licht- en regensensor', art: 'sensorRain',
-    short: 'Automatische verlichting en ruitenwissers.', keywords: ['regensensor', 'lichtsensor'], source: `${SRC_OLD}audi-a3-8v-licht-en-regensensor/` },
-  { slug: 'audi-a3-8v-parkeerhulp-voor-en-achterzijde', brand: 'audi', models: ['a3-8v'], cat: 'camera-parkeren', title: 'Audi A3 8V – Parkeerhulp plus (voor- en achterzijde)', name: 'Parkeerhulp plus', art: 'sensor',
-    short: 'Parkeerhulpsysteem met ultrasone sensoren aan de voor- en achterzijde.', keywords: ['parkeersensoren', 'pdc', 'park assist'], source: `${SRC_OLD}audi-a3-8v-parkeerhulp-voor-en-achterzijde/` },
-  { slug: 'audi-a3-8v-dode-hoek-assistent', brand: 'audi', models: ['a3-8v'], cat: 'assistentie', title: 'Audi A3 8V – Dodehoekassistent (Audi side assist)', name: 'Dodehoekassistent', art: 'assist',
-    short: 'Waarschuwt voor voertuigen in de dode hoek.', keywords: ['side assist', 'dode hoek', 'blind spot'], source: `${SRC_NEW}audi-a3-8v-dode-hoek-assistent/` },
-  { slug: 'audi-a3-8y-dode-hoek-assistent', brand: 'audi', models: ['a3-8y'], cat: 'assistentie', title: 'Audi A3 8Y – Dodehoekassistent (Audi side assist)', name: 'Dodehoekassistent', art: 'assist',
-    short: 'Waarschuwt voor voertuigen in de dode hoek.', keywords: ['side assist', 'dode hoek', 'blind spot'], source: `${SRC_NEW}audi-a3-8y-dode-hoek-assistent/` },
-  { slug: 'audi-a3-8y-zwenkbare-wegklapbare-trekhaak', brand: 'audi', models: ['a3-8y'], cat: 'trekhaken', title: 'Audi A3 8Y – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar',
-    short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: `${SRC_NEW}audi-a3-8y-zwenkbare-wegklapbare-trekhaak/` },
-  { slug: 'audi-a4-b9-avant-elektrische-achterklep', brand: 'audi', models: ['a4-b9'], cat: 'comfort', title: 'Audi A4 B9/8W Avant – Elektrische achterklep', name: 'Elektrische achterklep', art: 'tailgate',
-    short: 'Achterklep elektrisch openen en sluiten.', variantNote: 'Vermeld voor de A4 Avant (stationwagen).', body: 'stationwagen', keywords: ['achterklep', 'kofferklep'], source: `${SRC_OLD}audi-a4-b9-8w-avant-elektrische-achterklep/` },
-  { slug: 'audi-a4-b9-led-dynamische-achterlichten', brand: 'audi', models: ['a4-b9'], cat: 'verlichting', title: 'Audi A4 B9/8W – LED-achterlichten met dynamisch knipperlicht', name: 'LED-achterlichten dynamisch', art: 'light',
-    short: 'Originele LED-achterlichten met dynamisch knipperlicht.', keywords: ['achterlichten', 'led', 'dynamisch knipperlicht'], source: `${SRC_OLD}audi-a4-b9-8w-led-dynamische-achterlichten/` },
-  { slug: 'audi-a4-b9-parkeerhulp-voorzijde-upgrade', brand: 'audi', models: ['a4-b9'], cat: 'camera-parkeren', title: 'Audi A4 B9/8W – Parkeerhulp voorzijde (upgrade)', name: 'Parkeerhulp voorzijde', art: 'sensor',
-    short: 'Uitbreiding van de bestaande parkeerhulp met sensoren aan de voorzijde.', variantNote: 'Upgrade voor auto’s met parkeerhulp achter.', keywords: ['parkeersensoren voor', 'pdc'], source: `${SRC_NEW}audi-a4-b9-8w-parkeerhulp-voorzijde-upgrade/` },
-  { slug: 'audi-a5-f5-zwenkbare-wegklapbare-trekhaak', brand: 'audi', models: ['a5-f5'], cat: 'trekhaken', title: 'Audi A5 F5 – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar',
-    short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: `${SRC_OLD}audi-a5-f5-zwenkbare-wegklapbare-trekhaak/` },
-  { slug: 'audi-q2-ga-dimmende-binnenspiegel', brand: 'audi', models: ['q2-ga'], cat: 'comfort', title: 'Audi Q2 GA – Automatisch dimmende binnenspiegel', name: 'Dimmende binnenspiegel', art: 'mirrorInterior',
-    short: 'Binnenspiegel die automatisch dimt bij verblinding.', keywords: ['binnenspiegel', 'dimmend'], source: `${SRC_NEW}audi-q2-ga-dimmende-binnenspiegel/` },
-  { slug: 'audi-q4-e-tron-parkeerhulp-voor-en-achterzijde', brand: 'audi', models: ['q4-etron'], cat: 'camera-parkeren', title: 'Audi Q4 e-tron – Parkeerhulp plus (voor- en achterzijde)', name: 'Parkeerhulp plus', art: 'sensor',
-    short: 'Parkeerhulpsysteem met ultrasone sensoren aan de voor- en achterzijde.', keywords: ['parkeersensoren', 'pdc'], source: `${SRC_NEW}audi-q4-e-tron-parkeerhulp-voor-en-achterzijde/` },
-  { slug: 'audi-q4-e-tron-parkeerhulp-voorzijde-upgrade', brand: 'audi', models: ['q4-etron'], cat: 'camera-parkeren', title: 'Audi Q4 e-tron – Parkeerhulp voorzijde (upgrade)', name: 'Parkeerhulp voorzijde', art: 'sensor',
-    short: 'Uitbreiding van de bestaande parkeerhulp met sensoren aan de voorzijde.', variantNote: 'Upgrade voor auto’s met parkeerhulp achter.', keywords: ['parkeersensoren voor'], source: `${SRC_NEW}audi-q4-e-tron-parkeerhulp-voorzijde-upgrade/` },
-  { slug: 'audi-q4-e-tron-zwenkbare-wegklapbare-trekhaak', brand: 'audi', models: ['q4-etron'], cat: 'trekhaken', title: 'Audi Q4 e-tron – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar',
-    short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: `${SRC_NEW}audi-q4-e-tron-f4-zwenkbare-wegklapbare-trekhaak/` },
-  { slug: 'audi-smartphone-interface-carplay', brand: 'audi', models: [], scope: 'brand', cat: 'infotainment', title: 'Audi Smartphone Interface – CarPlay', name: 'Audi Smartphone Interface', art: 'connect', image: 'cat_audi_carplay',
-    short: 'Apple CarPlay en Android Auto via het originele MMI-systeem.', variantNote: 'Mogelijk voor diverse Audi-modellen; afhankelijk van model, bouwjaar en MMI-systeem.', keywords: ['carplay', 'android auto', 'smartphone interface', 'mmi'], source: 'https://www.cartronic.nl/' },
+  { slug: 'audi-a3-8v-virtual-cockpit', feature: 'virtual-cockpit', brand: 'audi', models: ['a3-8v'], years: [2017, 2019], cat: 'cockpit', title: 'Audi A3 8V – Virtual Cockpit', name: 'Virtual Cockpit', art: 'cockpit', short: 'Volledig digitaal instrumentenpaneel met een 12,3-inch TFT-scherm: navigatie, muziek, telefoon en assistentiesystemen in uw gezichtsveld.', variantNote: 'Vermeld voor de A3 8V van 2017 tot en met 2019, ook voor S3, RS3 en S-line.', specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'A3 8V 2017–2019 (ook S3, RS3, S-line)'], ['Garantie', '3 jaar (volgens CarTronic-productinformatie)'], ['Prijs', 'Op aanvraag']], keywords: ['digitale cockpit', 'virtual cockpit', 'digitaal dashboard'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/audi-a3-8v-virtual-cockpit/' },
+  { slug: 'audi-a3-8v-verkeersbordherkenning', feature: 'verkeersbordherkenning', brand: 'audi', models: ['a3-8v'], cat: 'assistentie', title: 'Audi A3 8V – Verkeersbordherkenning', name: 'Verkeersbordherkenning', art: 'assist', short: 'Herkent verkeersborden en toont ze in het instrumentenpaneel.', keywords: ['verkeersborden', 'snelheidsborden'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/audi-a3-8v-verkeersbordherkenning/' },
+  { slug: 'audi-a3-8v-cruise-control', feature: 'cruise-control', brand: 'audi', models: ['a3-8v'], cat: 'assistentie', title: 'Audi A3 8V – Cruise control', name: 'Cruise control', art: 'gauge', short: 'Originele cruise control om een ingestelde snelheid vast te houden.', keywords: ['cruise', 'snelheidsregelaar'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/audi-a3-8v-cruise-control/' },
+  { slug: 'audi-a3-8v-mmi-plus-navigatiesysteem', feature: 'mmi-plus', brand: 'audi', models: ['a3-8v'], years: [2012, 2019], cat: 'infotainment', title: 'Audi A3 8V – MMI Navigatie plus', name: 'MMI Navigatie plus', art: 'nav', short: 'Origineel MMI Navigatie plus-systeem.', specs: [['Geschikt voor', 'A3 8V 2012–2019 (ook S3, RS3 en S-line)']], keywords: ['navigatie', 'mmi', 'navi'], warranty: '3 jaar', source: 'https://new.cartronic.nl/producten/audi-a3-8v-mmi-plus-navigatiesysteem/' },
+  { slug: 'audi-a3-8v-licht-en-regensensor', feature: 'licht-regensensor', brand: 'audi', models: ['a3-8v'], cat: 'comfort', title: 'Audi A3 8V – Licht- en regensensor', name: 'Licht- en regensensor', art: 'sensorRain', short: 'Automatische verlichting en ruitenwissers.', keywords: ['regensensor', 'lichtsensor'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/audi-a3-8v-licht-en-regensensor/' },
+  { slug: 'audi-a3-8v-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'audi', models: ['a3-8v'], cat: 'camera-parkeren', title: 'Audi A3 8V – Parkeerhulp plus (voor- en achterzijde)', name: 'Parkeerhulp plus', art: 'sensor', short: 'Parkeerhulpsysteem met ultrasone sensoren aan de voor- en achterzijde.', keywords: ['parkeersensoren', 'pdc', 'park assist'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/audi-a3-8v-parkeerhulp-voor-en-achterzijde/' },
+  { slug: 'audi-a3-8v-dode-hoek-assistent', feature: 'dodehoek', brand: 'audi', models: ['a3-8v'], cat: 'assistentie', title: 'Audi A3 8V – Dodehoekassistent (Audi side assist)', name: 'Dodehoekassistent', art: 'assist', short: 'Waarschuwt voor voertuigen in de dode hoek.', keywords: ['side assist', 'dode hoek', 'blind spot'], warranty: '3 jaar', source: 'https://new.cartronic.nl/producten/audi-a3-8v-dode-hoek-assistent/' },
+  { slug: 'audi-a3-8y-dode-hoek-assistent', feature: 'dodehoek', brand: 'audi', models: ['a3-8y'], cat: 'assistentie', title: 'Audi A3 8Y – Dodehoekassistent (Audi side assist)', name: 'Dodehoekassistent', art: 'assist', short: 'Waarschuwt voor voertuigen in de dode hoek.', keywords: ['side assist', 'dode hoek', 'blind spot'], source: 'https://new.cartronic.nl/producten/audi-a3-8y-dode-hoek-assistent/' },
+  { slug: 'audi-a3-8y-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['a3-8y'], cat: 'trekhaken', title: 'Audi A3 8Y – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar', short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: 'https://new.cartronic.nl/producten/audi-a3-8y-zwenkbare-wegklapbare-trekhaak/' },
+  { slug: 'audi-a4-b9-avant-elektrische-achterklep', feature: 'achterklep', brand: 'audi', models: ['a4-b9'], body: 'stationwagen', cat: 'comfort', title: 'Audi A4 B9/8W Avant – Elektrische achterklep', name: 'Elektrische achterklep', art: 'tailgate', short: 'Achterklep elektrisch openen en sluiten.', variantNote: 'Vermeld voor de A4 Avant (stationwagen).', keywords: ['achterklep', 'kofferklep'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-avant-elektrische-achterklep'], source: 'https://www.cartronic.nl/producten/audi-a4-b9-8w-avant-elektrische-achterklep/' },
+  { slug: 'audi-a4-b9-led-dynamische-achterlichten', feature: 'led-dynamisch', brand: 'audi', models: ['a4-b9'], cat: 'verlichting', title: 'Audi A4 B9/8W – LED-achterlichten met dynamisch knipperlicht', name: 'LED-achterlichten dynamisch', art: 'light', short: 'Originele LED-achterlichten met dynamisch knipperlicht.', keywords: ['achterlichten', 'led', 'dynamisch knipperlicht'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-led-dynamische-achterlichten'], source: 'https://www.cartronic.nl/producten/audi-a4-b9-8w-led-dynamische-achterlichten/' },
+  { slug: 'audi-a4-b9-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['a4-b9'], cat: 'camera-parkeren', title: 'Audi A4 B9/8W – Parkeerhulp voorzijde (upgrade)', name: 'Parkeerhulp voorzijde', art: 'sensor', short: 'Uitbreiding van de bestaande parkeerhulp met sensoren aan de voorzijde.', variantNote: 'Upgrade voor auto’s met parkeerhulp achter.', keywords: ['parkeersensoren voor', 'pdc'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-parkeerhulp-voorzijde-upgrade'], source: 'https://new.cartronic.nl/producten/audi-a4-b9-8w-parkeerhulp-voorzijde-upgrade/' },
+  { slug: 'audi-a5-f5-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['a5-f5'], cat: 'trekhaken', title: 'Audi A5 F5 – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar', short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/audi-a5-f5-zwenkbare-wegklapbare-trekhaak/' },
+  { slug: 'audi-q2-ga-dimmende-binnenspiegel', feature: 'dimmende-binnenspiegel', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], cat: 'comfort', title: 'Audi Q2 GA – Automatisch dimmende binnenspiegel', name: 'Dimmende binnenspiegel', art: 'mirrorInterior', short: 'Binnenspiegel die automatisch dimt bij verblinding.', specs: [['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], keywords: ['binnenspiegel', 'dimmend'], warranty: '3 jaar', source: 'https://new.cartronic.nl/producten/audi-q2-ga-dimmende-binnenspiegel/' },
+  { slug: 'audi-q4-e-tron-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'audi', models: ['q4-etron'], cat: 'camera-parkeren', title: 'Audi Q4 e-tron – Parkeerhulp plus (voor- en achterzijde)', name: 'Parkeerhulp plus', art: 'sensor', short: 'Parkeerhulpsysteem met ultrasone sensoren aan de voor- en achterzijde.', keywords: ['parkeersensoren', 'pdc'], source: 'https://new.cartronic.nl/producten/audi-q4-e-tron-parkeerhulp-voor-en-achterzijde/' },
+  { slug: 'audi-q4-e-tron-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['q4-etron'], cat: 'camera-parkeren', title: 'Audi Q4 e-tron – Parkeerhulp voorzijde (upgrade)', name: 'Parkeerhulp voorzijde', art: 'sensor', short: 'Uitbreiding van de bestaande parkeerhulp met sensoren aan de voorzijde.', variantNote: 'Upgrade voor auto’s met parkeerhulp achter.', keywords: ['parkeersensoren voor'], source: 'https://new.cartronic.nl/producten/audi-q4-e-tron-parkeerhulp-voorzijde-upgrade/' },
+  { slug: 'audi-q4-e-tron-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['q4-etron'], cat: 'trekhaken', title: 'Audi Q4 e-tron – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar', short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: 'https://new.cartronic.nl/producten/audi-q4-e-tron-f4-zwenkbare-wegklapbare-trekhaak/' },
+  // ---- Meerdere merken/modellen
+  { slug: 'audi-smartphone-interface-carplay', feature: 'smartphone-interface', brand: 'audi', models: [], scope: 'brand', cat: 'infotainment', title: 'Audi Smartphone Interface – CarPlay', name: 'Audi Smartphone Interface', art: 'connect', image: 'cat_audi_carplay', short: 'Apple CarPlay en Android Auto via het originele MMI-systeem.', variantNote: 'Mogelijk voor diverse Audi-modellen; afhankelijk van model, bouwjaar en MMI-systeem.', keywords: ['carplay', 'android auto', 'smartphone interface', 'mmi'], warranty: '3 jaar', aliases: ['aanbieding-2-audi-smartphone-interface-carplay'], source: 'https://www.cartronic.nl/' },
   // ---- SEAT
-  { slug: 'seat-ibiza-kj-achteruitrijcamera', brand: 'seat', models: ['ibiza-kj'], cat: 'camera-parkeren', title: 'SEAT Ibiza KJ – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', image: 'proj_ibiza', imageNote: 'Foto: CarTronic-werkplaats',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view', 'meesturende lijnen'], project: 'seat-ibiza-camera-meesturende-lijnen', source: `${SRC_OLD}seat-ibiza-kj-achteruitrijcamera/` },
-  { slug: 'seat-ibiza-kj-inklapbare-spiegels', brand: 'seat', models: ['ibiza-kj'], cat: 'comfort', title: 'SEAT Ibiza KJ – Inklapbare spiegels', name: 'Inklapbare spiegels', art: 'mirror', image: 'cat_mirror',
-    short: 'Spiegels klappen in bij het vergrendelen en automatisch uit bij het starten.', keywords: ['inklapspiegels', 'spiegels'], source: `${SRC_OLD}seat-ibiza-kj-inklapbare-spiegels/` },
-  { slug: 'seat-ibiza-kj-parkeerhulp-voorzijde-upgrade', brand: 'seat', models: ['ibiza-kj'], cat: 'camera-parkeren', title: 'SEAT Ibiza KJ – Parkeerhulp voorzijde (upgrade)', name: 'Parkeerhulp voorzijde', art: 'sensor',
-    short: 'Parkeerhulp met ultrasone sensoren, uitgebreid naar de voorzijde.', variantNote: 'Upgrade voor auto’s met parkeerhulp achter.', keywords: ['parkeersensoren voor', 'pdc'], source: `${SRC_OLD}seat-ibiza-kj-parkeerhulp-voorzijde-upgrade/` },
-  { slug: 'seat-ibiza-kj-afneembare-trekhaak', brand: 'seat', models: ['ibiza-kj'], cat: 'trekhaken', title: 'SEAT Ibiza KJ – Afneembare trekhaak', name: 'Afneembare trekhaak', art: 'towbar',
-    short: 'Originele trekhaak die eenvoudig is aan te brengen en te verwijderen.', keywords: ['trekhaak', 'afneembaar'], source: `${SRC_OLD}seat-ibiza-kj-afneembare-trekhaak/` },
-  { slug: 'seat-leon-5f-achteruitrijcamera', brand: 'seat', models: ['leon-5f'], cat: 'camera-parkeren', title: 'SEAT Leon 5F – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto correct weergeeft op het multimediascherm.', keywords: ['camera', 'rear view'], source: `${SRC_OLD}seat-leon-5f-achteruitrijcamera/` },
-  { slug: 'seat-leon-5f-parkeerhulp-achterzijde', brand: 'seat', models: ['leon-5f'], cat: 'camera-parkeren', title: 'SEAT Leon 5F – Parkeerhulp achterzijde', name: 'Parkeerhulp achterzijde', art: 'sensor',
-    short: 'Parkeerhulpsysteem met ultrasone sensoren voor achteruit parkeren.', keywords: ['parkeersensoren', 'pdc'], source: `${SRC_OLD}seat-leon-5f-parkeerhulp-achterzijde/` },
-  { slug: 'seat-leon-5f-inklapbare-spiegels', brand: 'seat', models: ['leon-5f'], cat: 'comfort', title: 'SEAT Leon 5F – Inklapbare spiegels', name: 'Inklapbare spiegels', art: 'mirror', image: 'cat_mirror',
-    short: 'Inklapbare spiegels helpen schade aan de buitenspiegels te voorkomen.', keywords: ['inklapspiegels', 'spiegels'], source: `${SRC_OLD}seat-leon-5f-inklapbare-spiegels/` },
-  { slug: 'seat-leon-5f-afneembare-trekhaak', brand: 'seat', models: ['leon-5f'], cat: 'trekhaken', title: 'SEAT Leon 5F – Afneembare trekhaak', name: 'Afneembare trekhaak', art: 'towbar',
-    short: 'Originele trekhaak die eenvoudig is aan te brengen en te verwijderen.', keywords: ['trekhaak', 'afneembaar'], source: `${SRC_OLD}seat-leon-5f-afneembare-trekhaak/` },
-  { slug: 'seat-arona-achteruitrijcamera', brand: 'seat', models: ['arona'], cat: 'camera-parkeren', title: 'SEAT Arona – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: `${SRC_NEW}seat-arona-achteruitrijcamera/` },
-  { slug: 'seat-tarraco-zwenkbare-wegklapbare-trekhaak', brand: 'seat', models: ['tarraco'], cat: 'trekhaken', title: 'SEAT Tarraco – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar',
-    short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: `${SRC_NEW}seat-tarraco-zwenkbare-wegklapbare-trekhaak/` },
+  { slug: 'seat-ibiza-kj-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'seat', models: ['ibiza-kj'], cat: 'camera-parkeren', title: 'SEAT Ibiza KJ – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', image: 'proj_ibiza', imageNote: 'Foto: CarTronic-werkplaats', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view', 'meesturende lijnen'], project: 'seat-ibiza-camera-meesturende-lijnen', warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/seat-ibiza-kj-achteruitrijcamera/' },
+  { slug: 'seat-ibiza-kj-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'seat', models: ['ibiza-kj'], cat: 'comfort', title: 'SEAT Ibiza KJ – Inklapbare spiegels', name: 'Inklapbare spiegels', art: 'mirror', image: 'cat_mirror', short: 'Spiegels klappen in bij het vergrendelen en automatisch uit bij het starten.', keywords: ['inklapspiegels', 'spiegels'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/seat-ibiza-kj-inklapbare-spiegels/' },
+  { slug: 'seat-ibiza-kj-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'seat', models: ['ibiza-kj'], cat: 'camera-parkeren', title: 'SEAT Ibiza KJ – Parkeerhulp voorzijde (upgrade)', name: 'Parkeerhulp voorzijde', art: 'sensor', short: 'Parkeerhulp met ultrasone sensoren, uitgebreid naar de voorzijde.', variantNote: 'Upgrade voor auto’s met parkeerhulp achter.', keywords: ['parkeersensoren voor', 'pdc'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/seat-ibiza-kj-parkeerhulp-voorzijde-upgrade/' },
+  { slug: 'seat-ibiza-kj-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'seat', models: ['ibiza-kj'], cat: 'trekhaken', title: 'SEAT Ibiza KJ – Afneembare trekhaak', name: 'Afneembare trekhaak', art: 'towbar', short: 'Originele trekhaak die eenvoudig is aan te brengen en te verwijderen.', keywords: ['trekhaak', 'afneembaar'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/seat-ibiza-kj-afneembare-trekhaak/' },
+  { slug: 'seat-leon-5f-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'seat', models: ['leon-5f'], cat: 'camera-parkeren', title: 'SEAT Leon 5F – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto correct weergeeft op het multimediascherm.', keywords: ['camera', 'rear view'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/seat-leon-5f-achteruitrijcamera/' },
+  { slug: 'seat-leon-5f-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'seat', models: ['leon-5f'], cat: 'camera-parkeren', title: 'SEAT Leon 5F – Parkeerhulp achterzijde', name: 'Parkeerhulp achterzijde', art: 'sensor', short: 'Parkeerhulpsysteem met ultrasone sensoren voor achteruit parkeren.', keywords: ['parkeersensoren', 'pdc'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/seat-leon-5f-parkeerhulp-achterzijde/' },
+  { slug: 'seat-leon-5f-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'seat', models: ['leon-5f'], cat: 'comfort', title: 'SEAT Leon 5F – Inklapbare spiegels', name: 'Inklapbare spiegels', art: 'mirror', image: 'cat_mirror', short: 'Inklapbare spiegels helpen schade aan de buitenspiegels te voorkomen.', keywords: ['inklapspiegels', 'spiegels'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/seat-leon-5f-inklapbare-spiegels/' },
+  { slug: 'seat-leon-5f-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'seat', models: ['leon-5f'], cat: 'trekhaken', title: 'SEAT Leon 5F – Afneembare trekhaak', name: 'Afneembare trekhaak', art: 'towbar', short: 'Originele trekhaak die eenvoudig is aan te brengen en te verwijderen.', keywords: ['trekhaak', 'afneembaar'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/seat-leon-5f-afneembare-trekhaak/' },
+  { slug: 'seat-arona-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'seat', models: ['arona'], cat: 'camera-parkeren', title: 'SEAT Arona – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], warranty: '3 jaar', source: 'https://new.cartronic.nl/producten/seat-arona-achteruitrijcamera/' },
+  { slug: 'seat-tarraco-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'seat', models: ['tarraco'], cat: 'trekhaken', title: 'SEAT Tarraco – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar', short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: 'https://new.cartronic.nl/producten/seat-tarraco-zwenkbare-wegklapbare-trekhaak/' },
   // ---- Škoda
-  { slug: 'skoda-octavia-achteruitrijcamera', brand: 'skoda', models: ['octavia-5e'], years: [2014, 2015], cat: 'camera-parkeren', title: 'Škoda Octavia (2014–2015) – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: 'https://www.cartronic.nl/skoda-octavia-2014-achteruitrijcamera/' },
-  { slug: 'skoda-kodiaq-achteruitrijcamera', brand: 'skoda', models: ['kodiaq'], years: [2017, 2019], cat: 'camera-parkeren', title: 'Škoda Kodiaq – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: `${SRC_OLD}skoda-kodiaq-achteruitrijcamera/` },
-  { slug: 'skoda-karoq-achteruitrijcamera', brand: 'skoda', models: ['karoq'], years: [2017, 2019], cat: 'camera-parkeren', title: 'Škoda Karoq – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: `${SRC_OLD}skoda-karoq-achteruitrijcamera/` },
-  { slug: 'skoda-superb-3v-achteruitrijcamera', brand: 'skoda', models: ['superb-3v'], years: [2015, 2019], cat: 'camera-parkeren', title: 'Škoda Superb 3V – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: `${SRC_OLD}skoda-superb-3v-achteruitrijcamera/` },
-  { slug: 'skoda-fabia-6v-achteruitrijcamera', brand: 'skoda', models: ['fabia-6v'], years: [2015, 2019], cat: 'camera-parkeren', title: 'Škoda Fabia 6V – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: `${SRC_OLD}skoda-fabia-6v0-achteruitrijcamera/` },
-  { slug: 'skoda-citigo-achteruitrijcamera', brand: 'skoda', models: ['citigo'], years: [2016, 2019], cat: 'camera-parkeren', title: 'Škoda Citigo – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: `${SRC_OLD}skoda-citigo-achteruitrijcamera/` },
-  { slug: 'skoda-yeti-achteruitrijcamera', brand: 'skoda', models: ['yeti'], years: [2013, 2017], cat: 'camera-parkeren', title: 'Škoda Yeti – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: `${SRC_OLD}skoda-yeti-ii-achteruitrijcamera/` },
-  { slug: 'skoda-kamiq-achteruitrijcamera', brand: 'skoda', models: ['kamiq'], cat: 'camera-parkeren', title: 'Škoda Kamiq – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera',
-    short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: `${SRC_NEW}skoda-kamiq-achteruitrijcamera/` },
-  // ---- Brand-wide
-  { slug: 'origineel-af-fabriek-alarm-scm', brand: null, brands: ['volkswagen', 'audi', 'seat', 'skoda'], models: [], scope: 'brand', cat: 'beveiliging', title: 'Origineel af-fabriek alarm met SCM-certificaat', name: 'Origineel alarm met SCM-certificaat', art: 'alarm',
-    short: 'Het originele alarmsysteem, inclusief SCM-certificaat voor uw verzekeraar. Bediening zoals af fabriek: vergrendelen schakelt het alarm in, ontgrendelen schakelt het uit.',
-    variantNote: 'Volgens CarTronic mogelijk op de meeste modellen van Audi, SEAT, Škoda en Volkswagen, ook nieuwere modellen. Controle per auto vereist.',
-    keywords: ['alarm', 'beveiliging', 'scm', 'diefstal', 'verzekering'], source: 'https://www.cartronic.nl/origineel-af-fabriek-alarm-incl-scm-certificaat/' },
+  { slug: 'skoda-octavia-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'skoda', models: ['octavia-5e'], years: [2014, 2015], cat: 'camera-parkeren', title: 'Škoda Octavia (2014–2015) – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: 'https://www.cartronic.nl/skoda-octavia-2014-achteruitrijcamera/' },
+  { slug: 'skoda-kodiaq-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'skoda', models: ['kodiaq'], years: [2017, 2019], cat: 'camera-parkeren', title: 'Škoda Kodiaq – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/skoda-kodiaq-achteruitrijcamera/' },
+  { slug: 'skoda-karoq-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'skoda', models: ['karoq'], years: [2017, 2019], cat: 'camera-parkeren', title: 'Škoda Karoq – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/skoda-karoq-achteruitrijcamera/' },
+  { slug: 'skoda-superb-3v-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'skoda', models: ['superb-3v'], years: [2015, 2019], cat: 'camera-parkeren', title: 'Škoda Superb 3V – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/skoda-superb-3v-achteruitrijcamera/' },
+  { slug: 'skoda-fabia-6v-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'skoda', models: ['fabia-6v'], years: [2015, 2019], cat: 'camera-parkeren', title: 'Škoda Fabia 6V – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], warranty: '3 jaar', aliases: ['skoda-fabia-6v0-achteruitrijcamera'], source: 'https://www.cartronic.nl/producten/skoda-fabia-6v0-achteruitrijcamera/' },
+  { slug: 'skoda-citigo-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'skoda', models: ['citigo'], years: [2016, 2019], cat: 'camera-parkeren', title: 'Škoda Citigo – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/skoda-citigo-achteruitrijcamera/' },
+  { slug: 'skoda-yeti-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'skoda', models: ['yeti'], years: [2013, 2017], cat: 'camera-parkeren', title: 'Škoda Yeti – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], warranty: '3 jaar', aliases: ['skoda-yeti-ii-achteruitrijcamera'], source: 'https://www.cartronic.nl/producten/skoda-yeti-ii-achteruitrijcamera/' },
+  { slug: 'skoda-kamiq-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'skoda', models: ['kamiq'], cat: 'camera-parkeren', title: 'Škoda Kamiq – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view'], source: 'https://new.cartronic.nl/producten/skoda-kamiq-achteruitrijcamera/' },
+  // ---- Meerdere merken/modellen
+  { slug: 'origineel-af-fabriek-alarm-scm', feature: 'alarm', brand: null, brands: ['volkswagen', 'audi', 'seat', 'skoda'], models: [], scope: 'brand', cat: 'beveiliging', title: 'Origineel af-fabriek alarm met SCM-certificaat', name: 'Origineel alarm met SCM-certificaat', art: 'alarm', short: 'Het originele alarmsysteem, inclusief SCM-certificaat voor uw verzekeraar. Bediening zoals af fabriek: vergrendelen schakelt het alarm in, ontgrendelen schakelt het uit.', variantNote: 'Volgens CarTronic mogelijk op de meeste modellen van Audi, SEAT, Škoda en Volkswagen, ook nieuwere modellen. Controle per auto vereist.', keywords: ['alarm', 'beveiliging', 'scm', 'diefstal', 'verzekering'], source: 'https://www.cartronic.nl/origineel-af-fabriek-alarm-incl-scm-certificaat/' },
+  // ---- Aanvulling uit de volledige catalogus – Volkswagen
+  { slug: 'volkswagen-golf-7-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['golf-7'], warranty: '2 jaar' },
+  { slug: 'volkswagen-golf-7-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-discover-media', feature: 'discover-media', brand: 'volkswagen', models: ['golf-7'], years: [2013, 2019], specs: [['Scherm', '8 inch kleurentouchscreen'], ['Geschikt voor', 'Golf 7 2013–2019 (ook GTI, GTD, R en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-discover-pro', feature: 'discover-pro', brand: 'volkswagen', models: ['golf-7'], years: [2013, 2019], specs: [['Scherm', '9,2 inch kleurentouchscreen'], ['Geschikt voor', 'Golf 7 2013–2019 (ook GTI, GTD, R en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-dode-hoek-assistent', feature: 'dodehoek', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-cruise-control-op-stuur', feature: 'cruise-control-stuur', brand: 'volkswagen', models: ['golf-7'], years: [2013, 2019], specs: [['Geschikt voor', 'Golf 7 2013–2019 (ook GTI, GTD, R en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-cruise-control-via-hendel', feature: 'cruise-control-hendel', brand: 'volkswagen', models: ['golf-7'], years: [2013, 2019], specs: [['Geschikt voor', 'Golf 7 2013–2019 (ook GTI, GTD, R en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-rijprofielen', feature: 'rijprofielen', brand: 'volkswagen', models: ['golf-7'], years: [2013, 2019], specs: [['Geschikt voor', 'Golf 7 2013–2019 (ook GTI, GTD, R en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-led-dynamische-achterlichten', feature: 'led-dynamisch', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-7-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
+  { slug: 'volkswagen-discover-navigatie-met-carplay', feature: 'discover-carplay', brand: 'volkswagen', models: ['golf-7', 'polo-aw', 'passat-b8'], title: 'Volkswagen – Discover navigatie met CarPlay (aanbieding)', variantNote: 'Volgens CarTronic bedoeld voor auto’s met een oudere Discover Pro: Golf 2014–2019, Polo 2015–2020, Passat B8 2015–2018 en Touran 2015–2017 (ook GTE en R-line).', warranty: '3 jaar', price: '€ 899', aliases: ['aanbieding-4-volkswagen-discover-navigatie-met-carplay'] },
+  { slug: 'volkswagen-golf-7-sportsvan-led-achterlichten', feature: 'led-achterlichten', brand: 'volkswagen', models: ['golf-sportsvan'], years: [2014, 2019], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-discover-media', feature: 'discover-media', brand: 'volkswagen', models: ['polo-aw'], years: [2018, 2019], specs: [['Scherm', '8 inch kleurentouchscreen'], ['Geschikt voor', 'Polo AW 2018–2019 (ook GTI en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-active-info-display', feature: 'active-info-display', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-dode-hoek-assistent', feature: 'dodehoek', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-cruise-control-op-stuur', feature: 'cruise-control-stuur', brand: 'volkswagen', models: ['polo-aw'], years: [2018, 2019], specs: [['Geschikt voor', 'Polo AW 2018–2019 (ook GTI en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-cruise-control-via-hendel', feature: 'cruise-control-hendel', brand: 'volkswagen', models: ['polo-aw'], years: [2018, 2019], specs: [['Geschikt voor', 'Polo AW 2018–2019 (ook GTI en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-led-achterlichten', feature: 'led-achterlichten', brand: 'volkswagen', models: ['polo-aw'], years: [2018, 2019], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-led-achterlichten-donker', feature: 'led-achterlichten-donker', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
+  { slug: 'volkswagen-polo-aw-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
+  { slug: 'volkswagen-t-roc-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['t-roc'], warranty: '3 jaar' },
+  { slug: 'volkswagen-t-roc-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['t-roc'], warranty: '3 jaar' },
+  { slug: 'volkswagen-t-roc-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'volkswagen', models: ['t-roc'], warranty: '3 jaar' },
+  { slug: 'volkswagen-t-roc-discover-media', feature: 'discover-media', brand: 'volkswagen', models: ['t-roc'], years: [2017, 2019], specs: [['Scherm', '8 inch kleurentouchscreen'], ['Geschikt voor', 'T-Roc 2017–2019 (ook R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-t-roc-active-info-display', feature: 'active-info-display', brand: 'volkswagen', models: ['t-roc'], warranty: '3 jaar' },
+  { slug: 'volkswagen-t-roc-dode-hoek-assistent', feature: 'dodehoek', brand: 'volkswagen', models: ['t-roc'], warranty: '3 jaar' },
+  { slug: 'volkswagen-t-roc-cruise-control-op-stuur', feature: 'cruise-control-stuur', brand: 'volkswagen', models: ['t-roc'], years: [2017, 2019], specs: [['Geschikt voor', 'T-Roc 2017–2019 (ook R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-t-roc-cruise-control-via-hendel', feature: 'cruise-control-hendel', brand: 'volkswagen', models: ['t-roc'], years: [2017, 2019], specs: [['Geschikt voor', 'T-Roc 2017–2019 (ook R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-t-roc-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'volkswagen', models: ['t-roc'], warranty: '3 jaar' },
+  { slug: 'volkswagen-t-roc-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'volkswagen', models: ['t-roc'], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-area-view-360-camera', feature: 'area-view', brand: 'volkswagen', models: ['passat-b8'], years: [2014, 2019], specs: [['Geschikt voor', 'Passat B8 2014–2019 (ook GTE en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-discover-media', feature: 'discover-media', brand: 'volkswagen', models: ['passat-b8'], years: [2014, 2019], specs: [['Scherm', '8 inch kleurentouchscreen'], ['Geschikt voor', 'Passat B8 2014–2019 (ook GTE en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-active-info-display', feature: 'active-info-display', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-cruise-control-op-stuur', feature: 'cruise-control-stuur', brand: 'volkswagen', models: ['passat-b8'], years: [2014, 2019], specs: [['Geschikt voor', 'Passat B8 2014–2019 (ook R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-cruise-control-via-hendel', feature: 'cruise-control-hendel', brand: 'volkswagen', models: ['passat-b8'], years: [2014, 2019], specs: [['Geschikt voor', 'Passat B8 2014–2019 (ook R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-elektrische-achterklep', feature: 'achterklep', brand: 'volkswagen', models: ['passat-b8'], years: [2014, 2019], specs: [['Geschikt voor', 'Passat B8 2014–2019 (ook GTE en R-line)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
+  { slug: 'volkswagen-passat-b8-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
+  { slug: 'volkswagen-up-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['up'], warranty: '3 jaar' },
+  { slug: 'volkswagen-up-cruise-control', feature: 'cruise-control', brand: 'volkswagen', models: ['up'], warranty: '3 jaar' },
+  { slug: 'volkswagen-caddy-sa-achteruitrijcamera-achterdeuren', feature: 'achteruitrijcamera-achterdeuren', brand: 'volkswagen', models: ['caddy-sa'], years: [2015, 2019], short: 'Originele camera, onopvallend ingebouwd in de slotplaat van de linker achterdeur. Zodra u de achteruit inschakelt, verschijnt het beeld automatisch op het multimediascherm.', warranty: '3 jaar' },
+  { slug: 'volkswagen-caddy-sa-achteruitrijcamera-achterklep', feature: 'achteruitrijcamera-achterklep', brand: 'volkswagen', models: ['caddy-sa'], years: [2015, 2019], short: 'Originele camera, onopvallend ingebouwd in de greep van de achterklep. Zodra u de achteruit inschakelt, verschijnt het beeld automatisch op het multimediascherm.', warranty: '3 jaar' },
+  { slug: 'volkswagen-caddy-sa-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['caddy-sa'], warranty: '3 jaar' },
+  { slug: 'volkswagen-caddy-sa-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['caddy-sa'], warranty: '3 jaar' },
+  { slug: 'volkswagen-caddy-sa-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'volkswagen', models: ['caddy-sa'], warranty: '3 jaar' },
+  { slug: 'volkswagen-transporter-t6-achteruitrijcamera-achterdeuren', feature: 'achteruitrijcamera-achterdeuren', brand: 'volkswagen', models: ['transporter-t6'], years: [2015, 2019], short: 'Originele camera, onopvallend ingebouwd in de slotplaat van de linker achterdeur. Zodra u de achteruit inschakelt, verschijnt het beeld automatisch op het multimediascherm.', warranty: '3 jaar' },
+  { slug: 'volkswagen-transporter-t6-achteruitrijcamera-achterklep', feature: 'achteruitrijcamera-achterklep', brand: 'volkswagen', models: ['transporter-t6'], years: [2015, 2019], short: 'Originele camera, onopvallend ingebouwd in de achterklep. Zodra u de achteruit inschakelt, verschijnt het beeld automatisch op het multimediascherm.', specs: [['Geschikt voor', 'Transporter T6 2015–2019 (ook Multivan)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-transporter-t6-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['transporter-t6'], warranty: '3 jaar' },
+  { slug: 'volkswagen-transporter-t6-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['transporter-t6'], warranty: '3 jaar' },
+  { slug: 'volkswagen-transporter-t6-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'volkswagen', models: ['transporter-t6'], warranty: '3 jaar' },
+  { slug: 'volkswagen-transporter-t6-dode-hoek-assistent', feature: 'dodehoek', brand: 'volkswagen', models: ['transporter-t6'], warranty: '3 jaar' },
+  { slug: 'volkswagen-transporter-t6-led-koplampen', feature: 'led-koplampen', brand: 'volkswagen', models: ['transporter-t6'], years: [2015, 2019], specs: [['Geschikt voor', 'Transporter T6 2015–2019 (ook Multivan)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-crafter-sy-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['crafter-sy'], warranty: '3 jaar' },
+  { slug: 'volkswagen-crafter-sy-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['crafter-sy'], warranty: '3 jaar' },
+  { slug: 'volkswagen-crafter-sy-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['crafter-sy'], warranty: '3 jaar' },
+  { slug: 'volkswagen-crafter-sy-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'volkswagen', models: ['crafter-sy'], warranty: '3 jaar' },
+  // ---- Aanvulling uit de volledige catalogus – Audi
+  { slug: 'audi-a1-8x-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'audi', models: ['a1-8x'], warranty: '3 jaar' },
+  { slug: 'audi-a1-8x-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'audi', models: ['a1-8x'], warranty: '3 jaar' },
+  { slug: 'audi-a1-8x-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['a1-8x'], warranty: '3 jaar' },
+  { slug: 'audi-a1-8x-cruise-control', feature: 'cruise-control', brand: 'audi', models: ['a1-8x'], warranty: '3 jaar' },
+  { slug: 'audi-a1-8x-dimmende-binnenspiegel', feature: 'dimmende-binnenspiegel', brand: 'audi', models: ['a1-8x'], warranty: '3 jaar' },
+  { slug: 'audi-a1-8x-xenon-koplampen', feature: 'xenon', brand: 'audi', models: ['a1-8x'], specs: [['Geschikt voor', 'A1 8X 2010–2018 (ook S1 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a1-8x-led-achterlichten', feature: 'led-achterlichten', brand: 'audi', models: ['a1-8x'], short: 'Originele LED-achterlichten ter vervanging van de halogeen-achterlichten.', specs: [['Geschikt voor', 'A1 8X 2010–2018 (ook S1 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['a1-gb'], years: [2019, 2024], short: 'Originele Audi-camera, onopvallend geïntegreerd in de greep van de achterklep. Het beeld van de ruimte achter de auto verschijnt op het MMI-scherm.', specs: [['Geschikt voor', 'A1 GB 2019–2024 (ook S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'audi', models: ['a1-gb'], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'audi', models: ['a1-gb'], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['a1-gb'], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['a1-gb'], years: [2019, 2020], specs: [['Geschikt voor', 'A1 GB 2019–2020 (ook S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-verkeersbordherkenning', feature: 'verkeersbordherkenning', brand: 'audi', models: ['a1-gb'], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-cruise-control', feature: 'cruise-control', brand: 'audi', models: ['a1-gb'], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['a1-gb'], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-dimmende-binnenspiegel', feature: 'dimmende-binnenspiegel', brand: 'audi', models: ['a1-gb'], years: [2019, 2020], specs: [['Geschikt voor', 'A1 GB 2019–2020 (ook S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-led-koplampen', feature: 'led-koplampen', brand: 'audi', models: ['a1-gb'], years: [2019, 2020], specs: [['Geschikt voor', 'A1 GB 2019–2020 (ook S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a1-gb-led-dynamische-achterlichten', feature: 'led-dynamisch', brand: 'audi', models: ['a1-gb'], warranty: '3 jaar' },
+  { slug: 'audi-a3-8v-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['a3-8v'], warranty: '3 jaar' },
+  { slug: 'audi-a3-8v-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'audi', models: ['a3-8v'], warranty: '3 jaar' },
+  { slug: 'audi-a3-8v-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['a3-8v'], warranty: '3 jaar' },
+  { slug: 'audi-a3-8v-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['a3-8v'], warranty: '3 jaar' },
+  { slug: 'audi-a3-8v-dimmende-binnenspiegel', feature: 'dimmende-binnenspiegel', brand: 'audi', models: ['a3-8v'], years: [2012, 2019], specs: [['Geschikt voor', 'A3 8V 2012–2019 (ook S3, RS3 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a3-8v-led-dynamische-achterlichten', feature: 'led-dynamisch', brand: 'audi', models: ['a3-8v'], warranty: '3 jaar' },
+  { slug: 'audi-a3-8v-instapverlichting-audi-ringen', feature: 'instapverlichting', brand: 'audi', models: ['a3-8v'], years: [2012, 2019], specs: [['Geschikt voor', 'A3 8V 2012–2019 (ook S3, RS3 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a3-8v-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'audi', models: ['a3-8v'], warranty: '3 jaar' },
+  { slug: 'audi-a3-8v-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['a3-8v'], warranty: '3 jaar' },
+  { slug: 'audi-a4-b9-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['a4-b9'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-achteruitrijcamera'] },
+  { slug: 'audi-a4-b9-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['a4-b9'], years: [2015, 2024], specs: [['Geschikt voor', 'A4 B9/8W 2015–2024 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-top-view-360-graden-camera'] },
+  { slug: 'audi-a4-b9-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], specs: [['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-smartphone-interface'] },
+  { slug: 'audi-a4-b9-virtual-cockpit', feature: 'virtual-cockpit', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-virtual-cockpit'] },
+  { slug: 'audi-a4-b9-dode-hoek-assistent', feature: 'dodehoek', brand: 'audi', models: ['a4-b9'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-dode-hoek-assistent'] },
+  { slug: 'audi-a4-b9-active-lane-assist', feature: 'lane-assist', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], specs: [['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-active-lane-assist'] },
+  { slug: 'audi-a4-b9-verkeersbordherkenning', feature: 'verkeersbordherkenning', brand: 'audi', models: ['a4-b9'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-verkeersbordherkenning'] },
+  { slug: 'audi-a4-b9-wegrijassistent', feature: 'wegrijassistent', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], specs: [['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-wegrijassistent'] },
+  { slug: 'audi-a4-b9-cruise-control', feature: 'cruise-control', brand: 'audi', models: ['a4-b9'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-cruise-control'] },
+  { slug: 'audi-a4-b9-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['a4-b9'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-inklapbare-spiegels'] },
+  { slug: 'audi-a4-b9-dimmende-binnenspiegel', feature: 'dimmende-binnenspiegel', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], specs: [['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-dimmende-binnenspiegel'] },
+  { slug: 'audi-a4-b9-comfortsleutel-keyless-entry', feature: 'keyless', brand: 'audi', models: ['a4-b9'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-comfortsleutel-keyless-entry'] },
+  { slug: 'audi-a4-b9-garagedeuropener-homelink', feature: 'homelink', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], specs: [['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-garagedeuropener-homelink'] },
+  { slug: 'audi-a4-b9-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['a4-b9'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-zwenkbare-wegklapbare-trekhaak'] },
+  { slug: 'audi-a4-b9-limousine-led-achterlichten-donker', feature: 'led-achterlichten-donker', brand: 'audi', models: ['a4-b9'], variant: 'limousine', years: [2015, 2019], specs: [['Geschikt voor', 'A4 B9/8W Limousine 2015–2019']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-limousine-led-achterlichten-donker'] },
+  { slug: 'audi-a4-b9-avant-led-achterlichten-donker', feature: 'led-achterlichten-donker', brand: 'audi', models: ['a4-b9'], variant: 'avant', years: [2015, 2019], specs: [['Geschikt voor', 'A4 B9/8W Avant 2015–2019']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-avant-led-achterlichten-donker'] },
+  { slug: 'audi-a5-f5-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['a5-f5'], years: [2016, 2024], specs: [['Geschikt voor', 'A5 F5 2016–2024 (ook S5, RS5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-virtual-cockpit', feature: 'virtual-cockpit', brand: 'audi', models: ['a5-f5'], years: [2016, 2019], specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'A5 F5 2016–2019 (ook S5, RS5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-dode-hoek-assistent', feature: 'dodehoek', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-active-lane-assist', feature: 'lane-assist', brand: 'audi', models: ['a5-f5'], years: [2016, 2019], specs: [['Geschikt voor', 'A5 F5 2016–2019 (ook S5, RS5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-verkeersbordherkenning', feature: 'verkeersbordherkenning', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-wegrijassistent', feature: 'wegrijassistent', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-cruise-control', feature: 'cruise-control', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-dimmende-binnenspiegel', feature: 'dimmende-binnenspiegel', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-comfortsleutel-keyless-entry', feature: 'keyless', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-garagedeuropener-homelink', feature: 'homelink', brand: 'audi', models: ['a5-f5'], years: [2016, 2019], specs: [['Geschikt voor', 'A5 F5 2016–2019 (ook S5, RS5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-a5-f5-led-achterlichten-donker', feature: 'led-achterlichten-donker', brand: 'audi', models: ['a5-f5'], years: [2016, 2019], specs: [['Geschikt voor', 'A5 F5 Sportback, Coupé en Cabriolet 2016–2019']], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], specs: [['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-mmi-plus-navigatiesysteem', feature: 'mmi-plus', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], specs: [['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-virtual-cockpit', feature: 'virtual-cockpit', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-dode-hoek-assistent', feature: 'dodehoek', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-active-lane-assist', feature: 'lane-assist', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], specs: [['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-verkeersbordherkenning', feature: 'verkeersbordherkenning', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-cruise-control', feature: 'cruise-control', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-elektrische-achterklep', feature: 'achterklep', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], specs: [['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-led-dynamische-achterlichten', feature: 'led-dynamisch', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-instapverlichting-audi-ringen', feature: 'instapverlichting', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], specs: [['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
+  { slug: 'audi-q3-f3-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['q3-f3'], warranty: '3 jaar' },
+  { slug: 'audi-q3-f3-wegrijassistent', feature: 'wegrijassistent', brand: 'audi', models: ['q3-f3'], years: [2019, 2020], specs: [['Geschikt voor', 'Q3 F3 2019–2020 (ook S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q3-f3-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['q3-f3'], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-virtual-cockpit', feature: 'virtual-cockpit', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-dode-hoek-assistent', feature: 'dodehoek', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-active-lane-assist', feature: 'lane-assist', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-verkeersbordherkenning', feature: 'verkeersbordherkenning', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-wegrijassistent', feature: 'wegrijassistent', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-cruise-control', feature: 'cruise-control', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-dimmende-binnenspiegel', feature: 'dimmende-binnenspiegel', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-elektrische-achterklep', feature: 'achterklep', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-comfortsleutel-keyless-entry', feature: 'keyless', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-garagedeuropener-homelink', feature: 'homelink', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-led-dynamische-achterlichten', feature: 'led-dynamisch', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['q7-4m'], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['q7-4m'], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-mmi-plus-navigatiesysteem', feature: 'mmi-plus', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-virtual-cockpit', feature: 'virtual-cockpit', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['q7-4m'], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-comfortsleutel-keyless-entry', feature: 'keyless', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-garagedeuropener-homelink', feature: 'homelink', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-instapverlichting-audi-ringen', feature: 'instapverlichting', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['q7-4m'], warranty: '3 jaar' },
+  // ---- Aanvulling uit de volledige catalogus – SEAT
+  { slug: 'seat-ibiza-kj-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'seat', models: ['ibiza-kj'], warranty: '3 jaar' },
+  { slug: 'seat-ibiza-kj-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'seat', models: ['ibiza-kj'], warranty: '3 jaar' },
+  { slug: 'seat-arona-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'seat', models: ['arona'], warranty: '3 jaar' },
+  { slug: 'seat-arona-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'seat', models: ['arona'], warranty: '3 jaar' },
+  { slug: 'seat-arona-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'seat', models: ['arona'], warranty: '3 jaar' },
+  { slug: 'seat-arona-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'seat', models: ['arona'], warranty: '3 jaar' },
+  { slug: 'seat-arona-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'seat', models: ['arona'], warranty: '3 jaar' },
+  { slug: 'seat-leon-5f-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'seat', models: ['leon-5f'], warranty: '3 jaar' },
+  { slug: 'seat-leon-5f-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'seat', models: ['leon-5f'], warranty: '3 jaar' },
+  { slug: 'seat-ateca-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'seat', models: ['ateca'], warranty: '3 jaar' },
+  { slug: 'seat-ateca-area-view-360-camera', feature: 'area-view', brand: 'seat', models: ['ateca'], years: [2016, 2019], warranty: '3 jaar' },
+  { slug: 'seat-ateca-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'seat', models: ['ateca'], warranty: '3 jaar' },
+  { slug: 'seat-ateca-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'seat', models: ['ateca'], warranty: '3 jaar' },
+  { slug: 'seat-ateca-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'seat', models: ['ateca'], warranty: '3 jaar' },
+  { slug: 'seat-ateca-dode-hoek-assistent', feature: 'dodehoek', brand: 'seat', models: ['ateca'], warranty: '3 jaar' },
+  { slug: 'seat-ateca-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'seat', models: ['ateca'], warranty: '3 jaar' },
+  { slug: 'seat-ateca-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'seat', models: ['ateca'], warranty: '3 jaar' },
+  { slug: 'seat-mii-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'seat', models: ['mii'], warranty: '3 jaar' },
+  { slug: 'seat-mii-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'seat', models: ['mii'], warranty: '3 jaar' },
+  // ---- Aanvulling uit de volledige catalogus – Škoda
+  { slug: 'skoda-fabia-6v-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'skoda', models: ['fabia-6v'], warranty: '3 jaar', aliases: ['skoda-fabia-6v0-parkeerhulp-achterzijde'] },
+  { slug: 'skoda-fabia-6v-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'skoda', models: ['fabia-6v'], warranty: '3 jaar', aliases: ['skoda-fabia-6v0-parkeerhulp-voor-en-achterzijde'] },
+  { slug: 'skoda-fabia-6v-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'skoda', models: ['fabia-6v'], warranty: '3 jaar', aliases: ['skoda-fabia-6v0-parkeerhulp-voorzijde-upgrade'] },
+  { slug: 'skoda-fabia-6v-cruise-control', feature: 'cruise-control', brand: 'skoda', models: ['fabia-6v'], warranty: '3 jaar', aliases: ['skoda-fabia-6v0-cruise-control'] },
+  { slug: 'skoda-karoq-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'skoda', models: ['karoq'], warranty: '3 jaar' },
+  { slug: 'skoda-karoq-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'skoda', models: ['karoq'], warranty: '3 jaar' },
+  { slug: 'skoda-karoq-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'skoda', models: ['karoq'], warranty: '3 jaar' },
+  { slug: 'skoda-karoq-cruise-control', feature: 'cruise-control', brand: 'skoda', models: ['karoq'], warranty: '3 jaar' },
+  { slug: 'skoda-karoq-elektrische-achterklep', feature: 'achterklep', brand: 'skoda', models: ['karoq'], years: [2017, 2019], warranty: '3 jaar' },
+  { slug: 'skoda-karoq-230-volt-aansluiting', feature: '230v', brand: 'skoda', models: ['karoq'], years: [2017, 2019], warranty: '3 jaar' },
+  { slug: 'skoda-karoq-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'skoda', models: ['karoq'], warranty: '3 jaar' },
+  { slug: 'skoda-kodiaq-area-view-360-camera', feature: 'area-view', brand: 'skoda', models: ['kodiaq'], years: [2017, 2019], warranty: '3 jaar' },
+  { slug: 'skoda-kodiaq-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'skoda', models: ['kodiaq'], warranty: '3 jaar' },
+  { slug: 'skoda-kodiaq-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'skoda', models: ['kodiaq'], warranty: '3 jaar' },
+  { slug: 'skoda-kodiaq-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'skoda', models: ['kodiaq'], warranty: '3 jaar' },
+  { slug: 'skoda-kodiaq-dode-hoek-assistent', feature: 'dodehoek', brand: 'skoda', models: ['kodiaq'], warranty: '3 jaar' },
+  { slug: 'skoda-kodiaq-cruise-control', feature: 'cruise-control', brand: 'skoda', models: ['kodiaq'], warranty: '3 jaar' },
+  { slug: 'skoda-kodiaq-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'skoda', models: ['kodiaq'], warranty: '3 jaar' },
+  { slug: 'skoda-kodiaq-elektrische-achterklep', feature: 'achterklep', brand: 'skoda', models: ['kodiaq'], years: [2017, 2019], warranty: '3 jaar' },
+  { slug: 'skoda-kodiaq-230-volt-aansluiting', feature: '230v', brand: 'skoda', models: ['kodiaq'], years: [2017, 2019], warranty: '3 jaar' },
+  { slug: 'skoda-kodiaq-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'skoda', models: ['kodiaq'], warranty: '3 jaar' },
+  { slug: 'skoda-superb-3v-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'skoda', models: ['superb-3v'], warranty: '3 jaar' },
+  { slug: 'skoda-superb-3v-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'skoda', models: ['superb-3v'], warranty: '3 jaar' },
+  { slug: 'skoda-superb-3v-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'skoda', models: ['superb-3v'], warranty: '3 jaar' },
+  { slug: 'skoda-superb-3v-dode-hoek-assistent', feature: 'dodehoek', brand: 'skoda', models: ['superb-3v'], warranty: '3 jaar' },
+  { slug: 'skoda-superb-3v-cruise-control', feature: 'cruise-control', brand: 'skoda', models: ['superb-3v'], warranty: '3 jaar' },
+  { slug: 'skoda-superb-3v-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'skoda', models: ['superb-3v'], warranty: '3 jaar' },
+  { slug: 'skoda-superb-3v-230-volt-aansluiting', feature: '230v', brand: 'skoda', models: ['superb-3v'], years: [2015, 2019], warranty: '3 jaar' },
+  { slug: 'skoda-citigo-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'skoda', models: ['citigo'], warranty: '3 jaar' },
+  { slug: 'skoda-yeti-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'skoda', models: ['yeti'], warranty: '3 jaar' },
+  { slug: 'skoda-yeti-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'skoda', models: ['yeti'], variant: 'ii', warranty: '3 jaar', aliases: ['skoda-yeti-ii-parkeerhulp-voor-en-achterzijde'] },
+  { slug: 'skoda-yeti-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'skoda', models: ['yeti'], variant: 'ii', warranty: '3 jaar', aliases: ['skoda-yeti-ii-parkeerhulp-voorzijde-upgrade'] },
+  { slug: 'skoda-yeti-cruise-control', feature: 'cruise-control', brand: 'skoda', models: ['yeti'], variant: 'ii', warranty: '3 jaar', aliases: ['skoda-yeti-ii-cruise-control'] },
 ];
 const RETROFIT = byKey(RETROFITS, 'slug');
+/* Fill feature defaults; explicit fields on an entry always win. */
+RETROFITS.forEach((r) => {
+  const f = FEATURES[r.feature] || {};
+  const vr = r.variant ? VARIANTS[r.variant] : null;
+  r.cat = r.cat || f.cat;
+  r.art = r.art || f.art || (CATEGORY[r.cat] || {}).art;
+  r.name = r.name || f.name;
+  if (!r.image && f.image) r.image = f.image;
+  r.short = r.short || f.short || '';
+  if (vr) {
+    if (vr.body && !r.body) r.body = vr.body;
+    if (vr.years && !r.years) r.years = vr.years;
+  }
+  if (r.variantNote === undefined) r.variantNote = (vr && vr.note) || f.variantNote || '';
+  if (!r.title) {
+    const m = MODEL[r.models[0]];
+    const label = `${BRAND[r.brand].name} ${m.name}${vr && vr.label ? ` ${vr.label}` : ''}`;
+    r.title = `${label} – ${(f.titleByBrand && f.titleByBrand[r.brand]) || f.title || f.name}`;
+  }
+  r.keywords = uniq([...(r.keywords || []), ...(f.keywords || [])]);
+  r.aliases = r.aliases || [];
+});
+/* Older / archived URLs → current slug (handled by the retrofit route). */
+const RETROFIT_ALIAS = {};
+RETROFITS.forEach((r) => r.aliases.forEach((a) => { RETROFIT_ALIAS[a] = r.slug; }));
 
 /* Category-level copy for technical panels and benefits. Deliberately general: no claims
    beyond what CarTronic publishes. Option-specific facts live on the option itself. */
@@ -2585,16 +2902,26 @@ const SYNONYMS = [
   ['acc', 'adaptive cruise control', 'adaptieve cruise control', 'adaptieve cruisecontrol'],
   ['cruise control', 'cruisecontrol', 'snelheidsregelaar'],
   ['virtual cockpit', 'digitale cockpit', 'active info display', 'digitaal instrumentenpaneel', 'digitaal dashboard', 'aid'],
-  ['park assist', 'parkeersensoren', 'parkeerhulp', 'pdc', 'parkeersensor', 'parking sensors'],
+  ['park assist', 'parkeersensoren', 'parkeerhulp', 'pdc', 'parkeersensor', 'parking sensors', 'parkeren'],
   ['trekhaak', 'towbar', 'trekhaken', 'wegklapbare trekhaak', 'afneembare trekhaak'],
   ['inklapbare spiegels', 'inklapspiegels', 'spiegels', 'buitenspiegels'],
   ['dode hoek', 'dodehoekassistent', 'side assist', 'blind spot', 'dodehoek'],
-  ['navigatie', 'navi', 'discover pro', 'mmi navigatie', 'gps'],
+  ['navigatie', 'navi', 'discover pro', 'discover media', 'mmi navigatie', 'mmi navigatie plus', 'gps'],
   ['alarm', 'beveiliging', 'scm', 'diefstalbeveiliging'],
   ['kalibratie', 'kalibreren', 'uitlijnen', 'afstellen'],
   ['coderen', 'programmeren', 'activeren', 'software'],
   ['diagnose', 'storing', 'foutcode', 'uitlezen'],
   ['achterklep', 'kofferklep', 'elektrische achterklep'],
+  ['360 camera', '360 graden camera', 'area view', 'top view', 'rondomzicht'],
+  ['keyless', 'keyless entry', 'comfortsleutel', 'sleutelloos'],
+  ['homelink', 'garagedeuropener', 'garagedeur'],
+  ['230v', '230 volt', '230 volt aansluiting', 'stopcontact'],
+  ['lane assist', 'active lane assist', 'rijstrookassistent'],
+  ['wegrijassistent', 'auto hold'],
+  ['rijprofielen', 'rijprofiel', 'rijprofielkeuze', 'driving profile'],
+  ['binnenspiegel', 'dimmende binnenspiegel', 'automatisch dimmende binnenspiegel'],
+  ['koplampen', 'led koplampen', 'xenon', 'xenonkoplampen'],
+  ['achterlichten', 'led achterlichten', 'dynamisch knipperlicht'],
 ];
 
 /* =====================================================================
@@ -3443,8 +3770,8 @@ const Search = {
     const docs = [];
     RETROFITS.forEach((r) => docs.push({
       type: 'RETROFIT', id: r.slug, title: r.title, sub: `${CATEGORY[r.cat].name} · ${retrofitModelsText(r)}`, href: `#/mogelijkheden/${r.slug}`,
-      text: [r.name, r.short, CATEGORY[r.cat].name, (r.keywords || []).join(' '), r.models.map(modelLabel).join(' '), Compat.brandsOf(r).map((b) => BRAND[b].name).join(' ')].join(' '),
-      models: r.models,
+      text: [r.name, r.short, (r.keywords || []).join(' '), r.models.map(modelLabel).join(' '), Compat.brandsOf(r).map((b) => BRAND[b].name).join(' ')].join(' '),
+      catText: normText(CATEGORY[r.cat].name), catIdx: CATEGORIES.findIndex((c) => c.id === r.cat), models: r.models, brands: Compat.brandsOf(r), wide: r.scope === 'brand',
     }));
     SERVICES.forEach((s) => docs.push({ type: 'DIENST', id: s.slug, title: s.title, sub: s.short, href: `#/diensten/${s.slug}`, text: [s.short, s.keywords.join(' ')].join(' ') }));
     CATEGORIES.forEach((c) => docs.push({ type: 'CATEGORIE', id: c.id, title: c.name, sub: c.text, href: `#/mogelijkheden?cat=${c.id}`, text: c.text }));
@@ -3456,41 +3783,106 @@ const Search = {
     Repo.products().filter(isPublicProduct).forEach((p) => docs.push({
       type: 'PRODUCT', id: p.id, title: p.name, sub: `${Money.fmt(Pricing.calc(p).price)} · ${(Repo.shopCategory(p.category) || {}).name || 'Webshop'}`, href: `#/webshop/${p.slug}`,
       text: [p.shortDescription, (Repo.shopCategory(p.category) || {}).name, p.sku, (p.compatibility.models || []).map(modelLabel).join(' ')].join(' '),
+      models: p.compatibility.models || [], brands: p.compatibility.brands || [], wide: !(p.compatibility.models || []).length,
     }));
     docs.forEach((d) => { d.nTitle = normText(d.title); d.nText = normText(`${d.title} ${d.text}`); d.words = d.nText.split(' '); });
     this.index = docs;
   },
-  expand(nq) {
+  /* Synonym phrases for a query. A multi-word query only expands through multi-word terms
+     ("cruise control", "360 camera"); single words are expanded per word in score(). */
+  expand(nq, { phrase = false } = {}) {
     const phrases = [];
     SYNONYMS.forEach((group) => {
       const g = group.map(normText);
-      const hit = g.some((t) => nq === t || (` ${nq} `).includes(` ${t} `) || (nq.length >= 3 && t.startsWith(nq)));
+      const hit = g.some((t) => nq === t || (nq.length >= 3 && t.startsWith(nq))
+        || ((!phrase || t.includes(' ')) && (` ${nq} `).includes(` ${t} `)));
       if (hit) g.forEach((t) => { if (t !== nq) phrases.push(t); });
     });
     return uniq(phrases);
+  },
+  /* Finds brand/model mentions ("golf 7 camera", "a4 b9 carplay", "t6 camera") and returns
+     the rest of the query, so the remaining words are matched against the option itself. */
+  parseVehicle(nq) {
+    const words = nq.split(' ');
+    const set = new Set(words);
+    for (let i = 0; i < words.length - 1; i++) set.add(words[i] + words[i + 1]);
+    const used = new Set();
+    let brand = null;
+    BRANDS.forEach((b) => [b.id, normText(b.name), ...(b.id === 'volkswagen' ? ['vw'] : [])].forEach((t) => { if (set.has(t)) { brand = b.id; used.add(t); } }));
+    const hits = [];
+    MODELS.forEach((m) => {
+      if (brand && m.brand !== brand) return;
+      const baseW = normText(m.base).split(' ');
+      const baseC = baseW.join('');
+      const codes = normText(m.name).split(' ').filter((w) => !baseW.includes(w));
+      const codeHit = codes.filter((c) => set.has(c) || set.has(baseC + c));
+      const baseHit = baseW.every((w) => set.has(w)) || set.has(baseC) || codes.some((c) => set.has(baseC + c));
+      // A distinctive generation code on its own also counts ("t6", "b8", "8v").
+      if (!baseHit && !codeHit.some((c) => c.length > 1 && /\d/.test(c) && /[a-z]/.test(c))) return;
+      hits.push({ m, baseW, baseC, codes, codeHit, baseHit });
+    });
+    if (!hits.length) return { brand, models: null, rest: words.filter((w) => !used.has(w)).join(' ') };
+    let pick = hits.filter((h) => h.codeHit.length);
+    if (!pick.length) pick = hits;
+    const longest = Math.max(...pick.map((h) => (h.baseHit ? h.baseW.length : 0)));
+    pick = pick.filter((h) => (h.baseHit ? h.baseW.length : 0) === longest);
+    pick.forEach((h) => { if (h.baseHit) { h.baseW.forEach((w) => used.add(w)); used.add(h.baseC); } h.codeHit.forEach((c) => { used.add(c); used.add(h.baseC + c); }); });
+    const rest = words.filter((w, i) => !used.has(w) && !(i < words.length - 1 && used.has(w + words[i + 1])) && !(i > 0 && used.has(words[i - 1] + w))).join(' ');
+    return { brand: brand || pick[0].m.brand, models: pick.map((h) => h.m.id), rest };
+  },
+  /* Text relevance of one document. Multi-word queries need every word to match (directly or
+     via a synonym) unless the whole phrase matched; the category name is only a weak fallback. */
+  score(d, nq, ctx, { allowCat = true } = {}) {
+    let score = 0;
+    if (d.nTitle === nq) score += 100;
+    if (d.nTitle.startsWith(nq)) score += 40;
+    if (d.nTitle.includes(nq)) score += 30; else if (d.nText.includes(nq)) score += 16;
+    ctx.phraseSyn.forEach((ph) => { if (d.nTitle.includes(ph)) score += 14; else if (d.nText.includes(ph)) score += 9; });
+    const { tokens } = ctx;
+    const every = tokens.length > 0 && tokens.every((t, i) => d.words.some((w) => w.startsWith(t)) || ctx.tokenSyn[i].some((ph) => d.nText.includes(ph)));
+    if (every) score += tokens.length > 1 ? 22 : 12;
+    else if (tokens.length > 1 && score < 30) score = 0;
+    if (!score && allowCat && d.catText && tokens.length && tokens.every((t) => d.catText.split(' ').some((w) => w.startsWith(t)))) score = 8;
+    return score;
+  },
+  context(nq) {
+    const tokens = nq.split(' ').filter((t) => t.length > 1);
+    return { tokens, phraseSyn: this.expand(nq, { phrase: tokens.length > 1 }), tokenSyn: tokens.map((t) => this.expand(t)) };
   },
   query(q, { limit = 8, types = null, perType = 3 } = {}) {
     if (!this.index) this.build();
     const nq = normText(q);
     if (nq.length < 2) return [];
-    const syn = this.expand(nq);
-    const tokens = nq.split(' ').filter((t) => t.length > 1);
+    const pv = this.parseVehicle(nq);
+    const scoped = !!(pv.models || pv.brand);
+    const rq = scoped ? pv.rest : nq;
+    const sc = this.context(rq);
+    const modelSet = pv.models ? new Set(pv.models) : null;
     const v = VehicleStore.get();
     const out = [];
     this.index.forEach((d) => {
       if (types && !types.includes(d.type)) return;
       let score = 0;
-      if (d.nTitle === nq) score += 100;
-      if (d.nTitle.startsWith(nq)) score += 40;
-      if (d.nTitle.includes(nq)) score += 30; else if (d.nText.includes(nq)) score += 16;
-      syn.forEach((ph) => { if (d.nTitle.includes(ph)) score += 14; else if (d.nText.includes(ph)) score += 9; });
-      if (tokens.length > 1 && tokens.every((t) => d.words.some((w) => w.startsWith(t)))) score += 22;
-      if (!score && tokens.length && tokens.every((t) => d.words.some((w) => w.startsWith(t)))) score += 12;
-      if (!score) return;
+      if (!scoped) score = this.score(d, nq, sc);
+      else if (d.type === 'MODEL') {
+        if (modelSet) { if (!modelSet.has(d.id)) return; score = 60 + (rq ? 0 : 40); } else { if (rq || MODEL[d.id].brand !== pv.brand) return; score = 40; }
+      } else if (d.models) {
+        const inModel = modelSet ? d.models.some((m) => modelSet.has(m)) : false;
+        const inBrand = !(d.brands || []).length || d.brands.includes(pv.brand);
+        if (modelSet && !inModel && !(d.wide && inBrand)) return;
+        if (!modelSet && !inBrand) return;
+        score = rq ? this.score(d, rq, sc, { allowCat: false }) : 20;
+        if (!score) return;
+        score += inModel ? 30 : (modelSet ? -10 : 10);
+      } else {
+        if (!rq) return;
+        score = this.score(d, rq, sc);
+      }
+      if (score <= 0) return;
       if (v && d.models && d.models.includes(v.modelId)) score += 15;
       out.push({ ...d, score: score + (this.TYPE_BOOST[d.type] || 0) });
     });
-    out.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'nl'));
+    out.sort((a, b) => b.score - a.score || ((a.catIdx ?? 99) - (b.catIdx ?? 99)) || a.title.localeCompare(b.title, 'nl'));
     if (!perType) return out.slice(0, limit);
     const counts = {};
     return out.filter((r) => { counts[r.type] = (counts[r.type] || 0) + 1; return counts[r.type] <= perType; }).slice(0, limit);
@@ -3528,6 +3920,9 @@ const ART_SHAPES = {
   module: '<rect x="16" y="30" width="88" height="58" rx="5"/><rect x="26" y="42" width="36" height="34" rx="2" class="a"/><path d="M72 46h22M72 54h22M72 62h16"/><path d="M30 88v12M42 88v12M54 88v12M66 88v12M78 88v12M90 88v12"/>',
   wheel: '<circle cx="60" cy="60" r="44"/><circle cx="60" cy="60" r="34"/><circle cx="60" cy="62" r="12" class="a"/><path d="M26 56l22 4M94 56l-22 4M60 74v20"/><rect x="34" y="62" width="8" height="5" rx="1.5"/><rect x="78" y="62" width="8" height="5" rx="1.5"/>',
   sensorRain: '<path d="M10 92L28 28h64l18 64Z"/><rect x="50" y="28" width="20" height="12" rx="2" class="a"/><path d="M36 60c0 3 2 5 4 5s4-2 4-5-4-8-4-8-4 5-4 8ZM74 70c0 3 2 5 4 5s4-2 4-5-4-8-4-8-4 5-4 8ZM56 80c0 3 2 5 4 5s4-2 4-5-4-8-4-8-4 5-4 8Z"/>',
+  key: '<rect x="38" y="34" width="40" height="66" rx="15"/><circle cx="58" cy="54" r="6"/><circle cx="58" cy="74" r="6" class="a"/><path d="M51 89h14"/><path d="M58 34v-8"/><circle cx="58" cy="18" r="8"/><path d="M88 52a12 12 0 0 1 0 18M96 44a24 24 0 0 1 0 34" class="a"/>',
+  garage: '<path d="M10 52 60 22l50 30"/><path d="M20 46v56h80V46"/><path d="M32 102V60h56v42"/><path d="M32 70h56M32 80h56M32 90h56" class="a"/>',
+  socket: '<rect x="22" y="22" width="76" height="76" rx="16"/><circle cx="60" cy="60" r="25" class="a"/><circle cx="50" cy="60" r="4" class="f"/><circle cx="70" cy="60" r="4" class="f"/><path d="M60 35v7M60 78v7"/>',
   box: '<path d="M100 40 60 20 20 40v42l40 20 40-20Z"/><path d="M20 40l40 20 40-20M60 60v42" /><path d="M40 30l40 20" class="a"/>',
 };
 const Art = {
@@ -4621,9 +5016,13 @@ function catalogResults(s) {
     if (textSet && !textSet.has(r.slug)) return false;
     return true;
   });
+  const catIdx = (r) => CATEGORIES.findIndex((c) => c.id === r.cat);
   if (s.v) {
     const rank = (r) => { const st = Compat.status(r, s.v); return st ? Compat.STATUS[st.key].rank : 9; };
-    items = items.slice().sort((a, b) => rank(a) - rank(b));
+    items = items.slice().sort((a, b) => rank(a) - rank(b) || (s.model ? catIdx(a) - catIdx(b) : 0));
+  } else if (s.model) {
+    // One model: group its options by category (camera & parkeren first, as in the filters).
+    items = items.slice().sort((a, b) => catIdx(a) - catIdx(b));
   }
   return items;
 }
@@ -4802,12 +5201,49 @@ function openFiltersDrawer(filtersEl, home, onClose) {
 }
 
 /* ---------- Retrofit detail ---------- */
+/* Spec rows: standard rows (model, category, warranty, price) merged with the option's own specs. */
+function retrofitSpecs(r) {
+  const own = new Map(r.specs || []);
+  const rows = [];
+  const add = (k, val) => { const x = own.has(k) ? own.get(k) : val; own.delete(k); if (x) rows.push([k, x]); };
+  add('Model', r.scope === 'brand' ? `Meerdere modellen (${Compat.brandsOf(r).map((b) => BRAND[b].name).join(', ')})`
+    : r.models.map((m) => `${modelLabel(m)} (${modelYears(MODEL[m])})`).join(', '));
+  add('Geschikt voor', '');
+  add('Categorie', CATEGORY[r.cat].name);
+  [...own.keys()].filter((k) => !['Garantie', 'Prijs'].includes(k)).forEach((k) => add(k, ''));
+  add('Garantie', r.warranty);
+  add('Prijs', r.price || 'Op aanvraag');
+  add('Aanbieding', r.offer);
+  return rows;
+}
+/* Up to n items, one per category first, so a related row shows different kinds of upgrades. */
+function diverseRetrofits(list, n = 3, skipCat = null) {
+  const out = []; const seen = new Set(skipCat ? [skipCat] : []);
+  list.forEach((x) => { if (out.length < n && !seen.has(x.cat)) { out.push(x); seen.add(x.cat); } });
+  list.forEach((x) => { if (out.length < n && !out.includes(x)) out.push(x); });
+  return out;
+}
+const relatedSection = ({ id, eyebrow = 'Gerelateerd', title, link = '', items, v, follows = false }) => `
+  <section class="section section--soft section--sm" aria-labelledby="${id}"${follows ? ' style="padding-top:0"' : ''}><div class="container">
+    <div class="section-head" style="margin-bottom:28px"><div><p class="eyebrow">${esc(eyebrow)}</p><h2 class="h3 mt-8" id="${id}">${esc(title)}</h2></div>${link}</div>
+    <div class="results-grid" data-stagger>${items.map((x) => UI.retrofitCard(x, { vehicle: v })).join('')}</div>
+  </div></section>`;
 Pages.retrofit = {
   id: 'retrofit', nav: 'mogelijkheden',
   meta(ctx) {
     const r = RETROFIT[ctx.params.slug];
     if (!r) return { title: 'Optie niet gevonden' };
-    return { title: r.title, description: `${r.short} Originele fabrieksoptie, ingebouwd en geprogrammeerd door CarTronic in Rijswijk.` };
+    const single = r.models.length === 1 ? r.models[0] : null;
+    const crumbs = [['Home', '/'], ['Mogelijkheden', '/mogelijkheden'], ...(single ? [[modelLabel(single), `/mogelijkheden?merk=${r.brand}&model=${single}`]] : []), [r.name, `/mogelijkheden/${r.slug}`]];
+    return {
+      title: r.title,
+      description: `${r.short} Originele fabrieksoptie, ingebouwd en geprogrammeerd door CarTronic in Rijswijk.`,
+      jsonLd: [
+        { '@context': 'https://schema.org', '@type': 'Service', name: r.title, description: r.short, serviceType: CATEGORY[r.cat].name,
+          provider: { '@type': 'AutoRepair', name: COMPANY.name, telephone: COMPANY.phoneHref.replace('tel:', ''), address: { '@type': 'PostalAddress', streetAddress: COMPANY.street, postalCode: COMPANY.postal, addressLocality: COMPANY.city, addressCountry: 'NL' } } },
+        { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map(([name, href], i) => ({ '@type': 'ListItem', position: i + 1, name, item: `${location.href.split('#')[0]}#${href}` })) },
+      ],
+    };
   },
   render(ctx) {
     const r = RETROFIT[ctx.params.slug];
@@ -4848,10 +5284,18 @@ Pages.retrofit = {
     panels.push({ title: 'Afhankelijk van uitvoering?', html: `<p>${esc(r.variantNote || 'Ja. Of deze optie mogelijk is, hangt af van bouwjaar, uitvoering en de systemen die al in uw auto aanwezig zijn.')}</p>${r.years ? `<p class="mt-8">Online vermeld voor bouwjaar ${r.years[0]}–${r.years[1]}.</p>` : ''}` });
     panels.push({ title: 'Wat heeft CarTronic nodig om te controleren?', html: `<ul><li>Uw kenteken of chassisnummer (VIN)</li><li>Bouwjaar en uitvoering van de auto</li><li>Welke systemen al aanwezig zijn, bijvoorbeeld het multimediasysteem</li></ul><p class="mt-8">Stuur dit mee via <a class="text-link" href="#/contact?optie=${r.slug}">het contactformulier</a> of WhatsApp.</p>` });
 
-    let related = []; let relTitle = '';
-    if (v) { related = Compat.forVehicle(v).map((x) => x.item).filter((x) => x.slug !== r.slug); relTitle = `Ook interessant voor uw ${VehicleStore.short(v)}`; }
-    if (!related.length && single) { related = RETROFITS.filter((x) => x.slug !== r.slug && x.models.includes(single)); relTitle = `Ook interessant voor de ${MODEL[single].name}`; }
-    if (!related.length) { related = RETROFITS.filter((x) => x.slug !== r.slug && x.cat === r.cat && (!brandId || Compat.brandsOf(x).includes(brandId))); relTitle = 'Vergelijkbare opties'; }
+    // Related: (1) for the visitor's car, (2) other upgrades for this model, else (3) similar options.
+    const sections = [];
+    const forCar = v ? Compat.forVehicle(v).map((x) => x.item).filter((x) => x.slug !== r.slug) : [];
+    if (forCar.length) sections.push({ id: 'rel-car', title: `Ook interessant voor uw ${VehicleStore.short(v)}`, items: diverseRetrofits(forCar), link: `<a class="link" href="#/mogelijkheden">Alle opties voor uw auto ${icon('arrow')}</a>` });
+    const forModel = single && !(v && v.modelId === single) ? RETROFITS.filter((x) => x.slug !== r.slug && x.models.includes(single)) : [];
+    if (forModel.length) sections.push({ id: 'rel-model', title: `Andere upgrades voor de ${modelLabel(single)}`, items: diverseRetrofits(forModel, 3, r.cat), link: `<a class="link" href="#/mogelijkheden?merk=${r.brand}&model=${single}">Alle ${forModel.length + 1} opties ${icon('arrow')}</a>` });
+    if (!sections.length) {
+      const similar = RETROFITS.filter((x) => x.slug !== r.slug && x.cat === r.cat && (!brandId || Compat.brandsOf(x).includes(brandId)));
+      if (similar.length) sections.push({ id: 'rel-similar', title: 'Vergelijkbare opties', items: diverseRetrofits(similar) });
+    }
+    const sameFeature = r.feature && r.brand && r.scope !== 'brand'
+      ? RETROFITS.filter((x) => x.slug !== r.slug && x.feature === r.feature && x.brand === r.brand && x.scope !== 'brand' && !x.models.every((m) => r.models.includes(m))).slice(0, 12) : [];
     const project = r.project ? Repo.project(r.project) : null;
     const saved = Saved.has('retrofits', r.slug);
     const waText = WhatsApp.enquiry({ vehicle: v ? VehicleStore.name(v) : (single ? modelLabel(single) : ''), plate: VehicleStore.plate(), year: v ? v.year : null, options: [r.title], question: 'Is deze optie mogelijk voor mijn auto?' });
@@ -4871,15 +5315,14 @@ Pages.retrofit = {
           </div>
           <div class="detail-block"><h2>Compatibiliteit</h2>${compat}</div>
           <div class="detail-block"><h2>Voordelen</h2><ul class="benefits">${(copy.benefits || []).map((b) => `<li>${icon('check')}${esc(b)}</li>`).join('')}</ul></div>
-          ${r.specs ? `<div class="detail-block"><h2>Specificaties</h2><dl class="spec-list">${r.specs.map(([k, val]) => `<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join('')}</dl></div>` : ''}
+          <div class="detail-block"><h2>Specificaties</h2><dl class="spec-list">${retrofitSpecs(r).map(([k, val]) => `<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join('')}</dl>
+            ${r.price || r.offer ? '<p class="hint mt-16">Prijs zoals vermeld door CarTronic. De definitieve prijs voor uw uitvoering bevestigen we bij uw aanvraag.</p>' : ''}</div>
+          ${sameFeature.length ? `<div class="detail-block"><h2>${esc(r.name)} voor andere ${esc(BRAND[r.brand].name)}-modellen</h2><div class="cp-models">${sameFeature.map((x) => `<a class="pill pill--outline" href="#/mogelijkheden/${x.slug}">${esc(x.models.map((m) => MODEL[m].name).join(', '))}</a>`).join('')}</div></div>` : ''}
           <div class="detail-block"><h2>Technische informatie</h2>${UI.accordion(panels)}</div>
           ${project ? `<div class="detail-block">${UI.notice(`<strong>Uit de werkplaats:</strong> ${esc(project.title)} — ${esc(project.vehicle)}.`, { ic: 'camera', actions: `<a class="btn btn--dark btn--xs" href="#/projecten/${project.slug}">Bekijk het project</a>` })}</div>` : ''}
         </div>
       </div>
-      ${related.length ? `<section class="section section--soft section--sm" aria-labelledby="rel-title"><div class="container">
-        <div class="section-head" style="margin-bottom:28px"><div><p class="eyebrow">Gerelateerd</p><h2 class="h3 mt-8" id="rel-title">${esc(relTitle)}</h2></div>${v ? `<a class="link" href="#/mogelijkheden">Alle opties voor uw auto ${icon('arrow')}</a>` : ''}</div>
-        <div class="results-grid" data-stagger>${related.slice(0, 3).map((x) => UI.retrofitCard(x, { vehicle: v })).join('')}</div>
-      </div></section>` : ''}
+      ${sections.map((x, i) => relatedSection({ ...x, v, follows: i > 0 })).join('')}
       ${recent.length ? recentSection(recent) : ''}
       ${ctaBand()}`;
   },
@@ -7075,6 +7518,11 @@ function registerRoutes() {
   Router.add('/admin/projecten/:id', Pages.adminProjectForm);
   Router.add('/admin/instellingen', Pages.adminSettings);
   Router.add('*', Pages.notFound);
+  // Archived catalog URLs (e.g. cartronic.nl slugs) → the current page for the same option.
+  Router.redirect((path) => {
+    const m = path.match(/^\/mogelijkheden\/([^/]+)$/);
+    return m && !RETROFIT[m[1]] && RETROFIT_ALIAS[m[1]] ? `/mogelijkheden/${RETROFIT_ALIAS[m[1]]}` : null;
+  });
 }
 
 function bindGlobal() {
@@ -7165,7 +7613,8 @@ function init() {
   Router.start();
   Motion.init();
   // Debug/QA handle (no secrets live in this prototype).
-  window.CT = { Repo, Cart, Router, VehicleStore, VehicleLookup, VehicleMatcher, Plate, Pricing, Money, Analytics, Search, Payments, OrderService, CheckoutService };
+  window.CT = { Repo, Cart, Router, VehicleStore, VehicleLookup, VehicleMatcher, Plate, Pricing, Money, Analytics, Search, Payments, OrderService, CheckoutService, Compat,
+    catalog: { RETROFITS, RETROFIT_ALIAS, MODELS, FEATURES, CATEGORIES, ART: Object.keys(ART_SHAPES) } };
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 

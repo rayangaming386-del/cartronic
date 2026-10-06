@@ -9,7 +9,8 @@ The redesign follows the approved CarTronic design screens. Company facts come f
 | --- | --- |
 | Homepage, kenteken finder, brands, expertise story, projects | `#/` |
 | Catalog with filters, search, statuses, shareable selection | `#/mogelijkheden` |
-| Retrofit detail with compatibility + technical panels | e.g. `#/mogelijkheden/audi-a3-8v-virtual-cockpit` |
+| Retrofit detail with compatibility, specifications (warranty, price) and related upgrades | e.g. `#/mogelijkheden/audi-a3-8v-virtual-cockpit` |
+| Smart search (model + option) | e.g. search "Golf 7 camera", "A4 B9 CarPlay", "Kodiaq camera" |
 | Brands → models | `#/merken` |
 | Portfolio with filters | `#/projecten` |
 | Expertise, services | `#/expertise`, `#/diensten/kalibratie-rijhulpsystemen` |
@@ -29,9 +30,11 @@ open "Demo-kentekens" under the plate field (e.g. `TE-ST-01` Golf 7, `TE-ST-06` 
 
 - **Real (from cartronic.nl):** address (Patrijsweg 22, 2289 EX Rijswijk), phone/WhatsApp 070 383 9836,
   info@cartronic.nl, opening hours, services (retrofits, online programming, ACC/Lane Assist/Night Vision
-  calibration, diagnostics), and a selection of 58 actual catalog entries (titles and short descriptions).
-- **Photos:** taken from the approved design screens (hero, workshop projects, catalog images).
-  Items without a real photo show a technical line drawing labelled "Illustratie".
+  calibration, diagnostics), and the CarTronic retrofit catalog: **285 options for 38 models** (Volkswagen, Audi,
+  SEAT, Škoda), merged from the approved selection and the full product list (see *Catalog data* below).
+- **Photos:** taken from the approved design screens (hero, workshop projects, catalog images). A catalog photo is
+  only reused for the same product (e.g. the Audi Smartphone Interface photo for Audi Smartphone Interface options).
+  Everything else shows a technical line drawing labelled "Illustratie".
 - **Demo only:** all webshop products, prices, stock, shipping rates and the seeded orders.
   Products carry `isDemo: true`; the shop shows a "Testomgeving" notice.
 - **Before/after slider:** built and working, but only shown when a project has real before *and* after photos
@@ -39,9 +42,31 @@ open "Demo-kentekens" under the plate field (e.g. `TE-ST-01` Golf 7, `TE-ST-06` 
 
 ### Please verify before going live
 - Opening hours: cartronic.nl lists di–za **9:30–17:00**; new.cartronic.nl lists **09:00–17:00**. The prototype uses 9:30.
-- Retrofit catalog: the online catalog lists hundreds of items; this prototype contains a representative subset.
+- Retrofit catalog details. cartronic.nl could not be opened directly from the build environment, so product details
+  were collected from search-engine results for cartronic.nl pages and could not be re-checked a second time. Please spot-check:
+  - prices shown: Golf 7 Active Info Display *€ 1.099 excl. btw* / *€ 1.499 inclusief montage*; VW App Connect
+    *vanaf € 199 inclusief montage*; Discover navigatie met CarPlay *€ 899* (btw not stated);
+  - Audi Smartphone Interface: product pages list € 299–399 per model, while the offer page lists *vanaf € 349 inclusief
+    montage* with other per-model prices. Because CarTronic's own pages disagree, the site shows *Op aanvraag*;
+  - year ranges added from product pages (e.g. Audi "2015–2019 (ook S4, RS4 en S-line)"); vehicles outside them get
+    *Neem contact op*;
+  - "Yeti II" options are treated as Yeti 2013–2017 (facelift); Caddy SA = Caddy 4 (2015–2020).
 - RDW type codes used to disambiguate generations (`MODELS[].types` in the data section) should be spot-checked;
   conflicts are flagged to the visitor instead of being trusted.
+
+## Catalog data
+
+All options live in one dataset, `RETROFITS` (data section of `index.html`). Each entry names a `feature`
+(e.g. `achteruitrijcamera`); the `FEATURES` table supplies the shared name, category, illustration, description and
+search terms. Fields on an entry (title, text, years, specs, warranty, price, offer) always win over those defaults,
+so the 58 originally approved entries kept their exact texts, slugs and order.
+
+- **Redirects:** `aliases` holds older URLs (32, e.g. cartronic.nl slugs such as `audi-a4-b9-8w-virtual-cockpit` or
+  `aanbieding-1-…`). They redirect to the current page; no duplicate pages exist.
+- **Not shown:** the source URLs are kept only for reconciliation; there is no "bronpagina" link on the site.
+- **Retrofits are not webshop products:** catalog options link to the contact/WhatsApp flow, never to the cart.
+- **Adding an option:** add one line to `RETROFITS` with `slug`, `feature`, `brand`, `models` (+ `years`, `specs`,
+  `price` when CarTronic publishes them). New models go in `MODELS` with RDW match tokens and year range.
 
 ## Architecture (single file, production-ready seams)
 
@@ -75,3 +100,9 @@ filters and share state, cart/drawer/checkout validation, duplicate-order protec
 stock decrement and order snapshots, the full admin flow (login, quick edit, create/validate/archive/delete products,
 categories, order status, promotions, stock, settings, reset), mobile menu/sheets/drawers, motion with and without the
 GSAP CDN, and an axe-core accessibility audit (no violations on the audited pages).
+
+Catalog QA (after the catalog merge): data validation of all 285 entries (unique slugs and titles, valid
+brand/model/category/illustration, no "Aanbieding" text as a model, no empty or generic texts, existing images,
+aliases resolve), every detail page rendered without errors, example searches ("Golf 7 camera", "A4 B9 CarPlay",
+"T-Roc inklapbare spiegels", "A3 Virtual Cockpit", "Kodiaq camera", "Ateca parkeerhulp"), 16 representative
+RDW records across VW, Audi, SEAT and Škoda, redirects with back/forward, and all earlier suites re-run.
