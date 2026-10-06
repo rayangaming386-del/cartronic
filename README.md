@@ -46,11 +46,13 @@ open "Demo-kentekens" under the plate field (e.g. `TE-ST-01` Golf 7, `TE-ST-06` 
   were collected from search-engine results for cartronic.nl pages and could not be re-checked a second time. Please spot-check:
   - prices shown: Golf 7 Active Info Display *€ 1.099 excl. btw* / *€ 1.499 inclusief montage*; VW App Connect
     *vanaf € 199 inclusief montage*; Discover navigatie met CarPlay *€ 899* (btw not stated);
-  - Audi Smartphone Interface: product pages list € 299–399 per model, while the offer page lists *vanaf € 349 inclusief
-    montage* with other per-model prices. Because CarTronic's own pages disagree, the site shows *Op aanvraag*;
+  - Audi Smartphone Interface: the model pages show the price that the catalog and the product page agree on
+    (A4 B9 and Q2 GA *€ 399*, Q5 FY and Q7 4M *€ 299*). The offer page says *vanaf € 349 inclusief montage* with
+    different per-model prices; that wording is shown on the general Audi Smartphone Interface page. Please align;
   - year ranges added from product pages (e.g. Audi "2015–2019 (ook S4, RS4 en S-line)"); vehicles outside them get
     *Neem contact op*;
-  - "Yeti II" options are treated as Yeti 2013–2017 (facelift); Caddy SA = Caddy 4 (2015–2020).
+  - "Yeti II" options are treated as Yeti 2013–2017 (facelift); Caddy SA = Caddy 4 (2015–2020); a Multivan registered
+    from 2022 (T7) is not matched to the Transporter T6.
 - RDW type codes used to disambiguate generations (`MODELS[].types` in the data section) should be spot-checked;
   conflicts are flagged to the visitor instead of being trusted.
 

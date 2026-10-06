@@ -1320,6 +1320,9 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
   .group-card .gc-icon { width: 40px; height: 40px; }
   .chip { height: 34px; padding: 0 12px; font-size: 12.5px; }
 }
+/* Selected options on the contact page can have long titles: let them wrap on small screens. */
+[data-opt-list] .chip--removable { height: auto; min-height: 36px; padding-block: 7px; white-space: normal; max-width: 100%; text-align: left; line-height: 1.35; }
+[data-opt-list] .chip--removable button { flex-shrink: 0; }
 
 /* =========================================================
    Webshop — product cards, PDP, cart, checkout, payment
@@ -1784,7 +1787,7 @@ const reducedMotion = () => { try { return window.matchMedia('(prefers-reduced-m
 const isInt = (n) => Number.isInteger(n);
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const uniq = (arr) => Array.from(new Set(arr));
-const byKey = (arr, key = 'id') => Object.fromEntries(arr.map((x) => [x[key], x]));
+const byKey = (arr, key = 'id') => Object.assign(Object.create(null), Object.fromEntries(arr.map((x) => [x[key], x])));
 const deepClone = (o) => JSON.parse(JSON.stringify(o));
 
 const DATE_FMT = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -2288,7 +2291,8 @@ const BRAND = byKey(BRANDS);
 /* ---------- Models / generations ----------
    match: tokens matched against the RDW "handelsbenaming" (normalised, brand prefix removed).
    from/to: first-registration years used to infer the generation from RDW data.
-   types: EU type codes (RDW field "type") used only to disambiguate overlapping years. */
+   types: EU type codes (RDW field "type") used only to disambiguate overlapping years.
+   matchTo: last registration year for a token that a later, different model reuses (T7 Multivan). */
 const MODELS = [
   // Volkswagen
   { id: 'golf-7', brand: 'volkswagen', name: 'Golf 7', base: 'Golf', from: 2012, to: 2020, match: ['GOLF'], exclude: ['GOLFSPORTSVAN', 'GOLFPLUS'], types: ['AU'] },
@@ -2303,7 +2307,7 @@ const MODELS = [
   { id: 'up', brand: 'volkswagen', name: 'up!', base: 'up!', from: 2011, to: 2023, match: ['UP'], types: [] },
   // Caddy SA = Caddy 4 (2015–2020); the Caddy 5 (SB) is not in the catalog.
   { id: 'caddy-sa', brand: 'volkswagen', name: 'Caddy SA', base: 'Caddy', from: 2015, to: 2020, match: ['CADDY'], types: [] },
-  { id: 'transporter-t6', brand: 'volkswagen', name: 'Transporter T6', base: 'Transporter', from: 2015, to: 2024, match: ['TRANSPORTER', 'MULTIVAN', 'CARAVELLE'], types: [] },
+  { id: 'transporter-t6', brand: 'volkswagen', name: 'Transporter T6', base: 'Transporter', from: 2015, to: 2024, match: ['TRANSPORTER', 'MULTIVAN', 'CARAVELLE'], matchTo: { MULTIVAN: 2021 }, types: [] },
   { id: 'crafter-sy', brand: 'volkswagen', name: 'Crafter SY', base: 'Crafter', from: 2017, to: null, match: ['CRAFTER'], types: [] },
   // Audi
   { id: 'a1-8x', brand: 'audi', name: 'A1 8X', base: 'A1', from: 2010, to: 2018, match: ['A1', 'S1'], types: ['8X'] },
@@ -2409,7 +2413,7 @@ const FEATURES = {
     short: 'Apple CarPlay en Android Auto op het originele multimediasysteem.', variantNote: 'Afhankelijk van het aanwezige multimediasysteem.' },
   'smartphone-interface': { name: 'Smartphone Interface', cat: 'infotainment', art: 'connect', image: 'cat_audi_carplay', keywords: ['carplay', 'apple carplay', 'android auto', 'smartphone interface', 'mmi'],
     short: 'Apple CarPlay en Android Auto via het originele MMI: uw smartphone verbindt via USB, waarna u navigatie, muziek en apps via het MMI bedient.',
-    variantNote: 'Werkt alleen als de auto MMI-navigatie heeft; zowel de basisversie als MMI Navigatie plus is geschikt.' },
+    variantNote: 'Afhankelijk van model, bouwjaar en het aanwezige MMI-systeem.' },
   'discover-media': { name: 'Discover Media', cat: 'infotainment', art: 'nav', keywords: ['navigatie', 'navi', 'discover media', 'multimedia'],
     short: 'Origineel Volkswagen-navigatiesysteem: navigatie, multimedia en telefoon bedient u via een 8-inch kleurentouchscreen.' },
   'discover-pro': { name: 'Discover Pro', cat: 'infotainment', art: 'nav', image: 'cat_nav', keywords: ['navigatie', 'navi', 'discover pro'],
@@ -2522,7 +2526,7 @@ const RETROFITS = [
   { slug: 'audi-q4-e-tron-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['q4-etron'], cat: 'camera-parkeren', title: 'Audi Q4 e-tron – Parkeerhulp voorzijde (upgrade)', name: 'Parkeerhulp voorzijde', art: 'sensor', short: 'Uitbreiding van de bestaande parkeerhulp met sensoren aan de voorzijde.', variantNote: 'Upgrade voor auto’s met parkeerhulp achter.', keywords: ['parkeersensoren voor'], source: 'https://new.cartronic.nl/producten/audi-q4-e-tron-parkeerhulp-voorzijde-upgrade/' },
   { slug: 'audi-q4-e-tron-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['q4-etron'], cat: 'trekhaken', title: 'Audi Q4 e-tron – Zwenkbare/wegklapbare trekhaak', name: 'Zwenkbare trekhaak', art: 'towbar', short: 'Originele trekhaak die wegklapt wanneer u hem niet gebruikt.', keywords: ['trekhaak'], source: 'https://new.cartronic.nl/producten/audi-q4-e-tron-f4-zwenkbare-wegklapbare-trekhaak/' },
   // ---- Meerdere merken/modellen
-  { slug: 'audi-smartphone-interface-carplay', feature: 'smartphone-interface', brand: 'audi', models: [], scope: 'brand', cat: 'infotainment', title: 'Audi Smartphone Interface – CarPlay', name: 'Audi Smartphone Interface', art: 'connect', image: 'cat_audi_carplay', short: 'Apple CarPlay en Android Auto via het originele MMI-systeem.', variantNote: 'Mogelijk voor diverse Audi-modellen; afhankelijk van model, bouwjaar en MMI-systeem.', keywords: ['carplay', 'android auto', 'smartphone interface', 'mmi'], warranty: '3 jaar', aliases: ['aanbieding-2-audi-smartphone-interface-carplay'], source: 'https://www.cartronic.nl/' },
+  { slug: 'audi-smartphone-interface-carplay', feature: 'smartphone-interface', brand: 'audi', models: [], scope: 'brand', cat: 'infotainment', title: 'Audi Smartphone Interface – CarPlay', name: 'Audi Smartphone Interface', art: 'connect', image: 'cat_audi_carplay', short: 'Apple CarPlay en Android Auto via het originele MMI-systeem.', variantNote: 'Mogelijk voor diverse Audi-modellen; afhankelijk van model, bouwjaar en MMI-systeem.', keywords: ['carplay', 'android auto', 'smartphone interface', 'mmi'], warranty: '3 jaar', offer: 'Vanaf € 349 inclusief montage (prijs verschilt per model)', aliases: ['aanbieding-2-audi-smartphone-interface-carplay'], source: 'https://www.cartronic.nl/' },
   // ---- SEAT
   { slug: 'seat-ibiza-kj-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'seat', models: ['ibiza-kj'], cat: 'camera-parkeren', title: 'SEAT Ibiza KJ – Achteruitrijcamera', name: 'Achteruitrijcamera', art: 'camera', image: 'proj_ibiza', imageNote: 'Foto: CarTronic-werkplaats', short: 'Originele camera die de ruimte achter de auto toont op het multimediascherm.', keywords: ['camera', 'rear view', 'meesturende lijnen'], project: 'seat-ibiza-camera-meesturende-lijnen', warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/seat-ibiza-kj-achteruitrijcamera/' },
   { slug: 'seat-ibiza-kj-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'seat', models: ['ibiza-kj'], cat: 'comfort', title: 'SEAT Ibiza KJ – Inklapbare spiegels', name: 'Inklapbare spiegels', art: 'mirror', image: 'cat_mirror', short: 'Spiegels klappen in bij het vergrendelen en automatisch uit bij het starten.', keywords: ['inklapspiegels', 'spiegels'], warranty: '3 jaar', source: 'https://www.cartronic.nl/producten/seat-ibiza-kj-inklapbare-spiegels/' },
@@ -2560,7 +2564,7 @@ const RETROFITS = [
   { slug: 'volkswagen-golf-7-led-dynamische-achterlichten', feature: 'led-dynamisch', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
   { slug: 'volkswagen-golf-7-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
   { slug: 'volkswagen-golf-7-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
-  { slug: 'volkswagen-discover-navigatie-met-carplay', feature: 'discover-carplay', brand: 'volkswagen', models: ['golf-7', 'polo-aw', 'passat-b8'], title: 'Volkswagen – Discover navigatie met CarPlay (aanbieding)', variantNote: 'Volgens CarTronic bedoeld voor auto’s met een oudere Discover Pro: Golf 2014–2019, Polo 2015–2020, Passat B8 2015–2018 en Touran 2015–2017 (ook GTE en R-line).', warranty: '3 jaar', price: '€ 899', aliases: ['aanbieding-4-volkswagen-discover-navigatie-met-carplay'] },
+  { slug: 'volkswagen-discover-navigatie-met-carplay', feature: 'discover-carplay', brand: 'volkswagen', models: ['golf-7', 'polo-aw', 'passat-b8'], yearsByModel: { 'golf-7': [2014, 2019], 'polo-aw': [2017, 2020], 'passat-b8': [2015, 2018] }, title: 'Volkswagen – Discover navigatie met CarPlay (aanbieding)', variantNote: 'Volgens CarTronic bedoeld voor auto’s met een oudere Discover Pro: Golf 2014–2019, Polo 2015–2020, Passat B8 2015–2018 en Touran 2015–2017 (ook GTE en R-line).', warranty: '3 jaar', price: '€ 899', aliases: ['aanbieding-4-volkswagen-discover-navigatie-met-carplay'] },
   { slug: 'volkswagen-golf-7-sportsvan-led-achterlichten', feature: 'led-achterlichten', brand: 'volkswagen', models: ['golf-sportsvan'], years: [2014, 2019], warranty: '3 jaar' },
   { slug: 'volkswagen-polo-aw-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
   { slug: 'volkswagen-polo-aw-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
@@ -2646,7 +2650,7 @@ const RETROFITS = [
   { slug: 'audi-a3-8v-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['a3-8v'], warranty: '3 jaar' },
   { slug: 'audi-a4-b9-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['a4-b9'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-achteruitrijcamera'] },
   { slug: 'audi-a4-b9-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['a4-b9'], years: [2015, 2024], specs: [['Geschikt voor', 'A4 B9/8W 2015–2024 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-top-view-360-graden-camera'] },
-  { slug: 'audi-a4-b9-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], specs: [['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-smartphone-interface'] },
+  { slug: 'audi-a4-b9-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], variantNote: 'Werkt alleen als de auto MMI-navigatie heeft; zowel de basisversie als MMI Navigatie plus is geschikt.', specs: [['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', price: '€ 399', aliases: ['audi-a4-b9-8w-smartphone-interface'] },
   { slug: 'audi-a4-b9-virtual-cockpit', feature: 'virtual-cockpit', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-virtual-cockpit'] },
   { slug: 'audi-a4-b9-dode-hoek-assistent', feature: 'dodehoek', brand: 'audi', models: ['a4-b9'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-dode-hoek-assistent'] },
   { slug: 'audi-a4-b9-active-lane-assist', feature: 'lane-assist', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], specs: [['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-active-lane-assist'] },
@@ -2679,7 +2683,7 @@ const RETROFITS = [
   { slug: 'audi-q2-ga-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
   { slug: 'audi-q2-ga-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
   { slug: 'audi-q2-ga-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
-  { slug: 'audi-q2-ga-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], specs: [['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q2-ga-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], specs: [['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], warranty: '3 jaar', price: '€ 399' },
   { slug: 'audi-q2-ga-mmi-plus-navigatiesysteem', feature: 'mmi-plus', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], specs: [['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q2-ga-virtual-cockpit', feature: 'virtual-cockpit', brand: 'audi', models: ['q2-ga'], years: [2016, 2019], specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'Q2 GA 2016–2019 (ook SQ2 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q2-ga-dode-hoek-assistent', feature: 'dodehoek', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
@@ -2697,7 +2701,7 @@ const RETROFITS = [
   { slug: 'audi-q5-fy-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
   { slug: 'audi-q5-fy-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q5-fy-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
-  { slug: 'audi-q5-fy-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q5-fy-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], variantNote: 'Werkt alleen als de auto MMI-navigatie heeft; zowel de basisversie als MMI Navigatie plus is geschikt.', specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar', price: '€ 299' },
   { slug: 'audi-q5-fy-virtual-cockpit', feature: 'virtual-cockpit', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q5-fy-dode-hoek-assistent', feature: 'dodehoek', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
   { slug: 'audi-q5-fy-active-lane-assist', feature: 'lane-assist', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
@@ -2714,7 +2718,7 @@ const RETROFITS = [
   { slug: 'audi-q7-4m-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['q7-4m'], warranty: '3 jaar' },
   { slug: 'audi-q7-4m-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q7-4m-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['q7-4m'], warranty: '3 jaar' },
-  { slug: 'audi-q7-4m-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
+  { slug: 'audi-q7-4m-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], variantNote: 'Werkt alleen als de auto MMI-navigatie heeft; zowel de basisversie als MMI Navigatie plus is geschikt.', specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar', price: '€ 299' },
   { slug: 'audi-q7-4m-mmi-plus-navigatiesysteem', feature: 'mmi-plus', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q7-4m-virtual-cockpit', feature: 'virtual-cockpit', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Scherm', '12,3 inch TFT'], ['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q7-4m-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['q7-4m'], warranty: '3 jaar' },
@@ -2784,7 +2788,7 @@ RETROFITS.forEach((r) => {
   const vr = r.variant ? VARIANTS[r.variant] : null;
   r.cat = r.cat || f.cat;
   r.art = r.art || f.art || (CATEGORY[r.cat] || {}).art;
-  r.name = r.name || f.name;
+  r.name = r.name || (vr && vr.label ? `${f.name} (${vr.label})` : f.name);
   if (!r.image && f.image) r.image = f.image;
   r.short = r.short || f.short || '';
   if (vr) {
@@ -2801,7 +2805,7 @@ RETROFITS.forEach((r) => {
   r.aliases = r.aliases || [];
 });
 /* Older / archived URLs → current slug (handled by the retrofit route). */
-const RETROFIT_ALIAS = {};
+const RETROFIT_ALIAS = Object.create(null);
 RETROFITS.forEach((r) => r.aliases.forEach((a) => { RETROFIT_ALIAS[a] = r.slug; }));
 
 /* Category-level copy for technical panels and benefits. Deliberately general: no claims
@@ -3203,8 +3207,9 @@ const Compat = {
       return { key: 'check', reason: item.variantNote || 'Mogelijk voor meerdere modellen; CarTronic controleert de uitvoering van uw auto.' };
     }
     if (!v.modelId || !item.models.includes(v.modelId)) return null;
-    if (item.years) {
-      const [a, b] = item.years;
+    const years = (item.yearsByModel && item.yearsByModel[v.modelId]) || item.years;
+    if (years) {
+      const [a, b] = years;
       if (!v.year) return { key: 'check', reason: `Online vermeld voor bouwjaar ${a}–${b}. Uw bouwjaar is nog niet bekend.` };
       if (v.year < a || v.year > b) return { key: 'contact', reason: `Online vermeld voor bouwjaar ${a}–${b}. Voor bouwjaar ${v.year} bekijken we de mogelijkheden graag persoonlijk.` };
     }
@@ -3340,7 +3345,8 @@ const VehicleMatcher = {
     if (!brand) return { ...base, status: 'unsupported_brand' };
     const name = this.cleanName(raw.handelsbenaming, brand);
     const candidates = MODELS.filter((m) => m.brand === brand.id
-      && m.match.some((t) => name.startsWith(t)) && !(m.exclude || []).some((x) => name.startsWith(x)));
+      && m.match.some((t) => name.startsWith(t) && !(year && m.matchTo && m.matchTo[t] && year > m.matchTo[t]))
+      && !(m.exclude || []).some((x) => name.startsWith(x)));
     if (!candidates.length) return { ...base, status: 'unknown_model', brandId: brand.id };
     const inYear = year ? candidates.filter((m) => year >= m.from && year <= (m.to || 9999)) : candidates;
     const type = String(raw.type || '').toUpperCase();
@@ -3779,13 +3785,21 @@ const Search = {
       const n = Compat.countForModel(m.id);
       docs.push({ type: 'MODEL', id: m.id, title: modelLabel(m.id), sub: `${modelYears(m)} · ${plural(n, 'mogelijkheid', 'mogelijkheden')}`, href: `#/mogelijkheden?merk=${m.brand}&model=${m.id}`, text: `${BRAND[m.brand].name} ${m.base}` });
     });
-    Repo.projects().filter((p) => p.active).forEach((p) => docs.push({ type: 'PROJECT', id: p.slug, title: p.title, sub: p.vehicle, href: `#/projecten/${p.slug}`, text: [p.vehicle, p.short, p.tag].join(' ') }));
+    Repo.projects().filter((p) => p.active).forEach((p) => docs.push({ type: 'PROJECT', id: p.slug, title: p.title, sub: p.vehicle, href: `#/projecten/${p.slug}`, text: [p.vehicle, p.short, p.tag].join(' '), models: p.models || [], brands: p.brands || [], wide: !(p.models || []).length }));
     Repo.products().filter(isPublicProduct).forEach((p) => docs.push({
       type: 'PRODUCT', id: p.id, title: p.name, sub: `${Money.fmt(Pricing.calc(p).price)} · ${(Repo.shopCategory(p.category) || {}).name || 'Webshop'}`, href: `#/webshop/${p.slug}`,
       text: [p.shortDescription, (Repo.shopCategory(p.category) || {}).name, p.sku, (p.compatibility.models || []).map(modelLabel).join(' ')].join(' '),
       models: p.compatibility.models || [], brands: p.compatibility.brands || [], wide: !(p.compatibility.models || []).length,
     }));
     docs.forEach((d) => { d.nTitle = normText(d.title); d.nText = normText(`${d.title} ${d.text}`); d.words = d.nText.split(' '); });
+    // Per result type: its words and full text, to tell meaningful query words from filler.
+    this.vocab = {};
+    docs.forEach((d) => {
+      const v = (this.vocab[d.type] = this.vocab[d.type] || { words: new Set(), text: '' });
+      d.words.forEach((w) => v.words.add(w));
+      if (d.catText) d.catText.split(' ').forEach((w) => v.words.add(w));
+      v.text += ` ${d.nText}`;
+    });
     this.index = docs;
   },
   /* Synonym phrases for a query. A multi-word query only expands through multi-word terms
@@ -3824,30 +3838,60 @@ const Search = {
     if (!hits.length) return { brand, models: null, rest: words.filter((w) => !used.has(w)).join(' ') };
     let pick = hits.filter((h) => h.codeHit.length);
     if (!pick.length) pick = hits;
+    // A year narrows the generation ("golf 2018 camera" → Golf 7).
+    const yw = words.find((w) => /^(19|20)\d\d$/.test(w));
+    if (yw) {
+      used.add(yw);
+      const inYear = pick.filter((h) => +yw >= h.m.from && +yw <= (h.m.to || 9999));
+      if (inYear.length) pick = inYear;
+    }
     const longest = Math.max(...pick.map((h) => (h.baseHit ? h.baseW.length : 0)));
     pick = pick.filter((h) => (h.baseHit ? h.baseW.length : 0) === longest);
     pick.forEach((h) => { if (h.baseHit) { h.baseW.forEach((w) => used.add(w)); used.add(h.baseC); } h.codeHit.forEach((c) => { used.add(c); used.add(h.baseC + c); }); });
     const rest = words.filter((w, i) => !used.has(w) && !(i < words.length - 1 && used.has(w + words[i + 1])) && !(i > 0 && used.has(words[i - 1] + w))).join(' ');
     return { brand: brand || pick[0].m.brand, models: pick.map((h) => h.m.id), rest };
   },
-  /* Text relevance of one document. Multi-word queries need every word to match (directly or
-     via a synonym) unless the whole phrase matched; the category name is only a weak fallback. */
-  score(d, nq, ctx, { allowCat = true } = {}) {
+  /* Text relevance of one document. Multi-word queries need every word to match (directly, via a
+     synonym or via the category name), unless the whole phrase matched. Words that occur nowhere in
+     the index ("inbouwen", "gti", a year) are ignored. Returns { score, viaCat }. */
+  score(d, nq, ctx) {
     let score = 0;
     if (d.nTitle === nq) score += 100;
     if (d.nTitle.startsWith(nq)) score += 40;
     if (d.nTitle.includes(nq)) score += 30; else if (d.nText.includes(nq)) score += 16;
-    ctx.phraseSyn.forEach((ph) => { if (d.nTitle.includes(ph)) score += 14; else if (d.nText.includes(ph)) score += 9; });
-    const { tokens } = ctx;
-    const every = tokens.length > 0 && tokens.every((t, i) => d.words.some((w) => w.startsWith(t)) || ctx.tokenSyn[i].some((ph) => d.nText.includes(ph)));
-    if (every) score += tokens.length > 1 ? 22 : 12;
-    else if (tokens.length > 1 && score < 30) score = 0;
-    if (!score && allowCat && d.catText && tokens.length && tokens.every((t) => d.catText.split(' ').some((w) => w.startsWith(t)))) score = 8;
-    return score;
+    let syn = 0;
+    ctx.phraseSyn.forEach((ph) => { syn = Math.max(syn, d.nTitle.includes(ph) ? 14 : (d.nText.includes(ph) ? 9 : 0)); });
+    score += syn;
+    const { tokens, tokenSyn } = ctx.forType(d.type);
+    let viaCat = false;
+    const every = tokens.length > 0 && tokens.every((t, i) => {
+      if (d.words.some((w) => w.startsWith(t)) || tokenSyn[i].some((ph) => d.nText.includes(ph))) return true;
+      if (d.catText && d.catText.split(' ').some((w) => w.startsWith(t))) { viaCat = true; return true; }
+      return false;
+    });
+    if (every) score += viaCat ? 8 : (tokens.length > 1 ? 22 : 12);
+    else if (tokens.length > 1 && score < 30 && !syn) score = 0;
+    return { score, viaCat: every && viaCat && score < 30 };
   },
+  /* Query words that mean something for a result type; the rest ("inbouwen", "gti", a year) is
+     ignored for that type instead of excluding every result. */
   context(nq) {
-    const tokens = nq.split(' ').filter((t) => t.length > 1);
-    return { tokens, phraseSyn: this.expand(nq, { phrase: tokens.length > 1 }), tokenSyn: tokens.map((t) => this.expand(t)) };
+    const all = nq.split(' ').filter((t) => t.length > 1);
+    const syn = new Map(all.map((t) => [t, this.expand(t)]));
+    const cache = {};
+    return {
+      all,
+      phraseSyn: this.expand(nq, { phrase: all.length > 1 }),
+      forType: (type) => {
+        if (!cache[type]) {
+          const v = this.vocab[type] || { words: new Set(), text: '' };
+          const words = [...v.words];
+          const known = all.filter((t) => words.some((w) => w.startsWith(t)) || syn.get(t).some((ph) => v.text.includes(ph)));
+          cache[type] = { tokens: known, tokenSyn: known.map((t) => syn.get(t)) };
+        }
+        return cache[type];
+      },
+    };
   },
   query(q, { limit = 8, types = null, perType = 3 } = {}) {
     if (!this.index) this.build();
@@ -3855,15 +3899,17 @@ const Search = {
     if (nq.length < 2) return [];
     const pv = this.parseVehicle(nq);
     const scoped = !!(pv.models || pv.brand);
-    const rq = scoped ? pv.rest : nq;
+    let rq = scoped ? pv.rest : nq;
+    if (rq && !rq.split(' ').some((t) => t.length > 1)) rq = ''; // "golf 7.5", "t6.1": only a facelift suffix left
     const sc = this.context(rq);
     const modelSet = pv.models ? new Set(pv.models) : null;
     const v = VehicleStore.get();
     const out = [];
     this.index.forEach((d) => {
       if (types && !types.includes(d.type)) return;
-      let score = 0;
-      if (!scoped) score = this.score(d, nq, sc);
+      let score = 0; let viaCat = false;
+      const run = (txt) => { const r = this.score(d, txt, sc); viaCat = r.viaCat; return r.score; };
+      if (!scoped) score = run(nq);
       else if (d.type === 'MODEL') {
         if (modelSet) { if (!modelSet.has(d.id)) return; score = 60 + (rq ? 0 : 40); } else { if (rq || MODEL[d.id].brand !== pv.brand) return; score = 40; }
       } else if (d.models) {
@@ -3871,17 +3917,20 @@ const Search = {
         const inBrand = !(d.brands || []).length || d.brands.includes(pv.brand);
         if (modelSet && !inModel && !(d.wide && inBrand)) return;
         if (!modelSet && !inBrand) return;
-        score = rq ? this.score(d, rq, sc, { allowCat: false }) : 20;
+        score = rq ? run(rq) : 20;
         if (!score) return;
         score += inModel ? 30 : (modelSet ? -10 : 10);
       } else {
         if (!rq) return;
-        score = this.score(d, rq, sc);
+        score = run(rq);
       }
       if (score <= 0) return;
       if (v && d.models && d.models.includes(v.modelId)) score += 15;
-      out.push({ ...d, score: score + (this.TYPE_BOOST[d.type] || 0) });
+      out.push({ ...d, viaCat, score: score + (this.TYPE_BOOST[d.type] || 0) });
     });
+    // Options that only match through their category name give way when others match directly.
+    const direct = out.some((o) => o.type === 'RETROFIT' && !o.viaCat);
+    if (direct) for (let i = out.length - 1; i >= 0; i--) if (out[i].viaCat) out.splice(i, 1);
     out.sort((a, b) => b.score - a.score || ((a.catIdx ?? 99) - (b.catIdx ?? 99)) || a.title.localeCompare(b.title, 'nl'));
     if (!perType) return out.slice(0, limit);
     const counts = {};
@@ -5207,7 +5256,7 @@ function retrofitSpecs(r) {
   const rows = [];
   const add = (k, val) => { const x = own.has(k) ? own.get(k) : val; own.delete(k); if (x) rows.push([k, x]); };
   add('Model', r.scope === 'brand' ? `Meerdere modellen (${Compat.brandsOf(r).map((b) => BRAND[b].name).join(', ')})`
-    : r.models.map((m) => `${modelLabel(m)} (${modelYears(MODEL[m])})`).join(', '));
+    : r.models.map((m) => `${modelLabel(m)} (${modelYearsFor(r, m)})`).join(', '));
   add('Geschikt voor', '');
   add('Categorie', CATEGORY[r.cat].name);
   [...own.keys()].filter((k) => !['Garantie', 'Prijs'].includes(k)).forEach((k) => add(k, ''));
@@ -5216,6 +5265,17 @@ function retrofitSpecs(r) {
   add('Aanbieding', r.offer);
   return rows;
 }
+/* Breadcrumb trail of an option; used for the visible crumbs and the BreadcrumbList. */
+function retrofitCrumbs(r) {
+  const single = r.models.length === 1 ? r.models[0] : null;
+  const crumbs = [['Home', '#/'], ['Mogelijkheden', '#/mogelijkheden']];
+  if (r.brand) crumbs.push([BRAND[r.brand].name, `#/mogelijkheden?merk=${r.brand}`]);
+  if (single) crumbs.push([MODEL[single].name, `#/mogelijkheden?merk=${r.brand}&model=${single}`]);
+  crumbs.push([CATEGORY[r.cat].name, `#/mogelijkheden?${r.brand ? `merk=${r.brand}&` : ''}${single ? `model=${single}&` : ''}cat=${r.cat}`]);
+  crumbs.push([r.name]);
+  return crumbs;
+}
+const modelYearsFor = (r, m) => { const y = (r.yearsByModel && r.yearsByModel[m]) || null; return y ? `${y[0]}–${y[1]}` : modelYears(MODEL[m]); };
 /* Up to n items, one per category first, so a related row shows different kinds of upgrades. */
 function diverseRetrofits(list, n = 3, skipCat = null) {
   const out = []; const seen = new Set(skipCat ? [skipCat] : []);
@@ -5233,15 +5293,15 @@ Pages.retrofit = {
   meta(ctx) {
     const r = RETROFIT[ctx.params.slug];
     if (!r) return { title: 'Optie niet gevonden' };
-    const single = r.models.length === 1 ? r.models[0] : null;
-    const crumbs = [['Home', '/'], ['Mogelijkheden', '/mogelijkheden'], ...(single ? [[modelLabel(single), `/mogelijkheden?merk=${r.brand}&model=${single}`]] : []), [r.name, `/mogelijkheden/${r.slug}`]];
+    const base = location.href.split('#')[0];
+    const crumbs = retrofitCrumbs(r).map(([name, href]) => [name, href || `#/mogelijkheden/${r.slug}`]);
     return {
       title: r.title,
       description: `${r.short} Originele fabrieksoptie, ingebouwd en geprogrammeerd door CarTronic in Rijswijk.`,
       jsonLd: [
         { '@context': 'https://schema.org', '@type': 'Service', name: r.title, description: r.short, serviceType: CATEGORY[r.cat].name,
           provider: { '@type': 'AutoRepair', name: COMPANY.name, telephone: COMPANY.phoneHref.replace('tel:', ''), address: { '@type': 'PostalAddress', streetAddress: COMPANY.street, postalCode: COMPANY.postal, addressLocality: COMPANY.city, addressCountry: 'NL' } } },
-        { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map(([name, href], i) => ({ '@type': 'ListItem', position: i + 1, name, item: `${location.href.split('#')[0]}#${href}` })) },
+        { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map(([name, href], i) => ({ '@type': 'ListItem', position: i + 1, name, item: `${base}${href}` })) },
       ],
     };
   },
@@ -5255,11 +5315,7 @@ Pages.retrofit = {
     const copy = CATEGORY_COPY[r.cat] || {};
     const brandId = r.brand || (v ? v.brandId : null);
     const single = r.models.length === 1 ? r.models[0] : null;
-    const crumbs = [['Home', '#/'], ['Mogelijkheden', '#/mogelijkheden']];
-    if (r.brand) crumbs.push([BRAND[r.brand].name, `#/mogelijkheden?merk=${r.brand}`]);
-    if (single) crumbs.push([MODEL[single].name, `#/mogelijkheden?merk=${r.brand}&model=${single}`]);
-    crumbs.push([CATEGORY[r.cat].name, `#/mogelijkheden?${r.brand ? `merk=${r.brand}&` : ''}${single ? `model=${single}&` : ''}cat=${r.cat}`]);
-    crumbs.push([r.name]);
+    const crumbs = retrofitCrumbs(r);
 
     let compat;
     if (v && st) {
@@ -5273,7 +5329,7 @@ Pages.retrofit = {
       compat = `<div class="compat-panel"><div class="cp-head"><div class="who">${r.scope === 'brand' ? 'Merken' : 'Vermeld voor'}<small>${r.years ? `Bouwjaar ${r.years[0]}–${r.years[1]}` : 'Volgens de CarTronic-catalogus'}</small></div><button class="btn btn--dark btn--xs" type="button" data-action="open-vehicle">${icon('car')} Controleer voor uw auto</button></div>
         <div class="cp-body"><div class="cp-models" style="margin-top:0">${r.scope === 'brand'
           ? Compat.brandsOf(r).map((b) => `<span class="pill">${BRAND[b].name}</span>`).join('')
-          : r.models.map((m) => `<span class="pill">${esc(modelLabel(m))} · ${modelYears(MODEL[m])}</span>`).join('')}</div>
+          : r.models.map((m) => `<span class="pill">${esc(modelLabel(m))} · ${modelYearsFor(r, m)}</span>`).join('')}</div>
         <p class="mt-16 text-muted">${esc(Compat.disclaimer)}</p></div></div>`;
     }
     const panels = [
@@ -5289,7 +5345,7 @@ Pages.retrofit = {
     const forCar = v ? Compat.forVehicle(v).map((x) => x.item).filter((x) => x.slug !== r.slug) : [];
     if (forCar.length) sections.push({ id: 'rel-car', title: `Ook interessant voor uw ${VehicleStore.short(v)}`, items: diverseRetrofits(forCar), link: `<a class="link" href="#/mogelijkheden">Alle opties voor uw auto ${icon('arrow')}</a>` });
     const forModel = single && !(v && v.modelId === single) ? RETROFITS.filter((x) => x.slug !== r.slug && x.models.includes(single)) : [];
-    if (forModel.length) sections.push({ id: 'rel-model', title: `Andere upgrades voor de ${modelLabel(single)}`, items: diverseRetrofits(forModel, 3, r.cat), link: `<a class="link" href="#/mogelijkheden?merk=${r.brand}&model=${single}">Alle ${forModel.length + 1} opties ${icon('arrow')}</a>` });
+    if (forModel.length) sections.push({ id: 'rel-model', title: `Andere upgrades voor de ${modelLabel(single)}`, items: diverseRetrofits(forModel, 3, r.cat), link: `<a class="link" href="#/mogelijkheden?merk=${r.brand}&model=${single}">Alle ${catalogResults({ merk: r.brand, model: single, cat: '', groep: '', q: '', v: null }).length} opties ${icon('arrow')}</a>` });
     if (!sections.length) {
       const similar = RETROFITS.filter((x) => x.slug !== r.slug && x.cat === r.cat && (!brandId || Compat.brandsOf(x).includes(brandId)));
       if (similar.length) sections.push({ id: 'rel-similar', title: 'Vergelijkbare opties', items: diverseRetrofits(similar) });
@@ -5317,7 +5373,7 @@ Pages.retrofit = {
           <div class="detail-block"><h2>Voordelen</h2><ul class="benefits">${(copy.benefits || []).map((b) => `<li>${icon('check')}${esc(b)}</li>`).join('')}</ul></div>
           <div class="detail-block"><h2>Specificaties</h2><dl class="spec-list">${retrofitSpecs(r).map(([k, val]) => `<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join('')}</dl>
             ${r.price || r.offer ? '<p class="hint mt-16">Prijs zoals vermeld door CarTronic. De definitieve prijs voor uw uitvoering bevestigen we bij uw aanvraag.</p>' : ''}</div>
-          ${sameFeature.length ? `<div class="detail-block"><h2>${esc(r.name)} voor andere ${esc(BRAND[r.brand].name)}-modellen</h2><div class="cp-models">${sameFeature.map((x) => `<a class="pill pill--outline" href="#/mogelijkheden/${x.slug}">${esc(x.models.map((m) => MODEL[m].name).join(', '))}</a>`).join('')}</div></div>` : ''}
+          ${sameFeature.length ? `<div class="detail-block"><h2>${esc(r.name)} voor andere ${esc(BRAND[r.brand].name)}-modellen</h2><div class="cp-models">${sameFeature.map((x) => `<a class="pill pill--outline" href="#/mogelijkheden/${x.slug}">${esc(x.models.map((m) => MODEL[m].name).join(', '))}${x.variant && VARIANTS[x.variant].label ? ` ${esc(VARIANTS[x.variant].label)}` : ''}</a>`).join('')}</div></div>` : ''}
           <div class="detail-block"><h2>Technische informatie</h2>${UI.accordion(panels)}</div>
           ${project ? `<div class="detail-block">${UI.notice(`<strong>Uit de werkplaats:</strong> ${esc(project.title)} — ${esc(project.vehicle)}.`, { ic: 'camera', actions: `<a class="btn btn--dark btn--xs" href="#/projecten/${project.slug}">Bekijk het project</a>` })}</div>` : ''}
         </div>
