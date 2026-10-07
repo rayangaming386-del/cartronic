@@ -12,9 +12,6 @@
 <meta property="og:title" content="CarTronic — Origineel. Tot in detail.">
 <meta property="og:description" content="Originele fabrieksopties voor Volkswagen, Audi, SEAT en Škoda. Vakkundig ingebouwd, geprogrammeerd en afgestemd op uw auto.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%2311141A'/%3E%3Cpath d='M10 38c0-9 9-15 22-15h14c7 0 10 4 10 9 0 7-9 12-21 12H19c-6 0-9-2-9-6z' fill='%23B51625'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!--
   CarTronic — complete interactive prototype (single file).
 
@@ -86,11 +83,12 @@
   --ink-2: #3B4149;
   --muted: #69707A;
   --muted-2: #8A9099;
+  --text: #4B5563;          /* running text on light backgrounds (approved screens) */
 
   --dark-0: #0B0D11;
   --dark-1: #11141A;        /* hero */
-  --dark-2: #171D22;        /* page headers */
-  --dark-3: #1C2025;        /* brand band */
+  --dark-2: #181C23;        /* page headers */
+  --dark-3: #1C1F26;        /* brand band */
   --dark-4: #262B31;
   --dark-line: rgba(255, 255, 255, .12);
   --dark-text: #C9CDD3;
@@ -107,7 +105,9 @@
   --info: #2C4A69;    --info-bg: #E8EEF5;
   --danger: #9C1420;  --danger-bg: #FBE9EB;
 
-  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  /* Same type as the approved screens: Helvetica Neue on Apple devices, Helvetica/Arial elsewhere.
+     System fonts only — no external font requests. */
+  --font: "Helvetica Neue", Helvetica, Arial, "Nimbus Sans", "Liberation Sans", sans-serif;
   --container: 1240px;
   --gutter: 24px;
   --header-h: 88px;
@@ -135,7 +135,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  font-feature-settings: "cv11", "ss01";
   overflow-x: hidden;
 }
 body.is-locked { overflow: hidden; }
@@ -210,25 +209,25 @@ legend { padding: 0; }
 /* ---------- Typography ---------- */
 .eyebrow {
   display: inline-flex; align-items: center; gap: 14px;
-  font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
   color: var(--red); line-height: 1.4;
 }
 .eyebrow--line::before { content: ""; width: 26px; height: 1.5px; background: currentColor; flex: none; }
-.on-dark .eyebrow, .eyebrow--soft { color: var(--red-soft); }
+.on-dark .eyebrow, .eyebrow--soft { color: #FDA4AF; }
 .display {
-  font-size: clamp(44px, 6.1vw, 80px);
+  font-size: clamp(44px, 5.4vw, 77px);
   line-height: 1.04;
-  letter-spacing: -.045em;
+  letter-spacing: -.04em;
   font-weight: 700;
 }
 .h1 { font-size: clamp(36px, 4.4vw, 58px); letter-spacing: -.04em; line-height: 1.06; }
-.h2 { font-size: clamp(30px, 3.3vw, 46px); letter-spacing: -.035em; line-height: 1.08; }
+.h2 { font-size: clamp(30px, 3.35vw, 48px); letter-spacing: -.035em; line-height: 1.08; }
 .h3 { font-size: clamp(21px, 1.8vw, 26px); letter-spacing: -.025em; line-height: 1.2; }
 .h4 { font-size: 18px; letter-spacing: -.015em; line-height: 1.35; font-weight: 600; }
-.lead { font-size: 17px; line-height: 1.75; color: var(--ink-2); }
+.lead { font-size: 17px; line-height: 1.75; color: var(--text); }
 .on-dark .lead { color: var(--dark-text); }
 .on-dark { color: #fff; }
-.prose p { color: var(--ink-2); line-height: 1.75; }
+.prose p { color: var(--text); line-height: 1.75; }
 .prose p + p { margin-top: 1em; }
 .kicker-num { font-size: 12px; font-weight: 700; letter-spacing: .14em; color: var(--muted); font-variant-numeric: tabular-nums; }
 
@@ -388,13 +387,22 @@ legend { padding: 0; }
 }
 @media (max-width: 760px) {
   .hide-sm { display: none !important; }
-  :root { --gutter: 16px; --header-h: 68px; }
-  .section { padding-block: 64px; }
-  .section--sm { padding-block: 48px; }
+  /* Mobile type and spacing measured from the approved mobile screens (390 and 428 px wide):
+     headings keep their size, running text scales with the screen width. */
+  :root { --gutter: 18px; --header-h: 70px; }
+  .section { padding-block: 56px; }
+  .section--sm { padding-block: 44px; }
+  .eyebrow { font-size: 10px; letter-spacing: .16em; gap: 12px; }
+  .display { font-size: clamp(40px, 11.6vw, 50px); letter-spacing: -.035em; line-height: 1.08; }
+  .h1 { font-size: clamp(30px, 7.95vw, 36px); letter-spacing: -.035em; line-height: 1.1; }
+  .h2 { font-size: clamp(27px, 7.5vw, 30px); letter-spacing: -.035em; line-height: 1.1; }
+  .h3 { font-size: clamp(21px, 5.6vw, 24px); letter-spacing: -.03em; }
+  .btn { font-size: clamp(12.5px, 3.27vw, 14px); }
+  .btn--sm { font-size: 13px; }
   .section-head { flex-direction: column; align-items: flex-start; margin-bottom: 32px; gap: 16px; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: minmax(0, 1fr); }
   .form-grid { grid-template-columns: minmax(0, 1fr); }
-  .lead { font-size: 16px; }
+  .lead { font-size: clamp(14px, 3.6vw, 16px); line-height: 1.65; }
   .input, .select { font-size: 16px; } /* prevents iOS zoom */
   .textarea { font-size: 16px; }
 }
@@ -462,7 +470,12 @@ legend { padding: 0; }
 }
 .header-phone svg { width: 17px; height: 17px; color: var(--red); }
 .header-phone:hover { color: var(--red); }
-.nav-toggle { display: none; }
+.nav-toggle {
+  display: none; place-items: center; width: 44px; height: 44px; margin-left: 6px;
+  border: 1px solid var(--line-strong); border-radius: 4px; color: var(--ink); background: #fff;
+  transition: border-color var(--t-fast);
+}
+.nav-toggle:hover { border-color: var(--ink); }
 .nav-toggle .bars { width: 20px; height: 14px; position: relative; }
 .nav-toggle .bars span { position: absolute; left: 0; right: 0; height: 1.75px; background: currentColor; border-radius: 1px; transition: transform var(--t) var(--ease), opacity var(--t-fast); }
 .nav-toggle .bars span:nth-child(1) { top: 0; }
@@ -489,28 +502,69 @@ legend { padding: 0; }
   .nav-toggle { display: inline-grid; }
 }
 @media (max-width: 760px) {
-  .brand-logo svg { height: 28px; }
-  .header-tools .vehicle-chip, .header-tools .header-phone { display: none; }
+  .site-header { border-bottom-color: var(--line); }
+  .brand-logo svg { height: 26px; }
+  .header-inner { gap: 12px; }
+  .nav-toggle { width: 44px; height: 44px; margin-left: 4px; }
+  .header-tools { gap: 2px; }
+  .header-tools .vehicle-chip, .header-tools .tool-search { display: none; }
+  .header-tools .tool-cart:not(.has-items) { display: none; }
+  .header-phone { width: 44px; height: 44px; margin: 0; }
+  .header-phone svg { width: 23px; height: 23px; }
 }
 
-/* ---------- Mobile navigation panel ---------- */
-.mobile-nav {
-  position: fixed; inset: var(--header-h) 0 0 0; z-index: 59; background: #fff;
+/* ---------- Mobile navigation panel (slides in from the right) ---------- */
+.mobile-nav { position: fixed; inset: 0; z-index: 90; visibility: hidden; pointer-events: none; transition: visibility 0s linear .4s; }
+.mobile-nav.is-open { visibility: visible; pointer-events: auto; transition-delay: 0s; }
+.mn-backdrop { position: absolute; inset: 0; background: rgba(9, 11, 14, .58); opacity: 0; transition: opacity .32s var(--ease); }
+.mobile-nav.is-open .mn-backdrop { opacity: 1; }
+.mn-panel {
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(84vw, 400px);
   display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
-  padding: 8px var(--gutter) calc(32px + var(--safe-bottom));
-  transform: translateY(-8px); opacity: 0; visibility: hidden;
-  transition: opacity var(--t) var(--ease), transform var(--t) var(--ease), visibility 0s linear var(--t);
+  background: #fff; padding: 26px 24px calc(28px + var(--safe-bottom));
+  transform: translateX(100%); transition: transform .4s var(--ease-out);
+  box-shadow: -30px 0 60px -40px rgba(0, 0, 0, .6);
 }
-.mobile-nav.is-open { opacity: 1; transform: none; visibility: visible; transition-delay: 0s; }
+.mobile-nav.is-open .mn-panel { transform: none; }
+.mn-panel > * { flex-shrink: 0; }
+.mn-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.mn-title { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -.035em; line-height: 1.1; color: var(--ink); }
+.mn-close {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px;
+  border: 1px solid var(--line-strong); border-radius: 4px; color: var(--ink); background: #fff;
+}
+.mn-close:hover { border-color: var(--ink); }
+.mn-close svg { width: 22px; height: 22px; }
+.mn-sub { margin: 24px 0 0; font-size: clamp(13.5px, 3.37vw, 15.5px); line-height: 1.55; color: var(--muted); }
+.mn-search {
+  margin-top: 28px; display: flex; align-items: center; gap: 12px; width: 100%; height: 48px; padding: 0 14px;
+  border: 1px solid var(--line-strong); border-radius: 4px; background: var(--bg-soft);
+  color: var(--muted); font-size: 15px; text-align: left;
+}
+.mn-search svg { width: 18px; height: 18px; color: var(--ink-2); }
+.mn-search:hover { border-color: var(--ink); color: var(--ink); }
 .mobile-nav ul { list-style: none; }
+.mobile-nav .m-links { margin-top: 34px; }
 .mobile-nav .m-links a {
-  display: flex; align-items: center; justify-content: space-between; padding: 17px 0;
-  border-bottom: 1px solid var(--line); font-size: 19px; font-weight: 600; letter-spacing: -.02em;
+  display: block; padding: 17px 0; border-bottom: 1px solid var(--line);
+  font-size: 18.5px; font-weight: 400; letter-spacing: -.005em; line-height: 1.3; color: var(--ink);
 }
-.mobile-nav .m-links a svg { width: 18px; height: 18px; color: var(--muted-2); }
-.mobile-nav .m-links a[aria-current="page"] { color: var(--red); }
-.mobile-nav .m-vehicle { margin-top: 24px; }
-.mobile-nav .m-contact { margin-top: 24px; display: grid; gap: 10px; }
+.mobile-nav .m-links a:hover, .mobile-nav .m-links a[aria-current="page"] { color: var(--red); }
+.mn-call { margin-top: 40px; --btn-h: 50px; font-size: 14px; flex: none; }
+.mn-call svg { width: 19px; height: 19px; }
+.mn-vehicle {
+  margin-top: 22px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.mn-vehicle .mnv-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--bg-soft); color: var(--red); }
+.mn-vehicle .mnv-icon svg { width: 19px; height: 19px; }
+.mn-vehicle .mnv-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.mn-vehicle .mnv-lbl { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.mn-vehicle .mnv-val { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mn-vehicle .mnv-btn { font-size: 14px; font-weight: 700; color: var(--red); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.mn-more { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px 20px; }
+.mn-more a { display: inline-block; padding: 6px 0; font-size: 14.5px; color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; }
+.mn-more a:hover, .mn-more a[aria-current="page"] { color: var(--red); }
 
 /* ---------- Hero ---------- */
 .hero {
@@ -537,7 +591,7 @@ legend { padding: 0; }
 .hero .lead { margin-top: 36px; max-width: 425px; font-size: 17px; line-height: 1.8; color: #D3D6DB; }
 .hero-cta { margin-top: 38px; display: flex; flex-wrap: wrap; gap: 12px; }
 .hero-checks { margin-top: 42px; display: flex; flex-wrap: wrap; gap: 10px 26px; list-style: none; }
-.hero-checks li { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 500; color: #E2E4E8; letter-spacing: .01em; }
+.hero-checks li { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 500; color: #D1D5DB; letter-spacing: .01em; }
 .hero-checks svg { width: 14px; height: 14px; color: var(--red-soft); }
 .hero-caption {
   position: absolute; right: 48px; bottom: 36px; text-align: right;
@@ -553,19 +607,21 @@ legend { padding: 0; }
   }
 }
 @media (max-width: 760px) {
-  .hero { min-height: 0; align-items: flex-end; }
-  .hero::before { top: 0; height: 48px; }
-  .hero-media { width: 100%; height: 300px; bottom: auto; }
-  .hero-media img { object-position: 40% 40%; }
+  .hero { min-height: max(640px, calc(100svh - var(--header-h) - 64px)); align-items: flex-start; }
+  .hero::before { top: 87px; height: 67px; width: 4px; }
+  .hero-media { top: auto; left: 0; right: 0; width: 100%; height: 72%; }
+  .hero-media img { object-position: 62% 60%; }
   .hero::after {
-    background: linear-gradient(180deg, rgba(17, 20, 26, .15) 0px, rgba(17, 20, 26, .55) 180px, var(--dark-1) 300px, var(--dark-1) 100%);
+    background: linear-gradient(180deg, var(--dark-1) 0%, var(--dark-1) 26%, rgba(17, 20, 26, .78) 46%, rgba(17, 20, 26, .45) 70%, rgba(17, 20, 26, .55) 100%);
   }
-  .hero-content { padding-top: 200px; padding-bottom: 56px; }
-  .hero .lead { font-size: 16px; margin-top: 24px; }
-  .hero-cta { margin-top: 28px; }
-  .hero-cta .btn { flex: 1 1 100%; }
-  .hero-checks { margin-top: 28px; }
-  .hero-caption { right: 16px; top: 16px; bottom: auto; font-size: 10px; }
+  .hero-content { padding-top: 48px; padding-bottom: 112px; }
+  .hero h1 { margin-top: 32px; font-size: clamp(40px, 11.6vw, 50px); letter-spacing: -.035em; line-height: 1.08; }
+  .hero .lead { font-size: clamp(15px, 4.1vw, 18px); line-height: 1.67; margin-top: 30px; color: #D1D5DB; }
+  .hero-cta { margin-top: 34px; gap: 12px; }
+  .hero-cta .btn { flex: 0 0 auto; --btn-h: 46px; padding: 0 24px; }
+  .hero-checks { margin-top: 30px; flex-direction: column; gap: 13px; }
+  .hero-checks li { font-size: clamp(11.5px, 3.08vw, 13.5px); color: #C9CDD3; letter-spacing: .02em; }
+  .hero-caption { right: calc(var(--gutter) + 3px); bottom: 27px; top: auto; font-size: clamp(9.5px, 2.5vw, 11px); }
 }
 
 /* ---------- Brand band ---------- */
@@ -585,16 +641,13 @@ legend { padding: 0; }
 .wordmark--seat { font-weight: 800; letter-spacing: .01em; }
 .wordmark--skoda { font-weight: 600; letter-spacing: -.01em; }
 @media (max-width: 900px) {
-  .brand-band-inner { grid-template-columns: repeat(4, minmax(0, 1fr)); padding-block: 22px 8px; }
-  .brand-band .tagline { grid-column: 1 / -1; text-align: center; }
-  .brand-band a, .brand-band a:last-child { justify-self: center; height: 64px; }
-  .brand-band a::after { bottom: 14px; }
-  .wordmark { font-size: 18px; }
+  .brand-band-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 76px; }
+  .brand-band .tagline { display: none; }
+  .brand-band a, .brand-band a:last-child { height: 76px; }
+  .brand-band a::after { bottom: 20px; }
+  .wordmark { font-size: 19px; }
 }
-@media (max-width: 480px) {
-  .brand-band-inner { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .brand-band a, .brand-band a:last-child { height: 54px; }
-}
+@media (max-width: 400px) { .wordmark { font-size: 16.5px; } .wordmark--audi { letter-spacing: .1em; } }
 
 /* ---------- Page header (sub pages) ---------- */
 .page-header { background: var(--dark-2); color: #fff; padding: 64px 0 66px; position: relative; overflow: hidden; }
@@ -608,7 +661,7 @@ legend { padding: 0; }
 .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; list-style: none; font-size: 12px; color: #A9AFB7; }
 .crumbs li { display: inline-flex; align-items: center; gap: 10px; }
 .crumbs li + li::before { content: "/"; color: #6E747C; }
-.crumbs a { color: #D3D7DC; transition: color var(--t-fast); }
+.crumbs a { color: #A9AFB7; transition: color var(--t-fast); }
 .crumbs a:hover { color: #fff; }
 .crumbs [aria-current] { color: #A9AFB7; }
 .crumbs--light { color: var(--muted); }
@@ -618,21 +671,24 @@ legend { padding: 0; }
 .crumbs--light [aria-current] { color: var(--muted); }
 
 @media (max-width: 760px) {
-  .page-header { padding: 40px 0 44px; }
-  .page-header .crumbs { margin-bottom: 24px; }
-  .page-header .lead { font-size: 16px; margin-top: 18px; }
+  .page-header { padding: 28px 0 40px; }
+  .page-header--compact { padding: 28px 0 36px; }
+  .page-header .crumbs { margin-bottom: 30px; font-size: clamp(11px, 2.82vw, 12.5px); }
+  .page-header h1 { margin-top: 14px; }
+  .page-header .lead { font-size: clamp(15px, 3.9vw, 17px); line-height: 1.6; margin-top: 18px; }
 }
 
 /* ---------- Footer ---------- */
-.site-footer { background: var(--dark-0); color: var(--dark-text); padding: 88px 0 calc(32px + var(--safe-bottom)); }
-.footer-grid { display: grid; grid-template-columns: 1.35fr 1fr 1fr 1.2fr; gap: 48px; }
-.footer-brand > svg { height: 32px; width: auto; }
-.footer-brand p { margin-top: 24px; font-size: 14px; line-height: 1.75; color: var(--dark-muted); max-width: 300px; }
-.footer-col h2 { font-size: 11.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #fff; margin-bottom: 22px; }
-.footer-col ul { list-style: none; display: grid; gap: 12px; }
-.footer-col a, .footer-col li { font-size: 14px; color: var(--dark-text); }
-.footer-col a { transition: color var(--t-fast); }
-.footer-col a:hover { color: #fff; }
+.site-footer { background: #0F1317; color: var(--dark-text); padding: 80px 0 calc(32px + var(--safe-bottom)); }
+.footer-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1.15fr; gap: 48px; }
+.footer-logo { display: inline-flex; align-items: center; background: #fff; border-radius: 4px; padding: 14px 20px; }
+.footer-logo svg { height: 32px; width: auto; }
+.footer-tagline { margin-top: 30px; font-size: 16px; line-height: 1.75; color: #B8C0CA; }
+.footer-col h2 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; color: #fff; margin-bottom: 20px; }
+.footer-col ul { list-style: none; display: grid; gap: 14px; }
+.footer-col a, .footer-col li, .footer-col button { font-size: 16px; line-height: 1.5; color: #B8C0CA; text-align: left; }
+.footer-col a, .footer-col button { transition: color var(--t-fast); }
+.footer-col a:hover, .footer-col button:hover { color: #fff; }
 .footer-hours { display: grid; grid-template-columns: auto auto; gap: 6px 18px; font-size: 13.5px; margin-top: 18px; }
 .footer-hours dt { color: var(--dark-muted); }
 .footer-hours dd { margin: 0; color: var(--dark-text); font-variant-numeric: tabular-nums; }
@@ -646,34 +702,23 @@ legend { padding: 0; }
 }
 .footer-bottom a:hover { color: #fff; }
 .footer-bottom .sep { margin: 0 10px; color: #4A5058; }
-@media (max-width: 1024px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 1024px) { .footer-grid { grid-template-columns: 1fr 1fr; } .footer-brand { grid-column: 1 / -1; } }
 @media (max-width: 600px) {
-  .site-footer { padding-top: 64px; }
-  .footer-grid { grid-template-columns: 1fr; gap: 40px; }
+  .site-footer { padding-top: 45px; }
+  .footer-logo { padding: 14px 22px; }
+  .footer-logo svg { height: 26px; }
+  .footer-tagline { margin-top: 34px; font-size: clamp(13.5px, 3.36vw, 15px); line-height: 1.65; }
+  .footer-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 44px 20px; }
+  .footer-brand, .footer-contact { grid-column: 1 / -1; }
+  .footer-col h2 { font-size: 13px; margin-bottom: 22px; }
+  .footer-col ul { gap: 12px; }
+  .footer-col a, .footer-col li, .footer-col button { font-size: clamp(13.5px, 3.36vw, 15px); }
   .footer-bottom { margin-top: 48px; flex-direction: column; }
 }
 
-/* ---------- Mobile bottom action bar ---------- */
-.mobile-bar { display: none; }
-@media (max-width: 760px) {
-  body.has-mobile-bar { padding-bottom: calc(64px + var(--safe-bottom)); }
-  body.has-mobile-bar .mobile-bar {
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 58;
-    background: rgba(255, 255, 255, .97); border-top: 1px solid var(--line);
-    padding: 0 6px var(--safe-bottom);
-    box-shadow: 0 -12px 30px -24px rgba(0, 0, 0, .35);
-  }
-  @supports (backdrop-filter: blur(8px)) { body.has-mobile-bar .mobile-bar { background: rgba(255, 255, 255, .9); backdrop-filter: blur(10px); } }
-  .mobile-bar a, .mobile-bar button {
-    height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-    font-size: 11px; font-weight: 600; color: var(--ink-2); letter-spacing: .01em; min-width: 0;
-  }
-  .mobile-bar svg { width: 21px; height: 21px; }
-  .mobile-bar .mb-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-inline: 4px; }
-  .mobile-bar .is-wa svg { color: #17784A; }
-  .mobile-bar .is-car svg { color: var(--red); }
-}
+/* Hero eyebrow as in the approved screens: light pink text with a red rule. */
+.hero .eyebrow { color: #EBC6CE; }
+.hero .eyebrow--line::before { background: #C44A58; height: 2px; }
 
 /* =========================================================
    Components
@@ -722,12 +767,7 @@ legend { padding: 0; }
 /* Project card (portfolio) */
 .project-card { background: transparent; border: 0; border-radius: 0; overflow: visible; }
 .project-card:hover { box-shadow: none; transform: none; }
-.project-card .card-media { aspect-ratio: 396 / 283; border-radius: 2px; }
-.project-card .card-body { padding: 26px 0 0; gap: 8px; }
-.project-card .card-eyebrow { color: var(--muted); font-weight: 600; letter-spacing: .18em; font-size: 10.5px; }
-.project-card .card-title { font-size: 22px; font-weight: 600; letter-spacing: -.025em; line-height: 1.25; margin-top: 4px; }
-.project-card .card-text { font-size: 14px; color: var(--ink-2); }
-.project-card .card-foot { padding-top: 8px; }
+.project-card .card-body { padding: 28px 0 0; }
 
 /* Group / category card */
 .group-card {
@@ -792,7 +832,7 @@ legend { padding: 0; }
 .finder-band { background: var(--bg-soft); padding: 56px 0 52px; }
 .finder-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 8fr); gap: 48px; align-items: start; }
 .finder-intro .eyebrow { font-size: 12px; }
-.finder-intro h2 { margin-top: 16px; font-size: clamp(22px, 2vw, 25px); letter-spacing: -.025em; line-height: 1.25; font-weight: 650; }
+.finder-intro h2 { margin-top: 16px; font-size: clamp(21px, 1.7vw, 23.5px); letter-spacing: -.025em; line-height: 1.25; font-weight: 700; }
 .finder-intro p:not(.eyebrow) { margin-top: 14px; font-size: 14.5px; color: var(--muted); line-height: 1.65; max-width: 380px; }
 .finder-tabs { margin-bottom: 18px; }
 .finder-form { display: grid; gap: 12px; align-items: end; }
@@ -1060,15 +1100,28 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
 .section--dark .service-card:hover { border-color: rgba(255, 255, 255, .28); box-shadow: none; }
 .section--dark .service-card .link { color: #fff; }
 
-/* ---------- CTA band ---------- */
-.cta-band { background: var(--dark-3); color: #fff; padding: 72px 0; position: relative; overflow: hidden; }
+/* ---------- CTA band (red, as in the approved design) ---------- */
+.cta-band { background: #A81123; color: #fff; padding: 84px 0; position: relative; overflow: hidden; }
 .cta-band-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 40px; align-items: center; }
-.cta-band h2 { font-size: clamp(26px, 2.6vw, 36px); letter-spacing: -.03em; line-height: 1.15; }
-.cta-band p { margin-top: 14px; color: var(--dark-text); max-width: 560px; font-size: 15.5px; line-height: 1.7; }
-.cta-band .cta-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.cta-band h2 { font-size: clamp(30px, 3vw, 42px); letter-spacing: -.035em; line-height: 1.12; color: #fff; }
+.cta-band p { margin-top: 16px; color: #F8DDE0; max-width: 560px; font-size: 17px; line-height: 1.7; }
+.cta-band .cta-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
+.cta-band .btn--outline-light { border-color: rgba(255, 255, 255, .5); }
+.cta-band :focus-visible { outline-color: #fff; }
+.btn--white { background: #fff; color: var(--ink); }
+.btn--white:hover { background: #F3F5F7; }
 @media (max-width: 900px) {
-  .cta-band-inner { grid-template-columns: minmax(0, 1fr); }
-  .cta-band .cta-actions { justify-content: flex-start; }
+  .cta-band { padding: 64px 0; }
+  .cta-band-inner { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .cta-band .cta-actions { flex-direction: column; align-items: flex-start; justify-content: flex-start; }
+}
+@media (max-width: 760px) {
+  .cta-band { padding: 46px 0 42px; }
+  .cta-band-inner { gap: 30px; }
+  .cta-band h2 { font-size: clamp(27px, 7vw, 30px); line-height: 1.1; }
+  .cta-band p { margin-top: 18px; font-size: clamp(13.5px, 3.39vw, 15px); line-height: 1.65; }
+  .cta-band .cta-actions { gap: 13px; }
+  .cta-band .btn { --btn-h: 49px; padding: 0 24px; }
 }
 
 /* ---------- Mini list rows (recent / saved) ---------- */
@@ -1144,8 +1197,7 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
 .toast .t-close:hover { color: #fff; background: rgba(255, 255, 255, .1); }
 .toast .t-close svg { width: 15px; height: 15px; }
 @media (max-width: 760px) {
-  .toast-region { left: 16px; right: 16px; width: auto; bottom: calc(76px + var(--safe-bottom)); }
-  body:not(.has-mobile-bar) .toast-region { bottom: calc(16px + var(--safe-bottom)); }
+  .toast-region { left: 16px; right: 16px; width: auto; bottom: calc(16px + var(--safe-bottom)); }
 }
 
 /* ---------- Search overlay ---------- */
@@ -1173,6 +1225,7 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
 .search-option .so-type[data-type="PRODUCT"] { color: var(--info); background: var(--info-bg); }
 .search-option .so-type[data-type="DIENST"] { color: var(--ok); background: var(--ok-bg); }
 .search-option .so-type[data-type="PROJECT"] { color: var(--warn); background: var(--warn-bg); }
+.search-option .so-type[data-type="KENNIS"] { color: #5B3A8E; background: #F0EAF8; }
 .search-option .so-type[data-type="CATEGORIE"], .search-option .so-type[data-type="MODEL"] { color: var(--ink-2); background: var(--bg-soft-2); }
 .search-option .so-title { font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; }
 .search-option .so-title mark { background: transparent; color: var(--red); }
@@ -1250,7 +1303,7 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
 .enquiry-summary { background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
 .enquiry-summary pre { margin: 0; font-family: var(--font); font-size: 13px; line-height: 1.65; white-space: pre-wrap; color: var(--ink-2); word-break: break-word; }
 .form-section + .form-section { margin-top: 36px; }
-.form-section > h2 { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
+.form-section > h2, .form-section > h3 { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
 @media (max-width: 900px) {
   .contact-grid { grid-template-columns: minmax(0, 1fr); }
   .contact-card { position: static; }
@@ -1298,7 +1351,6 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
   .finder-intro p:not(.eyebrow) { max-width: 560px; }
 }
 @media (max-width: 760px) {
-  .finder-band { padding: 44px 0; }
   .finder-form--manual { grid-template-columns: minmax(0, 1fr); }
   .finder-form--manual .btn, .finder-form--plate .btn { grid-column: 1 / -1; min-width: 0; width: 100%; }
   .finder-form--plate { grid-template-columns: minmax(0, 1fr); }
@@ -1323,6 +1375,328 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
 /* Selected options on the contact page can have long titles: let them wrap on small screens. */
 [data-opt-list] .chip--removable { height: auto; min-height: 36px; padding-block: 7px; white-space: normal; max-width: 100%; text-align: left; line-height: 1.35; }
 [data-opt-list] .chip--removable button { flex-shrink: 0; }
+
+/* =========================================================
+   Approved layout (reference screens) — section components.
+   Mobile values measured from the approved screens at 390 and 428 px:
+   headings keep their size, running text scales with the screen width.
+   ========================================================= */
+.section--first { padding-top: 64px; }
+.section--tight-top { padding-top: 0; }
+.section-intro { max-width: 760px; }
+.section-intro .h2 { margin-top: 18px; }
+.section-intro .lead { margin-top: 22px; max-width: 640px; color: var(--text); }
+.section-intro + * { margin-top: 44px; }
+.section-intro .intro-link { margin-top: 26px; }
+.section-intro--row { max-width: none; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.section-intro--row .intro-link { margin-top: 0; }
+.ink-link {
+  display: inline-block; font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -.005em; line-height: 1.5;
+  text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; transition: color var(--t-fast);
+}
+.ink-link:hover { color: var(--red); }
+.on-dark .ink-link { color: #fff; }
+.on-dark .ink-link:hover { color: #F3C6CB; }
+.center-link { margin-top: 44px; text-align: center; }
+.red-link { display: inline-block; font-size: 14px; font-weight: 700; color: var(--red); letter-spacing: -.005em; }
+.red-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+hr.rule { margin: 64px 0 56px; }
+
+/* Home finder without tabs: merk | model | button on one row, foot below */
+.finder--simple .finder-form--manual { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) auto; }
+.finder--simple .finder-form--manual:has(.finder-year:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, .7fr) auto; }
+.finder--simple .field > label { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.finder--simple .finder-foot { font-size: 12px; gap: 6px 22px; }
+.finder--simple .finder-foot a, .finder--simple .finder-foot button { font-size: inherit; }
+.finder--simple .finder-form--plate { grid-template-columns: minmax(0, 1fr) auto; }
+.finder--simple + .finder-result, .finder--simple .finder-result { margin-top: 18px; }
+
+/* Category cards ("Meer uit uw auto") */
+.cat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.cat-card {
+  position: relative; display: flex; flex-direction: column; min-width: 0; padding: 28px 24px 26px;
+  background: #fff; border: 1px solid var(--line); border-radius: 4px;
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease), transform var(--t) var(--ease);
+}
+.cat-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-card); transform: translateY(-2px); }
+.cat-card .cc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.cat-card .cc-icon { color: var(--red); }
+.cat-card .cc-icon svg { width: 26px; height: 26px; stroke-width: 1.6; }
+.cat-card .cc-num { font-size: 12px; color: #6B7280; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.cat-card h3 { margin-top: 34px; font-size: 19px; font-weight: 700; letter-spacing: -.025em; line-height: 1.3; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
+.cat-card p { margin-top: 10px; font-size: 15px; line-height: 1.7; color: var(--text); }
+.cat-card .cc-link { margin-top: auto; padding-top: 22px; font-size: 14px; font-weight: 700; color: var(--red); line-height: 1.6; }
+.cat-card .cc-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.cat-card a.stretch::after { content: ""; position: absolute; inset: 0; border-radius: 4px; }
+
+/* Service cards (grey, with a short list) */
+.svc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.svc-card {
+  display: flex; flex-direction: column; min-width: 0; padding: 32px 30px 34px;
+  background: #F4F5F6; border: 1px solid #E1E5E8; border-radius: 4px;
+}
+.svc-card .svc-icon { color: var(--red); }
+.svc-card .svc-icon svg { width: 30px; height: 30px; stroke-width: 1.6; }
+.svc-card h3 { margin-top: 28px; font-size: clamp(23px, 1.9vw, 27px); font-weight: 700; letter-spacing: -.035em; line-height: 1.15; }
+.svc-card > p { margin-top: 18px; font-size: 15.5px; line-height: 1.7; color: var(--text); }
+.svc-card ul { list-style: none; margin-top: 26px; border-top: 1px solid #DDE1E5; }
+.svc-card li { padding: 13px 0; border-bottom: 1px solid #DDE1E5; font-size: 14.5px; line-height: 1.5; color: var(--ink-2); }
+.svc-card li:last-child { border-bottom: 0; }
+.svc-card .ink-link { margin-top: auto; padding-top: 28px; align-self: flex-start; text-underline-offset: 7px; }
+
+/* Technique block: photo with caption + dark panel */
+.tech-card { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); border-radius: 4px; overflow: hidden; background: #15181D; }
+.tech-media { position: relative; min-height: 100%; background: var(--dark-2); }
+.tech-media img, .tech-media .art { width: 100%; height: 100%; object-fit: cover; min-height: 420px; }
+.tech-media .tech-caption {
+  position: absolute; left: 22px; bottom: 22px; max-width: calc(100% - 44px);
+  padding: 12px 18px; background: rgba(23, 26, 31, .86); color: #fff; font-size: 13.5px; line-height: 1.4;
+}
+.tech-panel { padding: 56px 52px 48px; color: #fff; }
+.tech-panel .eyebrow { color: #E3929E; }
+.tech-panel h2 { margin-top: 22px; font-size: clamp(30px, 2.9vw, 42px); letter-spacing: -.035em; line-height: 1.1; color: #fff; }
+.tech-panel > p:not(.eyebrow) { margin-top: 22px; font-size: 16px; line-height: 1.7; color: #B9BEC5; }
+.tech-list { list-style: none; margin-top: 30px; border-top: 1px solid rgba(255, 255, 255, .12); }
+.tech-list li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 16px; padding: 18px 0; border-bottom: 1px solid rgba(255, 255, 255, .12); }
+.tech-list svg { width: 22px; height: 22px; color: #EE8A95; margin-top: 1px; }
+.tech-list strong { display: block; font-size: 15.5px; font-weight: 700; color: #fff; letter-spacing: -.01em; line-height: 1.4; }
+.tech-list span { display: block; margin-top: 4px; font-size: 14px; line-height: 1.65; color: #A9AFB7; }
+.tech-more { margin-top: 30px; }
+
+/* Projects (photo with label, then text — no card frame) */
+.proj-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 26px; }
+.project-card .card-media { border-radius: 4px; aspect-ratio: 396 / 283; }
+.project-card .card-media .media-tag { left: 16px; bottom: 16px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; border-radius: 0; box-shadow: none; }
+.project-card .card-body { padding-top: 28px; gap: 0; }
+.project-card .card-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .16em; color: var(--muted); }
+.project-card .card-title { margin-top: 14px; font-size: 22.5px; font-weight: 700; letter-spacing: -.025em; line-height: 1.25; }
+.project-card .card-text { margin-top: 14px; font-size: 14px; line-height: 1.7; color: var(--text); }
+.project-card .card-foot { padding-top: 20px; }
+.project-card .card-foot .link { font-size: 13px; }
+.project-filters { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; margin-bottom: 40px; }
+
+/* Text cards ("Meer van ons werk") */
+.more-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.more-card { padding: 32px 30px 34px; background: #F4F5F6; border: 1px solid #E1E5E8; border-radius: 4px; }
+.more-card h3 { font-size: clamp(23px, 1.9vw, 27px); font-weight: 700; letter-spacing: -.035em; line-height: 1.2; }
+.more-card p { margin-top: 20px; font-size: 15.5px; line-height: 1.65; color: var(--text); }
+.more-card .more-links { margin-top: 28px; display: grid; gap: 16px; justify-items: start; }
+
+/* Note with red rule */
+.note-rule { padding: 22px 26px; background: #F3F4F6; border-left: 3px solid #B61827; font-size: 15px; line-height: 1.75; color: var(--text); }
+.note-rule strong { color: var(--ink); }
+
+/* Feature list without icons (about, expertise) */
+.plain-features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 48px; }
+.plain-features--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 36px; }
+.plain-features h3 { font-size: 21px; font-weight: 700; letter-spacing: -.03em; line-height: 1.25; }
+.plain-features p { margin-top: 14px; font-size: 15.5px; line-height: 1.65; color: var(--text); }
+
+/* Contact page */
+.contact-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 72px; align-items: start; }
+.contact-info .h2 { margin-top: 18px; }
+.contact-info .lead { margin-top: 22px; color: var(--text); }
+.contact-form-wrap { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 34px 32px; }
+.contact-form-title { letter-spacing: -.03em; }
+.contact-form-sub { margin-top: 8px; margin-bottom: 26px; font-size: 14px; color: var(--muted); }
+.contact-rows { list-style: none; margin-top: 48px; }
+.contact-rows li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 18px; padding: 24px 0; border-bottom: 1px solid var(--line); }
+.contact-rows li:first-child { padding-top: 0; }
+.contact-rows li:last-child { border-bottom: 0; }
+.contact-rows svg { width: 22px; height: 22px; color: var(--red); margin-top: 1px; stroke-width: 1.6; }
+.contact-rows .cr-label { display: block; font-size: 13px; color: var(--text); }
+.contact-rows .cr-value { display: block; margin-top: 8px; font-size: 18px; line-height: 1.35; color: var(--ink); }
+.contact-rows a.cr-value:hover { color: var(--red); }
+.contact-rows .cr-more { display: inline-block; margin-top: 10px; font-size: 14px; font-weight: 700; color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+.contact-rows .cr-more:hover { color: var(--red); }
+.contact-rows .footer-hours { margin-top: 10px; font-size: 14.5px; }
+
+/* Reviews */
+.reviews-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 56px; align-items: start; }
+.reviews-score .h2 { margin-top: 14px; }
+.score { display: flex; align-items: baseline; gap: 12px; margin-top: 36px; }
+.score-num { font-size: clamp(72px, 7vw, 104px); font-weight: 700; letter-spacing: -.05em; line-height: .9; color: var(--ink); font-variant-numeric: tabular-nums; }
+.score-of { font-size: 22px; color: var(--muted); letter-spacing: -.01em; }
+.stars, .rc-stars { position: relative; display: inline-block; line-height: 0; color: var(--red); }
+.stars .st-base, .stars .st-fill, .rc-stars .st-base, .rc-stars .st-fill { display: flex; gap: 4px; white-space: nowrap; }
+.stars .st-base, .rc-stars .st-base { color: #E3E6EA; }
+.stars .st-fill, .rc-stars .st-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: var(--red); }
+.stars { margin-top: 16px; }
+.stars svg { width: 28px; height: 28px; fill: currentColor; stroke: currentColor; flex: none; }
+.rc-stars svg { width: 16px; height: 16px; fill: currentColor; stroke: currentColor; flex: none; }
+.rc-stars .st-base, .rc-stars .st-fill { gap: 3px; }
+.score-meta { margin-top: 14px; font-size: 14.5px; color: var(--muted); }
+.reviews-links { margin-top: 26px; }
+.review-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.review-card { display: flex; flex-direction: column; padding: 28px 28px 24px; background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+.review-card h3 { margin-top: 16px; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+.review-card blockquote { margin: 10px 0 0; font-size: 15px; line-height: 1.7; color: var(--ink-2); }
+.review-card .rc-who { margin-top: auto; padding-top: 18px; font-size: 13px; color: var(--muted); }
+.review-cta { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.review-cta p { margin-top: 8px; color: var(--text); font-size: 15px; }
+
+/* Knowledge articles */
+.kb-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.kb-card { position: relative; display: flex; flex-direction: column; padding: 30px 28px 28px; background: #F4F5F6; border: 1px solid #E1E5E8; border-radius: 4px; transition: border-color var(--t), transform var(--t), box-shadow var(--t); }
+.kb-card:hover { border-color: var(--line-strong); transform: translateY(-2px); box-shadow: var(--shadow-card); }
+.kb-card .kb-tag { font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--red); }
+.kb-card .kb-title { margin-top: 14px; font-size: 21px; font-weight: 700; letter-spacing: -.03em; line-height: 1.25; }
+.kb-card p:not(.kb-tag) { margin-top: 12px; font-size: 15px; line-height: 1.65; color: var(--text); }
+.kb-card .red-link { margin-top: auto; padding-top: 20px; }
+.kb-card a.stretch::after { content: ""; position: absolute; inset: 0; border-radius: 4px; }
+.article-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 72px; align-items: start; }
+.article { max-width: 720px; }
+.article h2 { margin-top: 40px; font-size: 24px; letter-spacing: -.03em; line-height: 1.25; }
+.article h2:first-child { margin-top: 0; }
+.article p, .article li { font-size: 17px; line-height: 1.75; color: var(--ink-2); }
+.article p { margin: 16px 0 0; }
+.article ul { margin-top: 14px; padding-left: 20px; display: grid; gap: 6px; }
+.article-links { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 14px 32px; }
+.article-aside { position: sticky; top: calc(var(--header-h) + 24px); padding: 28px 26px; background: #F4F5F6; border: 1px solid #E1E5E8; border-radius: 4px; }
+.article-aside p { margin-top: 10px; font-size: 14.5px; line-height: 1.65; color: var(--text); }
+.aside-actions { margin-top: 20px; display: grid; gap: 10px; }
+
+/* Product information */
+.info-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.info-block { padding: 30px 28px; background: #F4F5F6; border: 1px solid #E1E5E8; border-radius: 4px; }
+.info-block .ib-icon { color: var(--red); }
+.info-block .ib-icon svg { width: 28px; height: 28px; stroke-width: 1.6; }
+.info-block h2 { margin-top: 22px; font-size: 21px; letter-spacing: -.03em; line-height: 1.25; }
+.info-block p { margin-top: 12px; font-size: 15px; line-height: 1.65; color: var(--text); }
+.split--top { align-items: start; }
+.status-legend { list-style: none; display: grid; gap: 0; border-top: 1px solid var(--line); }
+.status-legend li { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 18px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.6; color: var(--ink-2); }
+.status-legend .status { justify-self: start; }
+
+@media (max-width: 1100px) {
+  .info-grid, .plain-features--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .contact-layout { grid-template-columns: minmax(0, 1fr); gap: 48px; }
+  .article-layout { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .article-aside { position: static; max-width: 560px; }
+}
+@media (max-width: 1024px) {
+  .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .svc-grid, .kb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .proj-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tech-card { grid-template-columns: minmax(0, 1fr); }
+  .tech-media img, .tech-media .art { min-height: 0; aspect-ratio: 16 / 10; }
+  .reviews-head { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+}
+
+/* ---------- Mobile (approved mobile screens) ---------- */
+@media (max-width: 760px) {
+  .section--first { padding-top: 40px; }
+  .section-intro .h2 { margin-top: 14px; }
+  .section-intro .lead { margin-top: 20px; font-size: clamp(14px, 3.6vw, 16px); line-height: 1.65; }
+  .section-intro + * { margin-top: 32px; }
+  .section-intro .intro-link { margin-top: 24px; }
+  .section-intro--row { display: block; }
+  .section-intro--row .intro-link { margin-top: 24px; }
+  .ink-link { font-size: clamp(13.5px, 3.4vw, 15px); text-underline-offset: 6px; }
+  .center-link { margin-top: 36px; }
+  hr.rule { margin: 40px 0 44px; }
+  .prose p, .split .prose p { font-size: clamp(15px, 3.83vw, 17px); line-height: 1.7; }
+  .split .prose { margin-top: 26px; }
+
+  /* Finder */
+  .finder-band { padding: 32px 0 30px; }
+  .finder-grid { gap: 26px; }
+  .finder-intro .eyebrow { font-size: 10px; }
+  .finder-intro h2 { margin-top: 14px; font-size: clamp(22px, 6.15vw, 26px); line-height: 1.2; font-weight: 700; }
+  .finder--simple .finder-form--manual,
+  .finder--simple .finder-form--manual:has(.finder-year:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px 12px; }
+  .finder--simple .finder-year { grid-column: 1 / -1; }
+  .finder--simple .field > label { font-size: clamp(12px, 3.03vw, 13.5px); }
+  .finder--simple .select { height: 48px; }
+  .finder--simple .finder-form .btn { --btn-h: 48px; font-size: clamp(13.5px, 3.5vw, 15px); }
+  .finder--simple .finder-foot { margin-top: 16px; font-size: clamp(12.5px, 3.33vw, 14.5px); line-height: 1.6; flex-direction: column; gap: 6px; }
+
+  /* Category cards: two per row */
+  .cat-grid { gap: 12px; }
+  .cat-card { padding: 26px 18px 24px; }
+  .cat-card .cc-icon svg { width: 24px; height: 24px; }
+  .cat-card .cc-num { font-size: 11px; }
+  .cat-card h3 { margin-top: 28px; font-size: clamp(15.5px, 4.2vw, 18px); line-height: 1.3; }
+  .cat-card p { margin-top: 10px; font-size: clamp(14px, 3.6vw, 16px); line-height: 1.75; }
+  .cat-card .cc-link { padding-top: 22px; font-size: clamp(12.5px, 3.2vw, 14px); line-height: 1.6; }
+
+  /* Service, text and knowledge cards */
+  .svc-grid, .kb-grid, .more-grid, .review-grid, .plain-features, .plain-features--4, .info-grid { grid-template-columns: minmax(0, 1fr); }
+  .svc-grid { gap: 18px; }
+  .svc-card, .more-card { padding: 28px 26px 32px; }
+  .svc-card .svc-icon svg { width: 28px; height: 28px; }
+  .svc-card h3, .more-card h3 { margin-top: 26px; font-size: clamp(23px, 6.1vw, 26px); letter-spacing: -.035em; }
+  .more-card h3 { margin-top: 0; }
+  .svc-card > p, .more-card p { margin-top: 20px; font-size: clamp(14px, 3.6vw, 16px); line-height: 1.6; }
+  .svc-card ul { margin-top: 24px; }
+  .svc-card li { padding: 13px 0; font-size: clamp(13px, 3.37vw, 15px); }
+  .svc-card .ink-link { padding-top: 26px; }
+  .more-card .more-links { margin-top: 26px; }
+  .more-grid { gap: 18px; }
+
+  /* Technique block */
+  .tech-media img, .tech-media .art { aspect-ratio: 5 / 4; }
+  .tech-media .tech-caption { left: 18px; bottom: 18px; max-width: calc(100% - 36px); padding: 12px 16px; font-size: clamp(11px, 2.82vw, 12.5px); }
+  .tech-panel { padding: 32px 22px 26px; }
+  .tech-panel h2 { margin-top: 24px; font-size: clamp(27px, 7.5vw, 30px); }
+  .tech-panel > p:not(.eyebrow) { margin-top: 22px; font-size: clamp(14px, 3.6vw, 16px); line-height: 1.7; }
+  .tech-list { margin-top: 26px; }
+  .tech-list li { padding: 16px 0; }
+  .tech-list strong { font-size: clamp(14px, 3.6vw, 16px); }
+  .tech-list span { font-size: clamp(13px, 3.37vw, 15px); }
+
+  /* Projects */
+  .proj-grid { grid-template-columns: minmax(0, 1fr); gap: 38px; }
+  .project-card .card-media { aspect-ratio: 1.55; }
+  .project-card .card-media .media-tag { left: 15px; bottom: 15px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; }
+  .project-card .card-body { padding-top: 22px; }
+  .project-card .card-eyebrow { font-size: 10px; }
+  .project-card .card-title { margin-top: 12px; font-size: clamp(22px, 5.85vw, 25px); letter-spacing: -.035em; }
+  .project-card .card-text { margin-top: 12px; font-size: clamp(13px, 3.39vw, 15px); line-height: 1.7; }
+  .project-card .card-foot { padding-top: 20px; }
+  .project-card .card-foot .link { font-size: clamp(12.5px, 3.1vw, 14px); }
+  .project-filters { gap: 10px; margin-bottom: 28px; }
+
+  /* Notes and plain features */
+  .note-rule { padding: 20px 20px 20px 22px; font-size: clamp(12.5px, 3.15vw, 14px); line-height: 1.7; }
+  .plain-features { gap: 32px; }
+  .plain-features h3 { font-size: clamp(18px, 4.7vw, 20px); }
+  .plain-features p { margin-top: 12px; font-size: clamp(13px, 3.39vw, 15px); line-height: 1.6; }
+
+  /* Contact */
+  .contact-info .lead { font-size: clamp(14px, 3.6vw, 16px); line-height: 1.6; }
+  .contact-rows { margin-top: 56px; }
+  .contact-rows li { gap: 18px; padding: 26px 0; }
+  .contact-rows .cr-label { font-size: clamp(11.5px, 2.92vw, 13px); }
+  .contact-rows .cr-value { margin-top: 8px; font-size: clamp(16px, 4.07vw, 18px); }
+  .contact-form-wrap { padding: 26px 20px; margin-inline: calc(var(--gutter) * -1 + 1px); border-radius: 0; border-inline: 0; }
+
+  /* Reviews */
+  .reviews-score .h2 { margin-top: 10px; }
+  .score { margin-top: 30px; }
+  .score-num { font-size: clamp(64px, 18vw, 80px); }
+  .score-of { font-size: clamp(17px, 4.6vw, 20px); }
+  .stars svg { width: 26px; height: 26px; }
+  .review-card { padding: 24px 22px 22px; }
+  .review-card blockquote { font-size: clamp(14px, 3.6vw, 16px); }
+
+  /* Knowledge / product info */
+  .kb-card, .info-block { padding: 26px 24px; }
+  .article p, .article li { font-size: clamp(15px, 3.83vw, 17px); }
+  .article h2 { font-size: 21px; margin-top: 32px; }
+  .status-legend li { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .review-cta { display: block; }
+  .review-cta .btn { margin-top: 18px; }
+}
+
+/* Contact form: topic choice (radio buttons styled as chips) */
+.topic-field { border: 0; padding: 0; margin: 0; min-width: 0; }
+.topic-legend { padding: 0; margin-bottom: 16px; font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.topic-chips { gap: 8px; }
+.chip-radio { position: relative; cursor: pointer; height: auto; min-height: 38px; padding: 8px 14px; white-space: normal; line-height: 1.3; text-align: left; }
+.chip-radio input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.chip-radio.is-checked, .chip-radio:has(input:checked) { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chip-radio:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* =========================================================
    Webshop — product cards, PDP, cart, checkout, payment
@@ -1394,7 +1768,16 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
 /* Featured strip (home) */
 .featured-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 @media (max-width: 1024px) { .featured-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .featured-strip { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) {
+  /* Swipeable row on phones, so the home page keeps the length of the approved design. */
+  .featured-strip {
+    grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 82%; gap: 14px;
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter);
+    margin-inline: calc(var(--gutter) * -1); padding: 2px var(--gutter) 14px; scrollbar-width: none;
+  }
+  .featured-strip::-webkit-scrollbar { display: none; }
+  .featured-strip > * { scroll-snap-align: start; }
+}
 
 /* PDP */
 .pdp { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 64px; align-items: start; padding-block: 32px 96px; }
@@ -1729,7 +2112,6 @@ body.is-admin { padding-bottom: 0 !important; }
   <div id="app" class="app" aria-live="off"></div>
 </main>
 <footer class="site-footer" id="siteFooter"></footer>
-<nav class="mobile-bar" id="mobileBar" aria-label="Snelle acties"></nav>
 <div id="overlayRoot"></div>
 <div class="toast-region" id="toastRegion" aria-live="polite" aria-relevant="additions"></div>
 <div class="sr-only" id="liveRegion" aria-live="polite" aria-atomic="true"></div>
@@ -1894,6 +2276,7 @@ const ICON_PATHS = {
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
   minus: '<path d="M5 12h14"/>',
   bookmark: '<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>',
+  settings2: '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
   sliders: '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
   alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
@@ -1901,6 +2284,8 @@ const ICON_PATHS = {
   shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
   camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
   phoneDevice: '<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>',
+  monitor: '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
+  chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
   gauge: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
   radar: '<path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/><path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/><path d="M16.24 7.76A6 6 0 1 0 8.23 16.67"/><path d="M17.99 11.66A6 6 0 0 1 15.77 16.67"/><circle cx="12" cy="12" r="2"/><path d="m13.41 10.59 5.66-5.66"/>',
   light: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
@@ -2192,7 +2577,6 @@ const Router = (() => {
     document.body.className = document.body.className.split(' ').filter((c) => !c.startsWith('page-') && c !== 'is-admin' && c !== 'has-mobile-bar').join(' ');
     document.body.classList.add(`page-${page.id || 'x'}`);
     if (page.admin) document.body.classList.add('is-admin');
-    if (page.mobileBar !== false && !page.admin) document.body.classList.add('has-mobile-bar');
     app.innerHTML = html;
     const meta = typeof page.meta === 'function' ? page.meta(ctx) : (page.meta || {});
     Seo.apply(meta, ctx);
@@ -2301,6 +2685,7 @@ const MODELS = [
   { id: 'polo-aw', brand: 'volkswagen', name: 'Polo AW', base: 'Polo', from: 2017, to: null, match: ['POLO'], types: ['AW'] },
   { id: 't-roc', brand: 'volkswagen', name: 'T-Roc', base: 'T-Roc', from: 2017, to: null, match: ['TROC'], types: ['A1'] },
   { id: 'tiguan-ad', brand: 'volkswagen', name: 'Tiguan AD', base: 'Tiguan', from: 2016, to: 2024, match: ['TIGUAN'], types: [] },
+  { id: 'sharan', brand: 'volkswagen', name: 'Sharan', base: 'Sharan', from: 2010, to: 2022, match: ['SHARAN'], types: [] },
   { id: 'passat-b8', brand: 'volkswagen', name: 'Passat B8', base: 'Passat', from: 2014, to: 2023, match: ['PASSAT'], types: [] },
   { id: 'id-3', brand: 'volkswagen', name: 'ID.3', base: 'ID.3', from: 2020, to: null, match: ['ID3'], types: [] },
   { id: 'id-4', brand: 'volkswagen', name: 'ID.4', base: 'ID.4', from: 2021, to: null, match: ['ID4'], types: [] },
@@ -2316,11 +2701,14 @@ const MODELS = [
   { id: 'a3-8y', brand: 'audi', name: 'A3 8Y', base: 'A3', from: 2020, to: null, match: ['A3', 'S3', 'RS3'], types: ['GY'] },
   { id: 'a4-b9', brand: 'audi', name: 'A4 B9/8W', base: 'A4', from: 2015, to: 2024, match: ['A4', 'S4', 'RS4'], types: ['8W'] },
   { id: 'a5-f5', brand: 'audi', name: 'A5 F5', base: 'A5', from: 2016, to: 2024, match: ['A5', 'S5', 'RS5'], types: ['F5'] },
+  { id: 'a6-c8', brand: 'audi', name: 'A6 C8', base: 'A6', from: 2018, to: 2024, match: ['A6', 'S6', 'RS6'], exclude: ['A6ETRON', 'A6AVANTETRON', 'A6SPORTBACKETRON'], types: ['4A'] },
+  { id: 'a7-c8', brand: 'audi', name: 'A7 C8', base: 'A7', from: 2018, to: null, match: ['A7', 'S7', 'RS7'], types: ['4K'] },
   { id: 'q2-ga', brand: 'audi', name: 'Q2 GA', base: 'Q2', from: 2016, to: null, match: ['Q2', 'SQ2'], types: ['GA'] },
   { id: 'q3-f3', brand: 'audi', name: 'Q3 F3', base: 'Q3', from: 2018, to: null, match: ['Q3', 'RSQ3'], types: ['F3'] },
   { id: 'q4-etron', brand: 'audi', name: 'Q4 e-tron', base: 'Q4 e-tron', from: 2021, to: null, match: ['Q4'], types: ['F4'] },
   { id: 'q5-fy', brand: 'audi', name: 'Q5 FY', base: 'Q5', from: 2017, to: 2024, match: ['Q5', 'SQ5'], types: ['FY'] },
   { id: 'q7-4m', brand: 'audi', name: 'Q7 4M', base: 'Q7', from: 2015, to: null, match: ['Q7', 'SQ7'], types: ['4M'] },
+  { id: 'q8', brand: 'audi', name: 'Q8', base: 'Q8', from: 2018, to: null, match: ['Q8', 'SQ8', 'RSQ8'], exclude: ['Q8ETRON', 'Q8SPORTBACKETRON'], types: [] },
   // SEAT
   { id: 'ibiza-kj', brand: 'seat', name: 'Ibiza KJ', base: 'Ibiza', from: 2017, to: null, match: ['IBIZA'], types: ['KJ'] },
   { id: 'arona', brand: 'seat', name: 'Arona', base: 'Arona', from: 2017, to: null, match: ['ARONA'], types: [] },
@@ -2335,6 +2723,7 @@ const MODELS = [
   { id: 'superb-3v', brand: 'skoda', name: 'Superb 3V', base: 'Superb', from: 2015, to: 2024, match: ['SUPERB'], types: ['3V'] },
   { id: 'fabia-6v', brand: 'skoda', name: 'Fabia 6V', base: 'Fabia', from: 2015, to: 2021, match: ['FABIA'], types: [] },
   { id: 'kamiq', brand: 'skoda', name: 'Kamiq', base: 'Kamiq', from: 2019, to: null, match: ['KAMIQ'], types: [] },
+  { id: 'enyaq', brand: 'skoda', name: 'Enyaq', base: 'Enyaq', from: 2021, to: null, match: ['ENYAQ'], types: [] },
   { id: 'citigo', brand: 'skoda', name: 'Citigo', base: 'Citigo', from: 2012, to: 2020, match: ['CITIGO'], types: [] },
   { id: 'yeti', brand: 'skoda', name: 'Yeti', base: 'Yeti', from: 2009, to: 2017, match: ['YETI'], types: [] },
 ];
@@ -2344,22 +2733,22 @@ const modelLabel = (id) => { const m = MODEL[id]; return m ? `${BRAND[m.brand].n
 
 /* ---------- Retrofit categories ("Upgrade") ---------- */
 const CATEGORIES = [
-  { id: 'camera-parkeren', name: 'Camera & parkeren', icon: 'camera', group: 'parkeren', art: 'camera',
-    text: 'Achteruitrijcamera’s en parkeerhulp voor- en achterzijde.' },
-  { id: 'infotainment', name: 'Infotainment & connectiviteit', icon: 'phoneDevice', group: 'connectiviteit', art: 'connect',
-    text: 'App Connect, smartphone-integratie en originele navigatie.' },
+  { id: 'camera-parkeren', name: 'Camera’s & parkeren', icon: 'camera', group: 'parkeren', art: 'camera',
+    tagline: 'Meer zicht. Beter parkeren.', text: 'Achteruitrijcamera’s, 360°-camera’s en parkeerhulp voor- en achterzijde.' },
+  { id: 'infotainment', name: 'Infotainment & connectiviteit', icon: 'monitor', group: 'connectiviteit', art: 'connect',
+    tagline: 'Uw apps. Het originele systeem.', text: 'App Connect, smartphone-integratie en originele navigatie.' },
   { id: 'cockpit', name: 'Digitale cockpit', icon: 'gauge', group: 'connectiviteit', art: 'cockpit',
-    text: 'Virtual Cockpit en Active Info Display.' },
-  { id: 'assistentie', name: 'Assistentiesystemen', icon: 'radar', group: 'assistentie', art: 'assist',
-    text: 'Dodehoekassistent, cruise control en verkeersbordherkenning.' },
+    tagline: 'Alle informatie in één oogopslag.', text: 'Virtual Cockpit en Active Info Display.' },
+  { id: 'assistentie', name: 'Cruisecontrol & assistentie', icon: 'radar', group: 'assistentie', art: 'assist',
+    tagline: 'Originele ondersteuning onderweg.', text: 'Cruise control, dodehoekassistent, Lane Assist en verkeersbordherkenning.' },
   { id: 'comfort', name: 'Comfort', icon: 'comfort', group: 'comfort', art: 'mirror',
-    text: 'Inklapbare spiegels, elektrische achterklep, sensoren en meer.' },
+    tagline: 'Gemak zoals af fabriek.', text: 'Inklapbare spiegels, elektrische achterklep, keyless entry en meer.' },
   { id: 'verlichting', name: 'Verlichting', icon: 'light', group: 'comfort', art: 'light',
-    text: 'Originele LED-verlichting.' },
+    tagline: 'Zien en gezien worden.', text: 'Originele LED-verlichting, koplampen en achterlichten.' },
   { id: 'trekhaken', name: 'Trekhaken', icon: 'tow', group: 'comfort', art: 'towbar',
-    text: 'Afneembare en zwenkbare (wegklapbare) trekhaken.' },
+    tagline: 'Klaar voor fietsdrager en aanhanger.', text: 'Afneembare en zwenkbare (wegklapbare) trekhaken.' },
   { id: 'beveiliging', name: 'Beveiliging', icon: 'shield', group: 'beveiliging', art: 'alarm',
-    text: 'Origineel af-fabriek alarm met SCM-certificaat.' },
+    tagline: 'Origineel alarm, met SCM-certificaat.', text: 'Origineel af-fabriek alarm met SCM-certificaat.' },
 ];
 const CATEGORY = byKey(CATEGORIES);
 
@@ -2566,6 +2955,8 @@ const RETROFITS = [
   { slug: 'volkswagen-golf-7-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'volkswagen', models: ['golf-7'], warranty: '3 jaar' },
   { slug: 'volkswagen-discover-navigatie-met-carplay', feature: 'discover-carplay', brand: 'volkswagen', models: ['golf-7', 'polo-aw', 'passat-b8'], yearsByModel: { 'golf-7': [2014, 2019], 'polo-aw': [2017, 2020], 'passat-b8': [2015, 2018] }, title: 'Volkswagen – Discover navigatie met CarPlay (aanbieding)', variantNote: 'Volgens CarTronic bedoeld voor auto’s met een oudere Discover Pro: Golf 2014–2019, Polo 2015–2020, Passat B8 2015–2018 en Touran 2015–2017 (ook GTE en R-line).', warranty: '3 jaar', price: '€ 899', aliases: ['aanbieding-4-volkswagen-discover-navigatie-met-carplay'] },
   { slug: 'volkswagen-golf-7-sportsvan-led-achterlichten', feature: 'led-achterlichten', brand: 'volkswagen', models: ['golf-sportsvan'], years: [2014, 2019], warranty: '3 jaar' },
+  { slug: 'volkswagen-golf-8-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['golf-8'], short: 'Originele camera, verwerkt in het VW-logo op de achterklep. Het beeld van de ruimte achter de auto verschijnt op het multimediascherm.', specs: [['Geschikt voor', 'Golf 8 2020–heden (ook GTI, R en R-line)']] },
+  { slug: 'volkswagen-golf-8-cruise-control-op-stuur', feature: 'cruise-control-stuur', brand: 'volkswagen', models: ['golf-8'], variantNote: 'Uitvoering met bediening via de knoppen op het stuur.' },
   { slug: 'volkswagen-polo-aw-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
   { slug: 'volkswagen-polo-aw-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
   { slug: 'volkswagen-polo-aw-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['polo-aw'], warranty: '3 jaar' },
@@ -2589,6 +2980,21 @@ const RETROFITS = [
   { slug: 'volkswagen-t-roc-cruise-control-via-hendel', feature: 'cruise-control-hendel', brand: 'volkswagen', models: ['t-roc'], years: [2017, 2019], specs: [['Geschikt voor', 'T-Roc 2017–2019 (ook R-line)']], warranty: '3 jaar' },
   { slug: 'volkswagen-t-roc-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'volkswagen', models: ['t-roc'], warranty: '3 jaar' },
   { slug: 'volkswagen-t-roc-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'volkswagen', models: ['t-roc'], warranty: '3 jaar' },
+  { slug: 'volkswagen-tiguan-ad-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['tiguan-ad'], short: 'Originele camera in de greep van de achterklep. Zodra u de achteruit inschakelt, verschijnt het beeld automatisch op het scherm.' },
+  { slug: 'volkswagen-tiguan-ad-area-view-360-camera', feature: 'area-view', brand: 'volkswagen', models: ['tiguan-ad'], years: [2016, 2019], specs: [['Geschikt voor', 'Tiguan AD 2016–2019 (ook R-line en Allspace)']] },
+  { slug: 'volkswagen-tiguan-ad-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['tiguan-ad'] },
+  { slug: 'volkswagen-tiguan-ad-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'volkswagen', models: ['tiguan-ad'] },
+  { slug: 'volkswagen-tiguan-ad-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'volkswagen', models: ['tiguan-ad'] },
+  { slug: 'volkswagen-tiguan-ad-discover-media', feature: 'discover-media', brand: 'volkswagen', models: ['tiguan-ad'], short: 'Origineel Volkswagen Discover Media navigatie- en multimediasysteem.' },
+  { slug: 'volkswagen-tiguan-ad-discover-pro', feature: 'discover-pro', brand: 'volkswagen', models: ['tiguan-ad'], years: [2016, 2019], short: 'Origineel Discover Pro navigatiesysteem: navigatie, media en telefoon bedient u via een 9,2-inch touchscreen.', specs: [['Scherm', '9,2 inch touchscreen'], ['Geschikt voor', 'Tiguan AD 2016–2019 (ook R-line en Allspace)']], warranty: '3 jaar' },
+  { slug: 'volkswagen-tiguan-ad-active-info-display', feature: 'active-info-display', brand: 'volkswagen', models: ['tiguan-ad'], short: 'Origineel, volledig digitaal instrumentenpaneel in plaats van de analoge tellers.', warranty: '3 jaar' },
+  { slug: 'volkswagen-tiguan-ad-verkeersbordherkenning', feature: 'verkeersbordherkenning', brand: 'volkswagen', models: ['tiguan-ad'] },
+  { slug: 'volkswagen-tiguan-ad-cruise-control-op-stuur', feature: 'cruise-control-stuur', brand: 'volkswagen', models: ['tiguan-ad'], short: 'Originele cruise control om een ingestelde snelheid vast te houden.', variantNote: 'Uitvoering met bediening op het stuur; de juiste uitvoering voor uw Tiguan stemmen we vooraf af.' },
+  { slug: 'volkswagen-tiguan-ad-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'volkswagen', models: ['tiguan-ad'], short: 'Elektrisch inklapbare buitenspiegels die inklappen bij het vergrendelen. De schakelaar in het bestuurdersportier wordt daarvoor vervangen.' },
+  { slug: 'volkswagen-tiguan-ad-elektrische-achterklep', feature: 'achterklep', brand: 'volkswagen', models: ['tiguan-ad'] },
+  { slug: 'volkswagen-tiguan-ad-led-achterlichten', feature: 'led-achterlichten', brand: 'volkswagen', models: ['tiguan-ad'], short: 'Originele LED-achterlichten ter vervanging van de halogeen-achterlichten.' },
+  { slug: 'volkswagen-tiguan-ad-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'volkswagen', models: ['tiguan-ad'], short: 'Originele zwenkbare trekhaak die u met een schakelaar in de kofferbak uitzwenkt, met 13-polige contactdoos. Met een aangesloten aanhanger schakelt de parkeerhulp achter automatisch uit.' },
+  { slug: 'volkswagen-sharan-app-connect', feature: 'app-connect', brand: 'volkswagen', models: ['sharan'] },
   { slug: 'volkswagen-passat-b8-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
   { slug: 'volkswagen-passat-b8-area-view-360-camera', feature: 'area-view', brand: 'volkswagen', models: ['passat-b8'], years: [2014, 2019], specs: [['Geschikt voor', 'Passat B8 2014–2019 (ook GTE en R-line)']], warranty: '3 jaar' },
   { slug: 'volkswagen-passat-b8-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
@@ -2602,6 +3008,10 @@ const RETROFITS = [
   { slug: 'volkswagen-passat-b8-elektrische-achterklep', feature: 'achterklep', brand: 'volkswagen', models: ['passat-b8'], years: [2014, 2019], specs: [['Geschikt voor', 'Passat B8 2014–2019 (ook GTE en R-line)']], warranty: '3 jaar' },
   { slug: 'volkswagen-passat-b8-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
   { slug: 'volkswagen-passat-b8-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'volkswagen', models: ['passat-b8'], warranty: '3 jaar' },
+  { slug: 'volkswagen-id3-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'volkswagen', models: ['id-3'], short: 'Originele Volkswagen-camera die automatisch inschakelt zodra u de achteruit inschakelt. CarTronic was een van de eersten die deze camera in een ID.3 inbouwde.' },
+  { slug: 'volkswagen-id3-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'volkswagen', models: ['id-3'] },
+  { slug: 'volkswagen-id4-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['id-4'] },
+  { slug: 'volkswagen-id4-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'volkswagen', models: ['id-4'] },
   { slug: 'volkswagen-up-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'volkswagen', models: ['up'], warranty: '3 jaar' },
   { slug: 'volkswagen-up-cruise-control', feature: 'cruise-control', brand: 'volkswagen', models: ['up'], warranty: '3 jaar' },
   { slug: 'volkswagen-caddy-sa-achteruitrijcamera-achterdeuren', feature: 'achteruitrijcamera-achterdeuren', brand: 'volkswagen', models: ['caddy-sa'], years: [2015, 2019], short: 'Originele camera, onopvallend ingebouwd in de slotplaat van de linker achterdeur. Zodra u de achteruit inschakelt, verschijnt het beeld automatisch op het multimediascherm.', warranty: '3 jaar' },
@@ -2648,6 +3058,8 @@ const RETROFITS = [
   { slug: 'audi-a3-8v-instapverlichting-audi-ringen', feature: 'instapverlichting', brand: 'audi', models: ['a3-8v'], years: [2012, 2019], specs: [['Geschikt voor', 'A3 8V 2012–2019 (ook S3, RS3 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-a3-8v-afneembare-trekhaak', feature: 'trekhaak-afneembaar', brand: 'audi', models: ['a3-8v'], warranty: '3 jaar' },
   { slug: 'audi-a3-8v-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['a3-8v'], warranty: '3 jaar' },
+  { slug: 'audi-a3-8y-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['a3-8y'], years: [2020, 2024], short: 'Originele Audi-camera in de greep van de achterklep. Het beeld met hulplijnen verschijnt op het MMI-scherm.', specs: [['Geschikt voor', 'A3 8Y 2020–2024 (ook S3, RS3 en S-line)']] },
+  { slug: 'audi-a3-8y-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['a3-8y'], years: [2020, 2024], specs: [['Geschikt voor', 'A3 8Y 2020–2024 (ook S3, RS3 en S-line)']] },
   { slug: 'audi-a4-b9-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['a4-b9'], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-achteruitrijcamera'] },
   { slug: 'audi-a4-b9-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['a4-b9'], years: [2015, 2024], specs: [['Geschikt voor', 'A4 B9/8W 2015–2024 (ook S4, RS4 en S-line)']], warranty: '3 jaar', aliases: ['audi-a4-b9-8w-top-view-360-graden-camera'] },
   { slug: 'audi-a4-b9-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['a4-b9'], years: [2015, 2019], variantNote: 'Werkt alleen als de auto MMI-navigatie heeft; zowel de basisversie als MMI Navigatie plus is geschikt.', specs: [['Geschikt voor', 'A4 B9/8W 2015–2019 (ook S4, RS4 en S-line)']], warranty: '3 jaar', price: '€ 399', aliases: ['audi-a4-b9-8w-smartphone-interface'] },
@@ -2679,6 +3091,9 @@ const RETROFITS = [
   { slug: 'audi-a5-f5-comfortsleutel-keyless-entry', feature: 'keyless', brand: 'audi', models: ['a5-f5'], warranty: '3 jaar' },
   { slug: 'audi-a5-f5-garagedeuropener-homelink', feature: 'homelink', brand: 'audi', models: ['a5-f5'], years: [2016, 2019], specs: [['Geschikt voor', 'A5 F5 2016–2019 (ook S5, RS5 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-a5-f5-led-achterlichten-donker', feature: 'led-achterlichten-donker', brand: 'audi', models: ['a5-f5'], years: [2016, 2019], specs: [['Geschikt voor', 'A5 F5 Sportback, Coupé en Cabriolet 2016–2019']], warranty: '3 jaar' },
+  { slug: 'audi-a6-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['a6-c8'], years: [2018, 2024], specs: [['Geschikt voor', 'A6 2018–2024 (ook S6, RS6 en S-line)']] },
+  { slug: 'audi-a6-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['a6-c8'], years: [2018, 2024], specs: [['Geschikt voor', 'A6 2018–2024 (ook S6, RS6 en S-line)']] },
+  { slug: 'audi-a7-active-lane-assist', feature: 'lane-assist', brand: 'audi', models: ['a7-c8'], years: [2018, 2024], specs: [['Geschikt voor', 'A7 2018–2024 (ook S7, RS7 en S-line)']] },
   { slug: 'audi-q2-ga-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
   { slug: 'audi-q2-ga-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
   { slug: 'audi-q2-ga-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'audi', models: ['q2-ga'], warranty: '3 jaar' },
@@ -2698,6 +3113,13 @@ const RETROFITS = [
   { slug: 'audi-q3-f3-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['q3-f3'], warranty: '3 jaar' },
   { slug: 'audi-q3-f3-wegrijassistent', feature: 'wegrijassistent', brand: 'audi', models: ['q3-f3'], years: [2019, 2020], specs: [['Geschikt voor', 'Q3 F3 2019–2020 (ook S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q3-f3-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['q3-f3'], warranty: '3 jaar' },
+  { slug: 'audi-q4-e-tron-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['q4-etron'] },
+  { slug: 'audi-q4-e-tron-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q4-etron'] },
+  { slug: 'audi-q4-e-tron-dode-hoek-assistent', feature: 'dodehoek', brand: 'audi', models: ['q4-etron'], short: 'Waarschuwt voor voertuigen in de dode hoek, met radarsensoren en een waarschuwingslampje in de buitenspiegels.' },
+  { slug: 'audi-q4-e-tron-verkeersbordherkenning', feature: 'verkeersbordherkenning', brand: 'audi', models: ['q4-etron'] },
+  { slug: 'audi-q4-e-tron-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['q4-etron'] },
+  { slug: 'audi-q4-e-tron-elektrische-achterklep', feature: 'achterklep', brand: 'audi', models: ['q4-etron'] },
+  { slug: 'audi-q4-e-tron-garagedeuropener-homelink', feature: 'homelink', brand: 'audi', models: ['q4-etron'] },
   { slug: 'audi-q5-fy-achteruitrijcamera', feature: 'achteruitrijcamera', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
   { slug: 'audi-q5-fy-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['q5-fy'], years: [2017, 2019], specs: [['Geschikt voor', 'Q5 FY 2017–2019 (ook SQ5 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q5-fy-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'audi', models: ['q5-fy'], warranty: '3 jaar' },
@@ -2726,6 +3148,9 @@ const RETROFITS = [
   { slug: 'audi-q7-4m-garagedeuropener-homelink', feature: 'homelink', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q7-4m-instapverlichting-audi-ringen', feature: 'instapverlichting', brand: 'audi', models: ['q7-4m'], years: [2015, 2019], specs: [['Geschikt voor', 'Q7 4M 2015–2019 (ook SQ7 en S-line)']], warranty: '3 jaar' },
   { slug: 'audi-q7-4m-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'audi', models: ['q7-4m'], warranty: '3 jaar' },
+  { slug: 'audi-q8-top-view-360-graden-camera', feature: 'top-view', brand: 'audi', models: ['q8'], specs: [['Geschikt voor', 'Q8 (ook SQ8 en RSQ8)']] },
+  { slug: 'audi-q8-smartphone-interface', feature: 'smartphone-interface', brand: 'audi', models: ['q8'] },
+  { slug: 'audi-q8-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'audi', models: ['q8'] },
   // ---- Aanvulling uit de volledige catalogus – SEAT
   { slug: 'seat-ibiza-kj-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'seat', models: ['ibiza-kj'], warranty: '3 jaar' },
   { slug: 'seat-ibiza-kj-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'seat', models: ['ibiza-kj'], warranty: '3 jaar' },
@@ -2751,6 +3176,9 @@ const RETROFITS = [
   { slug: 'skoda-fabia-6v-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'skoda', models: ['fabia-6v'], warranty: '3 jaar', aliases: ['skoda-fabia-6v0-parkeerhulp-voor-en-achterzijde'] },
   { slug: 'skoda-fabia-6v-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'skoda', models: ['fabia-6v'], warranty: '3 jaar', aliases: ['skoda-fabia-6v0-parkeerhulp-voorzijde-upgrade'] },
   { slug: 'skoda-fabia-6v-cruise-control', feature: 'cruise-control', brand: 'skoda', models: ['fabia-6v'], warranty: '3 jaar', aliases: ['skoda-fabia-6v0-cruise-control'] },
+  { slug: 'skoda-kamiq-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'skoda', models: ['kamiq'] },
+  { slug: 'skoda-kamiq-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'skoda', models: ['kamiq'] },
+  { slug: 'skoda-kamiq-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'skoda', models: ['kamiq'] },
   { slug: 'skoda-karoq-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'skoda', models: ['karoq'], warranty: '3 jaar' },
   { slug: 'skoda-karoq-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'skoda', models: ['karoq'], warranty: '3 jaar' },
   { slug: 'skoda-karoq-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'skoda', models: ['karoq'], warranty: '3 jaar' },
@@ -2768,6 +3196,9 @@ const RETROFITS = [
   { slug: 'skoda-kodiaq-elektrische-achterklep', feature: 'achterklep', brand: 'skoda', models: ['kodiaq'], years: [2017, 2019], warranty: '3 jaar' },
   { slug: 'skoda-kodiaq-230-volt-aansluiting', feature: '230v', brand: 'skoda', models: ['kodiaq'], years: [2017, 2019], warranty: '3 jaar' },
   { slug: 'skoda-kodiaq-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'skoda', models: ['kodiaq'], warranty: '3 jaar' },
+  { slug: 'skoda-enyaq-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'skoda', models: ['enyaq'], aliases: ['skoda-enyak-parkeerhulp-achterzijde'] },
+  { slug: 'skoda-enyaq-inklapbare-spiegels', feature: 'inklapbare-spiegels', brand: 'skoda', models: ['enyaq'], aliases: ['skoda-enyak-inklapbare-spiegels'] },
+  { slug: 'skoda-enyaq-zwenkbare-wegklapbare-trekhaak', feature: 'trekhaak-zwenkbaar', brand: 'skoda', models: ['enyaq'], short: 'Originele zwenkbare trekhaak met 13-polige contactdoos. Met een aangesloten aanhanger schakelt de parkeerhulp achter automatisch uit.', aliases: ['skoda-enyak-zwenkbare-wegklapbare-trekhaak'] },
   { slug: 'skoda-superb-3v-parkeerhulp-achterzijde', feature: 'parkeerhulp-achter', brand: 'skoda', models: ['superb-3v'], warranty: '3 jaar' },
   { slug: 'skoda-superb-3v-parkeerhulp-voor-en-achterzijde', feature: 'parkeerhulp-voor-achter', brand: 'skoda', models: ['superb-3v'], warranty: '3 jaar' },
   { slug: 'skoda-superb-3v-parkeerhulp-voorzijde-upgrade', feature: 'parkeerhulp-voor-upgrade', brand: 'skoda', models: ['superb-3v'], warranty: '3 jaar' },
@@ -2850,32 +3281,65 @@ const DEFAULT_PROGRAM = 'Na de montage wordt de optie via de online verbinding m
 
 /* ---------- Services (DIENST) — from cartronic.nl ("Reparatie & storingen") ---------- */
 const SERVICES = [
-  { slug: 'fabrieksopties-inbouwen', title: 'Originele fabrieksopties inbouwen', icon: 'wrench',
+  { slug: 'fabrieksopties-inbouwen', title: 'Originele fabrieksopties inbouwen', icon: 'cpu', card: 'OEM-retrofits',
+    cardText: 'Originele fabrieksopties achteraf monteren. Met originele onderdelen, volgens de fabrieksnormen en passend bij de systemen in uw auto.',
+    points: ['Camera’s, parkeersensoren en rijassistentie', 'Infotainment en digitale instrumentenpanelen', 'Comfort, verlichting en trekhaken'],
+    cta: ['Vind opties voor uw auto', '#/mogelijkheden'],
     short: 'Achteraf monteren van originele fabrieksopties, met originele OEM-onderdelen en volgens fabrieksnormen.',
     body: ['CarTronic bouwt originele fabrieksopties in op vrijwel elk model van Volkswagen, Audi, SEAT en Škoda — van navigatie, camera en parkeersensoren tot inklapbare spiegels, beveiliging, Apple CarPlay en trekhaken.', 'We werken uitsluitend met originele OEM-onderdelen. De montage gebeurt in onze werkplaats in Rijswijk.'],
     keywords: ['retrofit', 'inbouwen', 'opties', 'oem'], cats: ['camera-parkeren', 'infotainment', 'comfort', 'trekhaken'] },
-  { slug: 'online-programmeren', title: 'Online programmeren & software-updates', icon: 'refresh',
+  { slug: 'online-programmeren', title: 'Online programmeren & software-updates', icon: 'settings2', card: 'Programmeren & coderen',
+    cardText: 'Via de online verbinding met de fabriek programmeren we geïnstalleerde opties en melden we ze correct aan in de auto — zoals bij een dealer.',
+    points: ['Geïnstalleerde opties programmeren', 'Correct aanmelden in de auto', 'Software-updates van modules'],
+    cta: ['Meer over programmeren', '#/diensten/online-programmeren'],
     short: 'Modules online programmeren en software bijwerken via de verbinding met de fabriek.',
     body: ['Net als grote Volkswagen- en Audi-dealers hebben we toegang tot de online database van de fabriek. Daarmee programmeren we geïnstalleerde opties en melden we ze correct aan in de auto.', 'Ook software-updates van modules voeren we online uit.'],
     keywords: ['coderen', 'programmeren', 'software update', 'activeren'], cats: ['infotainment', 'cockpit'] },
-  { slug: 'kalibratie-rijhulpsystemen', title: 'Kalibratie rijhulpsystemen', icon: 'target',
+  { slug: 'kalibratie-rijhulpsystemen', title: 'Kalibratie rijhulpsystemen', icon: 'target', card: 'Kalibratie rijhulpsystemen',
+    cardText: 'Na schade of het vervangen van de voorruit moet een rijhulpsysteem opnieuw worden afgesteld. Daarvoor beschikken we over een complete uitlijn- en kalibratieset.',
+    points: ['Adaptieve cruise control (ACC)', 'Lane Assist', 'Night Vision'],
+    cta: ['Meer over kalibratie', '#/diensten/kalibratie-rijhulpsystemen'],
     short: 'Uitlijnen en kalibreren van adaptieve cruise control, Lane Assist en Night Vision.',
     body: ['Na schade of het vervangen van de voorruit kan een rijhulpsysteem zoals adaptieve cruise control niet meer goed werken. CarTronic kalibreert deze systemen opnieuw.', 'Voor het afstellen van adaptieve cruise control, Lane Assist en Night Vision beschikken we over een complete VW/Audi uitlijn- en kalibratieset — apparatuur die verder vooral bij grote dealers staat.'],
     keywords: ['acc', 'adaptive cruise control', 'adaptieve cruise control', 'lane assist', 'night vision', 'kalibreren', 'uitlijnen', 'voorruit'], cats: ['assistentie'], image: 'about' },
-  { slug: 'diagnose-storingen', title: 'Diagnose & storingen', icon: 'activity',
+  { slug: 'diagnose-storingen', title: 'Diagnose & storingen', icon: 'activity', card: 'Diagnose & storingen',
+    cardText: 'Een storingslampje of een systeem dat niet meer werkt? We stellen de diagnose met apparatuur op dealerniveau en zoeken de oorzaak.',
+    points: ['Storingsdiagnose op dealerniveau', 'Volkswagen, Audi, SEAT en Škoda', 'Advies over de oplossing'],
+    cta: ['Meer over diagnose', '#/diensten/diagnose-storingen'],
     short: 'Elektronische storingsdiagnose voor Volkswagen, Audi, SEAT en Škoda, met apparatuur op dealerniveau.',
     body: ['Een storingslampje of een systeem dat niet meer werkt? We stellen de diagnose met diagnoseapparatuur op dealerniveau en zoeken de oorzaak.'],
     keywords: ['storing', 'diagnose', 'foutcode', 'uitlezen', 'reparatie'], cats: [] },
-  { slug: 'modules-vervangen', title: 'Modules vervangen', icon: 'cpu',
+  { slug: 'modules-vervangen', title: 'Modules vervangen', icon: 'box', card: 'Modules vervangen',
+    cardText: 'Een defecte module vervangen we en melden we correct aan in de auto, zodat alle functies weer werken zoals bedoeld.',
+    points: ['Defecte module vervangen', 'Correct aanmelden in de auto', 'Functies weer zoals bedoeld'],
+    cta: ['Meer over modules', '#/diensten/modules-vervangen'],
     short: 'Defecte modules vervangen en correct aanmelden in de auto.',
     body: ['Een defecte module vervangen we en melden we correct aan in de auto, zodat alle functies weer werken zoals bedoeld.'],
     keywords: ['module', 'regelapparaat', 'vervangen'], cats: [] },
-  { slug: 'reparatie-assistentiesystemen', title: 'Reparatie assistentiesystemen', icon: 'radar',
+  { slug: 'reparatie-assistentiesystemen', title: 'Reparatie assistentiesystemen', icon: 'radar', card: 'Reparatie assistentiesystemen',
+    cardText: 'Werkt een assistentiesysteem niet zoals het hoort? We controleren, repareren en kalibreren assistentiesystemen van Volkswagen, Audi, SEAT en Škoda.',
+    points: ['Controleren', 'Repareren', 'Kalibreren'],
+    cta: ['Meer over reparatie', '#/diensten/reparatie-assistentiesystemen'],
     short: 'Kalibratie en reparatie van assistentiesystemen.',
     body: ['Werkt een assistentiesysteem niet zoals het hoort? We controleren, repareren en kalibreren assistentiesystemen van Volkswagen, Audi, SEAT en Škoda.'],
     keywords: ['assistentie', 'reparatie', 'lane assist', 'acc'], cats: ['assistentie'] },
 ];
 const SERVICE = byKey(SERVICES, 'slug');
+/* Contact form: what the enquiry is about (shown as choices, included in the message). */
+const ENQUIRY_TOPICS = [
+  { id: 'inbouw', label: 'Optie laten inbouwen' },
+  { id: 'programmeren', label: 'Programmeren of software-update' },
+  { id: 'kalibratie', label: 'Kalibratie of reparatie rijhulpsystemen' },
+  { id: 'storing', label: 'Storing, diagnose of module' },
+  { id: 'optielijst', label: 'Optielijst van mijn auto (€ 10,00)' },
+  { id: 'webshop', label: 'Vraag over de webshop' },
+  { id: 'anders', label: 'Iets anders' },
+];
+const ENQUIRY_TOPIC = byKey(ENQUIRY_TOPICS, 'id');
+const SERVICE_TOPIC = {
+  'fabrieksopties-inbouwen': 'inbouw', 'online-programmeren': 'programmeren', 'kalibratie-rijhulpsystemen': 'kalibratie',
+  'reparatie-assistentiesystemen': 'kalibratie', 'diagnose-storingen': 'storing', 'modules-vervangen': 'storing',
+};
 
 /* ---------- Projects (portfolio) — from the approved design screens ----------
    before/after: only set when REAL before and after photography exists. */
@@ -2898,6 +3362,87 @@ const PROJECT_TYPES = [
   { id: 'kalibratie', name: 'Kalibratie' },
   { id: 'diagnose', name: 'Diagnose & reparatie' },
 ];
+
+/* ---------- Social & reviews ----------
+   Facebook: CarTronic's own page. Reviews: public Klantenvertellen profile (score, count and the
+   quotes below as published there; checked 2026-10). Quotes are verbatim; "…" marks a cut. */
+const FACEBOOK_URL = 'https://www.facebook.com/Cartronic-382532161837663/';
+const REVIEWS = {
+  score: '9,4', scale: 10, count: 229, source: 'Klantenvertellen',
+  url: 'https://www.klantenvertellen.nl/reviews/1053077/cartronic',
+  writeUrl: 'https://www.klantenvertellen.nl/add-review/1053077/cartronic?lang=nl',
+  items: [
+    { title: 'Top werk!', name: 'Steven', place: 'Den Haag', date: '2025-09-15', score: 10,
+      text: 'Cartronic heeft voor mij een achteruit rijcamera geïnstalleerd in mijn VW polo van bouwjaar 2018. Binnen 2 uur was de operatie geslaagd en ik ben zeer tevreden. … Bedankt Cartronic en team.' },
+    { title: 'Perfecte inbouw', name: 'Ad', place: 'Houten', date: '2025-10-23', score: 10,
+      text: 'Enkele weken geleden adaptieve cruisecontrol laten inbouwen in mijn volkswagen T-Roc. Snel en net werk geleverd, en tot slot nog een duidelijke uitleg gekregen.' },
+    { title: 'Top service', name: 'Mark', place: 'Valburg', date: '2025-09-21', score: 10,
+      text: 'Inbouw parkeersensoren voor op mijn audi Q4 etron vlot en netjes uitgevoerd. Ook hebben ze mij en de dealer belangeloos (en kosteloos) geholpen toen 9 maanden later een software update vastliep.' },
+    { title: 'Vakmensen!', name: 'F.', place: 'Dordrecht', date: '2018-03-24', score: 10,
+      text: 'Zeer vriendelijk personeel, goed ontvangen. Golf 7 facelift dynamische led achterlichten in laten bouwen. Binnen 1,5 uur ingebouwd.' },
+  ],
+};
+
+/* "Meer van ons werk" — portfolio items published on CarTronic's Facebook page. */
+const MORE_WORK = [
+  { title: 'Škoda Octavia IV', text: 'Een originele achteruitrijcamera ingebouwd in de vierde generatie Octavia. Bekijk de foto’s in het Facebook-portfolio.',
+    links: [['Bekijk het Octavia-project', FACEBOOK_URL]] },
+  { title: 'Volkswagen ID.3 & Golf 8', text: 'Originele Volkswagen-camera’s ingebouwd. Het Facebook-portfolio bevat foto’s en video’s van deze werkzaamheden.',
+    links: [['Bekijk de ID.3-inbouw', FACEBOOK_URL]] },
+  { title: 'Audi RS6', text: 'Een Audi RS6 in de CarTronic-werkplaats. Bekijk de originele foto en het bijbehorende bericht in het portfolio.',
+    links: [['Bekijk de RS6 in de werkplaats', FACEBOOK_URL]] },
+  { title: 'De camera’s in beeld', text: 'Video’s van CarTronic op Facebook: parkassist en een originele camera in de nieuwste Audi Q7, en uitleg over de werking van de 360-gradencamera.',
+    links: [['Bekijk de eerste video', 'https://www.facebook.com/Cartronic-382532161837663/videos/de-nieuwste-q7-ook-parkassist-en-originele-camera-inbouw-mogelijk-bij-cartronic-/1177318202359051/'],
+      ['Bekijk de tweede video', 'https://www.facebook.com/Cartronic-382532161837663/videos/uitleg-over-de-werking-van-360-graden-camera/1537344069689794/']] },
+];
+
+/* ---------- Berichten & kennis ----------
+   Short articles built from what CarTronic publishes (news pages, product and service texts). */
+const ARTICLES = [
+  { slug: 'online-verbinding-met-de-fabriek', tag: 'Techniek', icon: 'refresh', title: 'Online verbinding met de fabriek', keywords: ['online', 'programmeren', 'coderen', 'software update', 'activeren'],
+    short: 'Net als grote Volkswagen- en Audi-dealers heeft CarTronic toegang tot de online database van de fabriek.',
+    body: [
+      ['p', 'Een originele optie is pas af als de auto haar herkent. Daarvoor heeft CarTronic, net als grote Volkswagen- en Audi-dealers, een online verbinding met de database van de fabriek.'],
+      ['p', 'Via die verbinding programmeren we ingebouwde opties en melden we ze correct aan in de auto. Ook software-updates van modules voeren we online uit.'],
+      ['h', 'Wat betekent dat voor u?'],
+      ['ul', ['De optie werkt zoals af fabriek: via de originele schermen, knoppen en menu’s.', 'Geen losse kastjes of omwegen in de software.', 'Software-updates van modules zonder bezoek aan de dealer.']],
+    ], links: [['Meer over programmeren', '#/diensten/online-programmeren']] },
+  { slug: 'acc-en-lane-assist-kalibreren', tag: 'Kalibratie', icon: 'target', title: 'Adaptieve cruisecontrol en Lane Assist kalibreren', keywords: ['acc', 'lane assist', 'night vision', 'kalibratie', 'uitlijnen', 'voorruit'],
+    short: 'Na schade of het vervangen van de voorruit moet een rijhulpsysteem opnieuw worden afgesteld.',
+    body: [
+      ['p', 'Rijhulpsystemen zoals adaptieve cruisecontrol (ACC), Lane Assist en Night Vision werken met een radar of camera. Na schade of het vervangen van de voorruit kan zo’n systeem niet meer goed werken.'],
+      ['p', 'Voor het opnieuw afstellen beschikt CarTronic over een complete VW/Audi uitlijn- en kalibratieset — apparatuur die verder vooral bij grote dealers staat.'],
+      ['h', 'Welke systemen?'],
+      ['ul', ['Adaptieve cruisecontrol (ACC)', 'Lane Assist', 'Night Vision']],
+    ], links: [['Meer over kalibratie', '#/diensten/kalibratie-rijhulpsystemen'], ['Bekijk het kalibratieproject', '#/projecten/precisie-in-kalibratie']] },
+  { slug: 'origineel-alarm-met-scm-certificaat', tag: 'Beveiliging', icon: 'shield', title: 'Origineel af-fabriek alarm met SCM-certificaat', keywords: ['alarm', 'scm', 'diefstal', 'verzekering'],
+    short: 'Het originele alarmsysteem, inclusief SCM-certificaat voor uw verzekeraar.',
+    body: [
+      ['p', 'CarTronic bouwt het originele alarmsysteem in, inclusief SCM-certificaat voor uw verzekeraar. Volgens CarTronic is dat mogelijk op de meeste modellen van Audi, SEAT, Škoda en Volkswagen, ook nieuwere modellen.'],
+      ['p', 'Het alarm werkt daarna zoals af fabriek: vergrendelen schakelt het in, ontgrendelen schakelt het uit. Er zijn geen extra handelingen of losse afstandsbedieningen nodig.'],
+      ['p', 'De interieursensoren worden uit het zicht ingebouwd. Er komt geen losse led op de ruit of het dashboard: het alarm gebruikt de originele led in de deur.'],
+    ], links: [['Bekijk de optie', '#/mogelijkheden/origineel-af-fabriek-alarm-scm']] },
+  { slug: 'apple-carplay-en-android-auto', tag: 'Connectiviteit', icon: 'phoneDevice', title: 'Apple CarPlay en Android Auto in uw Volkswagen of Audi', keywords: ['carplay', 'android auto', 'app connect', 'smartphone interface'],
+    short: 'Met App Connect of de Audi Smartphone Interface gebruikt u uw apps via het originele scherm.',
+    body: [
+      ['p', 'Met App Connect (Volkswagen) of de Audi Smartphone Interface gebruikt u Apple CarPlay en Android Auto op het originele multimediasysteem. Navigatie, muziek en apps bedient u daarna via het scherm in de auto.'],
+      ['p', 'Wat nodig is, verschilt per model. Bij een aantal Audi-modellen, zoals de A4 (B9), Q5 (FY) en Q7 (4M), werkt de Smartphone Interface alleen als de auto MMI-navigatie heeft; zowel de basisversie als MMI Navigatie plus is dan geschikt.'],
+      ['p', 'Of het voor uw auto mogelijk is, ziet u per model in de catalogus. CarTronic controleert de uitvoering van uw auto altijd vooraf.'],
+    ], links: [['Bekijk de opties', '#/mogelijkheden?q=carplay']] },
+  { slug: 'modellen-die-niet-op-de-website-staan', tag: 'Catalogus', icon: 'car', title: 'Modellen die niet op de website staan', keywords: ['model niet gevonden', 'ander model', 'chassisnummer'],
+    short: 'Staat uw model of de gewenste optie niet in de catalogus? Vraag het CarTronic gewoon.',
+    body: [
+      ['p', 'De online catalogus toont per model en generatie de opties die CarTronic op de website beschrijft. Staat uw model of de gewenste optie er niet bij, neem dan contact op.'],
+      ['p', 'Stuur uw kenteken of chassisnummer en de gewenste optie via WhatsApp, e-mail of het contactformulier. CarTronic bekijkt wat er voor uw uitvoering mogelijk is.'],
+    ], links: [['Vraag naar de mogelijkheden', '#/contact']] },
+  { slug: 'optielijst-van-uw-auto', tag: 'Service', icon: 'file', title: 'Welke opties heeft uw auto al?', keywords: ['optielijst', 'chassisnummer', 'vin', 'fabrieksopties', 'pdf'],
+    short: 'CarTronic levert een overzicht van de fabrieksopties van uw auto, op basis van het chassisnummer.',
+    body: [
+      ['p', 'Twijfelt u welke systemen al in uw auto zitten? CarTronic levert een optielijst van uw Audi, Volkswagen, SEAT of Škoda: een overzicht van de fabrieksopties op basis van het chassisnummer, als PDF of Word-bestand.'],
+      ['p', 'Volgens CarTronic is dit mogelijk voor bouwjaren 1990 tot en met 2025. De prijs is € 10,00.'],
+    ], links: [['Vraag een optielijst aan', '#/contact?onderwerp=optielijst']] },
+];
+const ARTICLE = byKey(ARTICLES, 'slug');
 
 /* ---------- Search synonyms ---------- */
 const SYNONYMS = [
@@ -3768,9 +4313,9 @@ const DemoAuth = {
 /* ---------- Search ---------- */
 const Search = {
   index: null,
-  TYPE_LABEL: { CATEGORIE: 'Categorie', DIENST: 'Dienst', RETROFIT: 'Retrofit', MODEL: 'Model', PRODUCT: 'Product', PROJECT: 'Project' },
-  TYPE_ORDER: ['CATEGORIE', 'DIENST', 'RETROFIT', 'MODEL', 'PRODUCT', 'PROJECT'],
-  TYPE_BOOST: { CATEGORIE: 6, DIENST: 5, RETROFIT: 0, MODEL: 4, PRODUCT: 0, PROJECT: -2 },
+  TYPE_LABEL: { CATEGORIE: 'Categorie', DIENST: 'Dienst', RETROFIT: 'Retrofit', MODEL: 'Model', PRODUCT: 'Product', PROJECT: 'Project', KENNIS: 'Kennis' },
+  TYPE_ORDER: ['CATEGORIE', 'DIENST', 'RETROFIT', 'MODEL', 'PRODUCT', 'PROJECT', 'KENNIS'],
+  TYPE_BOOST: { CATEGORIE: 6, DIENST: 5, RETROFIT: 0, MODEL: 4, PRODUCT: 0, PROJECT: -2, KENNIS: -3 },
   invalidate() { this.index = null; },
   build() {
     const docs = [];
@@ -3780,6 +4325,7 @@ const Search = {
       catText: normText(CATEGORY[r.cat].name), catIdx: CATEGORIES.findIndex((c) => c.id === r.cat), models: r.models, brands: Compat.brandsOf(r), wide: r.scope === 'brand',
     }));
     SERVICES.forEach((s) => docs.push({ type: 'DIENST', id: s.slug, title: s.title, sub: s.short, href: `#/diensten/${s.slug}`, text: [s.short, s.keywords.join(' ')].join(' ') }));
+    ARTICLES.forEach((a) => docs.push({ type: 'KENNIS', id: a.slug, title: a.title, sub: a.short, href: `#/kennis/${a.slug}`, text: [a.tag, a.short, (a.keywords || []).join(' ')].join(' ') }));
     CATEGORIES.forEach((c) => docs.push({ type: 'CATEGORIE', id: c.id, title: c.name, sub: c.text, href: `#/mogelijkheden?cat=${c.id}`, text: c.text }));
     MODELS.forEach((m) => {
       const n = Compat.countForModel(m.id);
@@ -3791,7 +4337,7 @@ const Search = {
       text: [p.shortDescription, (Repo.shopCategory(p.category) || {}).name, p.sku, (p.compatibility.models || []).map(modelLabel).join(' ')].join(' '),
       models: p.compatibility.models || [], brands: p.compatibility.brands || [], wide: !(p.compatibility.models || []).length,
     }));
-    docs.forEach((d) => { d.nTitle = normText(d.title); d.nText = normText(`${d.title} ${d.text}`); d.words = d.nText.split(' '); });
+    docs.forEach((d) => { d.nTitle = normText(d.title); d.nText = normText(`${d.title} ${d.text}`); d.words = d.nText.split(' '); d.tWords = d.nTitle.split(' '); });
     // Per result type: its words and full text, to tell meaningful query words from filler.
     this.vocab = {};
     docs.forEach((d) => {
@@ -3869,8 +4415,12 @@ const Search = {
       if (d.catText && d.catText.split(' ').some((w) => w.startsWith(t))) { viaCat = true; return true; }
       return false;
     });
-    if (every) score += viaCat ? 8 : (tokens.length > 1 ? 22 : 12);
-    else if (tokens.length > 1 && score < 30 && !syn) score = 0;
+    if (every) {
+      score += viaCat ? 8 : (tokens.length > 1 ? 22 : 12);
+      // Words found in the title count more than words found only in the description
+      // ("spiegels inklapbaar": the mirror options before a blind-spot system with LEDs in the mirrors).
+      score += 5 * tokens.filter((t) => d.tWords.some((w) => w.startsWith(t))).length;
+    } else if (tokens.length > 1 && score < 30 && !syn) score = 0;
     return { score, viaCat: every && viaCat && score < 30 };
   },
   /* Query words that mean something for a result type; the rest ("inbouwen", "gti", a year) is
@@ -3886,7 +4436,14 @@ const Search = {
         if (!cache[type]) {
           const v = this.vocab[type] || { words: new Set(), text: '' };
           const words = [...v.words];
-          const known = all.filter((t) => words.some((w) => w.startsWith(t)) || syn.get(t).some((ph) => v.text.includes(ph)));
+          const isKnown = (t) => words.some((w) => w.startsWith(t)) || syn.get(t).some((ph) => v.text.includes(ph));
+          // Dutch adjective forms: "inklapbaar" also finds "inklapbare", "afneembaar" "afneembare".
+          const stem = (t) => (/baar$/.test(t) ? t.slice(0, -2) : t);
+          const known = [];
+          all.forEach((t) => {
+            if (isKnown(t)) known.push(t);
+            else if (stem(t) !== t && words.some((w) => w.startsWith(stem(t)))) { known.push(stem(t)); if (!syn.has(stem(t))) syn.set(stem(t), []); }
+          });
           cache[type] = { tokens: known, tokenSyn: known.map((t) => syn.get(t)) };
         }
         return cache[type];
@@ -4007,7 +4564,7 @@ const Art = {
           return a;
         })}
       </g>
-      <text x="16" y="286" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="1.6" fill="${label}">ILLUSTRATIE</text>
+      <text x="16" y="286" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="1.6" fill="${label}">ILLUSTRATIE</text>
     </svg>`;
   },
   html(kind, variant, alt) {
@@ -4071,11 +4628,13 @@ const WhatsApp = {
     return this.url(t);
   },
   /** Structured enquiry. Never contains internal ids. */
-  enquiry({ name, vehicle, plate, year, options = [], products = [], question }) {
+  enquiry({ name, topic, vehicle, plate, vin, year, options = [], products = [], question }) {
     const lines = ['Hallo CarTronic,', ''];
+    if (topic) lines.push(`Onderwerp: ${topic}`);
     if (name) lines.push(`Naam: ${name}`);
     lines.push(`Voertuig: ${vehicle || 'nog niet gekozen'}`);
     if (plate) lines.push(`Kenteken: ${plate}`);
+    if (vin) lines.push(`Chassisnummer (VIN): ${vin}`);
     if (year) lines.push(`Bouwjaar: ${year}`);
     if (options.length) { lines.push('', 'Geselecteerde optie(s):'); options.forEach((o) => lines.push(`- ${o}`)); }
     if (products.length) { lines.push('', 'Producten:'); products.forEach((p) => lines.push(`- ${p}`)); }
@@ -4088,11 +4647,21 @@ const WhatsApp = {
 const NAV = [
   ['mogelijkheden', 'Mogelijkheden', '#/mogelijkheden'],
   ['merken', 'Merken', '#/merken'],
-  ['projecten', 'Projecten', '#/projecten'],
   ['expertise', 'Expertise', '#/expertise'],
+  ['projecten', 'Projecten', '#/projecten'],
   ['webshop', 'Webshop', '#/webshop'],
   ['over', 'Over CarTronic', '#/over'],
   ['contact', 'Contact', '#/contact'],
+];
+/* Mobile menu (as in the approved mobile design): the main pages, then the call button. */
+const MOBILE_NAV = [
+  ['mogelijkheden', 'Mogelijkheden', '#/mogelijkheden'],
+  ['expertise', 'Expertise', '#/expertise'],
+  ['projecten', 'Projecten', '#/projecten'],
+  ['webshop', 'Webshop', '#/webshop'],
+  ['over', 'Over CarTronic', '#/over'],
+  ['contact', 'Contact', '#/contact'],
+  ['beoordelingen', 'Beoordelingen', '#/beoordelingen'],
 ];
 const Layout = {
   renderHeader() {
@@ -4103,24 +4672,35 @@ const Layout = {
           ${NAV.map(([k, l, h]) => `<li><a href="${h}" data-nav="${k}">${l}</a></li>`).join('')}
         </ul></nav>
         <div class="header-tools">
-          <button class="icon-btn" type="button" data-action="open-search" aria-label="Zoeken" title="Zoeken (Ctrl K)">${icon('search')}</button>
+          <button class="icon-btn tool-search" type="button" data-action="open-search" aria-label="Zoeken" title="Zoeken (Ctrl K)">${icon('search')}</button>
           <button class="vehicle-chip" type="button" data-action="open-vehicle" id="vehicleChip"></button>
-          <a class="icon-btn" href="#/winkelmand" data-action="open-cart" id="cartBtn" aria-label="Winkelmand">${icon('cart')}<span class="count" hidden>0</span></a>
+          <a class="icon-btn tool-cart" href="#/winkelmand" data-action="open-cart" id="cartBtn" aria-label="Winkelmand">${icon('cart')}<span class="count" hidden>0</span></a>
           <a class="header-phone" href="${COMPANY.phoneHref}" aria-label="Bel CarTronic: ${COMPANY.phoneDisplay}">${icon('phone')}<span class="num">${COMPANY.phoneDisplay}</span></a>
-          <button class="icon-btn nav-toggle" type="button" aria-expanded="false" aria-controls="mobileNav" data-action="toggle-menu" aria-label="Menu">
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobileNav" data-action="toggle-menu" aria-label="Menu">
             <span class="bars" aria-hidden="true"><span></span><span></span><span></span></span>
           </button>
         </div>
       </div>
-      <div class="mobile-nav" id="mobileNav" aria-label="Menu">
-        <nav aria-label="Mobiele navigatie"><ul class="m-links">
-          ${NAV.map(([k, l, h]) => `<li><a href="${h}" data-nav="${k}">${l}${icon('right')}</a></li>`).join('')}
-          <li><a href="#/mijn-auto" data-nav="mijn-auto">Mijn auto &amp; bewaard${icon('right')}</a></li>
-        </ul></nav>
-        <div class="m-vehicle" id="mobileVehicle"></div>
-        <div class="m-contact">
-          <a class="btn btn--whatsapp" href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp" data-wa-generic>${icon('whatsapp')} WhatsApp CarTronic</a>
-          <a class="btn btn--outline" href="${COMPANY.phoneHref}">${icon('phone')} Bel ${COMPANY.phoneDisplay}</a>
+      <div class="mobile-nav" id="mobileNav">
+        <div class="mn-backdrop" data-action="toggle-menu" aria-hidden="true"></div>
+        <div class="mn-panel" role="dialog" aria-modal="true" aria-labelledby="mnTitle">
+          <div class="mn-head">
+            <p class="mn-title" id="mnTitle">CarTronic</p>
+            <button class="mn-close" type="button" data-action="toggle-menu" aria-label="Menu sluiten">${icon('x')}</button>
+          </div>
+          <p class="mn-sub">Originele opties voor uw Volkswagen, Audi, SEAT en Škoda.</p>
+          <nav aria-label="Mobiele navigatie"><ul class="m-links">
+            ${MOBILE_NAV.map(([k, l, h]) => `<li><a href="${h}" data-nav="${k}">${l}</a></li>`).join('')}
+          </ul></nav>
+          <a class="btn btn--primary btn--block mn-call" href="${COMPANY.phoneHref}">${icon('phone')} ${COMPANY.phoneDisplay}</a>
+          <button class="mn-search" type="button" data-action="open-search">${icon('search')}<span>Zoek een optie, model of dienst</span></button>
+          <div class="mn-vehicle" id="mobileVehicle"></div>
+          <ul class="mn-more">
+            <li><a href="#/merken" data-nav="merken">Merken &amp; modellen</a></li>
+            <li><a href="#/mijn-auto" data-nav="mijn-auto">Mijn auto &amp; bewaard</a></li>
+            <li><a href="#/winkelmand" data-nav="cart" id="mobileCartLink">Winkelmand</a></li>
+            <li><a href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp" data-wa-generic>WhatsApp</a></li>
+          </ul>
         </div>
       </div>`;
     // The header uses backdrop-filter, which would make it the containing block of the fixed
@@ -4141,28 +4721,29 @@ const Layout = {
       <div class="container">
         <div class="footer-grid">
           <div class="footer-brand">
-            ${logoSvg({ light: true })}
-            <p>Specialist in het achteraf inbouwen van originele fabrieksopties voor Volkswagen, Audi, SEAT en Škoda. Voor particulieren en dealers.</p>
-            <div class="footer-actions">
-              <a class="btn btn--whatsapp btn--sm" href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp" data-wa-generic>${icon('whatsapp')} WhatsApp</a>
-              <a class="btn btn--outline-light btn--sm" href="${COMPANY.phoneHref}">${icon('phone')} Bellen</a>
-            </div>
+            <a class="footer-logo" href="#/" aria-label="CarTronic — naar de homepage">${logoSvg()}</a>
+            <p class="footer-tagline">Originele fabrieksopties.<br>Specialistische inbouw.<br>Volkswagen · Audi · SEAT · Škoda.</p>
           </div>
-          <div class="footer-col"><h2>Mogelijkheden</h2><ul>
-            ${CATEGORIES.slice(0, 6).map((c) => `<li><a href="#/mogelijkheden?cat=${c.id}">${esc(c.name)}</a></li>`).join('')}
-            <li><a href="#/merken">Alle merken en modellen</a></li>
+          <div class="footer-col"><h2>Ontdek de mogelijkheden</h2><ul>
+            <li><button type="button" data-action="open-vehicle">Selecteer uw auto</button></li>
+            <li><a href="#/expertise">Expertise &amp; diensten</a></li>
+            <li><a href="#/projecten">Projecten</a></li>
+            <li><a href="#/mogelijkheden">Alle mogelijkheden</a></li>
+            <li><a href="#/merken">Merken &amp; modellen</a></li>
+            <li><a href="#/webshop">Webshop</a></li>
           </ul></div>
           <div class="footer-col"><h2>CarTronic</h2><ul>
-            <li><a href="#/expertise">Expertise</a></li>
-            <li><a href="#/projecten">Projecten</a></li>
-            <li><a href="#/webshop">Webshop</a></li>
             <li><a href="#/over">Over CarTronic</a></li>
+            <li><a href="#/kennis">Berichten &amp; kennis</a></li>
+            <li><a href="#/productinformatie">Productinformatie</a></li>
+            <li><a href="#/beoordelingen">Beoordelingen</a></li>
             <li><a href="#/contact">Contact</a></li>
             <li><a href="#/mijn-auto">Mijn auto &amp; bewaard</a></li>
           </ul></div>
-          <div class="footer-col"><h2>Contact</h2><ul>
+          <div class="footer-col footer-contact"><h2>Contact</h2><ul>
             <li>${esc(COMPANY.street)}<br>${esc(COMPANY.postal)} ${esc(COMPANY.city)}</li>
             <li><a href="${COMPANY.phoneHref}">${COMPANY.phoneDisplay}</a></li>
+            <li><a href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp" data-wa-generic>WhatsApp: ${COMPANY.phoneDisplay}</a></li>
             <li><a href="mailto:${COMPANY.email}">${COMPANY.email}</a></li>
           </ul>
           <dl class="footer-hours">${COMPANY.hours.map(([d, t]) => `<dt>${d}</dt><dd>${t}</dd>`).join('')}</dl>
@@ -4170,16 +4751,9 @@ const Layout = {
         </div>
         <div class="footer-bottom">
           <div>© ${year} CarTronic · Rijswijk<span class="sep">·</span>Volkswagen, Audi, SEAT en Škoda zijn merken van hun respectievelijke eigenaren.</div>
-          <div><a href="#/admin">Beheer (demo)</a><span class="sep">·</span><span>Interactief prototype</span></div>
+          <div><a href="#/privacy">Privacy</a><span class="sep">·</span><a href="#/admin">Beheer (demo)</a><span class="sep">·</span><span>Interactief prototype</span></div>
         </div>
       </div>`;
-  },
-  renderMobileBar() {
-    const v = VehicleStore.get();
-    $('#mobileBar').innerHTML = `
-      <button type="button" class="is-car" data-action="open-vehicle">${icon('car')}<span class="mb-label">${v ? esc(VehicleStore.short(v)) : 'Kies uw auto'}</span></button>
-      <a class="is-wa" href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp">${icon('whatsapp')}<span class="mb-label">WhatsApp</span></a>
-      <a href="${COMPANY.phoneHref}">${icon('phone')}<span class="mb-label">Bellen</span></a>`;
   },
   refreshDynamic() {
     const v = VehicleStore.get();
@@ -4194,9 +4768,8 @@ const Layout = {
     const mv = $('#mobileVehicle');
     if (mv) {
       mv.innerHTML = v
-        ? `<div class="state-card" style="grid-template-columns:auto minmax(0,1fr)"><div class="sc-icon">${icon('car')}</div><div><div class="sc-kicker" style="color:var(--red)">Uw auto</div><div class="sc-title" style="font-size:16px">${esc(VehicleStore.name(v))}</div><div class="sc-meta">${esc(VehicleStore.meta(v))}</div></div>
-           <div class="sc-actions" style="grid-column:1/-1;justify-content:flex-start"><a class="btn btn--dark btn--sm" href="#/mogelijkheden">Mogelijkheden</a><button class="btn btn--light btn--sm" type="button" data-action="open-vehicle">Wijzig auto</button></div></div>`
-        : `<button class="btn btn--dark btn--block" type="button" data-action="open-vehicle">${icon('car')} Kies uw auto</button>`;
+        ? `<span class="mnv-icon">${icon('car')}</span><span class="mnv-text"><span class="mnv-lbl">Uw auto</span><span class="mnv-val">${esc(VehicleStore.name(v))}</span></span><button class="mnv-btn" type="button" data-action="open-vehicle">Wijzig</button>`
+        : `<span class="mnv-icon">${icon('car')}</span><span class="mnv-text"><span class="mnv-lbl">Uw auto</span><span class="mnv-val">Nog niet gekozen</span></span><button class="mnv-btn" type="button" data-action="open-vehicle">Kies uw auto</button>`;
     }
     const count = Cart.count();
     const btn = $('#cartBtn');
@@ -4205,11 +4778,13 @@ const Layout = {
       const prev = parseInt(c.textContent, 10) || 0;
       c.textContent = count;
       c.hidden = count === 0;
+      btn.classList.toggle('has-items', count > 0);
       if (count > prev) { c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump'); }
       btn.setAttribute('aria-label', `Winkelmand, ${plural(count, 'artikel', 'artikelen')}`);
     }
+    const mc = $('#mobileCartLink');
+    if (mc) mc.textContent = count ? `Winkelmand (${count})` : 'Winkelmand';
     $$('[data-wa-generic]').forEach((a) => { a.href = WhatsApp.generic(); });
-    if (document.body.classList.contains('has-mobile-bar') || true) this.renderMobileBar();
   },
   update(ctx, page) {
     const key = page.nav || '';
@@ -4218,13 +4793,16 @@ const Layout = {
     this.refreshDynamic();
   },
   toggleMenu(force) {
-    const nav = $('#mobileNav'); const btn = $('.nav-toggle');
+    const nav = $('#mobileNav'); const btn = $('#siteHeader .nav-toggle');
     if (!nav || !btn) return;
     const open = typeof force === 'boolean' ? force : !nav.classList.contains('is-open');
     nav.classList.toggle('is-open', open);
     btn.setAttribute('aria-expanded', String(open));
     btn.setAttribute('aria-label', open ? 'Menu sluiten' : 'Menu');
     document.body.classList.toggle('is-locked', open);
+    // The menu is a modal panel: keep keyboard and screen-reader focus inside it while it is open.
+    ['#siteHeader', '#main', '#siteFooter'].forEach((sel) => { const el = $(sel); if (el) el.inert = open; });
+    if (open) { const c = $('.mn-close', nav); if (c) c.focus({ preventScroll: true }); } else if (nav.contains(document.activeElement)) btn.focus({ preventScroll: true });
   },
   closeMenu() { if ($('#mobileNav')?.classList.contains('is-open')) this.toggleMenu(false); },
 };
@@ -4436,15 +5014,16 @@ const Behaviours = {
 /* ---------- Vehicle finder (kenteken + manual) ---------- */
 let finderSeq = 0;
 const VehicleFinder = {
-  html({ tab = 'plate', context = 'home' } = {}) {
+  html({ tab = 'plate', context = 'home', tabs = true } = {}) {
     const id = `fx${++finderSeq}`;
     const brandOpts = BRANDS.map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
-    return `<div class="finder" data-finder data-context="${context}" data-id="${id}">
-      <div class="segmented finder-tabs" role="tablist" aria-label="Zoek uw auto">
+    const panelAttrs = (name) => (tabs ? `role="tabpanel" id="${id}-p-${name}" aria-labelledby="${id}-t-${name}"` : `id="${id}-p-${name}"`);
+    return `<div class="finder${tabs ? '' : ' finder--simple'}" data-finder data-context="${context}" data-id="${id}">
+      ${tabs ? `<div class="segmented finder-tabs" role="tablist" aria-label="Zoek uw auto">
         <button type="button" role="tab" id="${id}-t-plate" aria-controls="${id}-p-plate" aria-selected="${tab === 'plate'}" tabindex="${tab === 'plate' ? 0 : -1}" data-tab="plate">${icon('search')} Kenteken<span class="hide-xs">&nbsp;invullen</span></button>
         <button type="button" role="tab" id="${id}-t-manual" aria-controls="${id}-p-manual" aria-selected="${tab === 'manual'}" tabindex="${tab === 'manual' ? 0 : -1}" data-tab="manual">${icon('car')} Handmatig<span class="hide-xs">&nbsp;selecteren</span></button>
-      </div>
-      <div role="tabpanel" id="${id}-p-plate" aria-labelledby="${id}-t-plate" data-panel="plate"${tab === 'plate' ? '' : ' hidden'}>
+      </div>` : ''}
+      <div ${panelAttrs('plate')} data-panel="plate"${tab === 'plate' ? '' : ' hidden'}>
         <form class="finder-form finder-form--plate" data-plate-form novalidate>
           <div class="field">
             <label for="${id}-plate">Kenteken</label>
@@ -4458,24 +5037,26 @@ const VehicleFinder = {
         <div class="finder-foot">
           <span id="${id}-plate-hint">Uw auto wordt opgezocht via RDW Open Data. Het kenteken bewaren we alleen tijdelijk in deze browser.</span>
           <button type="button" data-demo-toggle aria-expanded="false">Demo-kentekens</button>
+          ${tabs ? '' : '<button type="button" data-tab="manual">Liever merk en model kiezen</button>'}
         </div>
         <div class="demo-plates" data-demo-list hidden>
           <span class="lbl">Testkentekens (demo-gegevens, geen RDW):</span>
           ${DEMO_PLATE_LIST.map(([k, lbl]) => `<button type="button" data-demo-plate="${k}">${Plate.format(k)}<span>${esc(lbl || DEMO_VEHICLES[k]._hint)}</span></button>`).join('')}
         </div>
       </div>
-      <div role="tabpanel" id="${id}-p-manual" aria-labelledby="${id}-t-manual" data-panel="manual"${tab === 'manual' ? '' : ' hidden'}>
+      <div ${panelAttrs('manual')} data-panel="manual"${tab === 'manual' ? '' : ' hidden'}>
         <form class="finder-form finder-form--manual" data-manual-form novalidate>
           <div class="field"><label for="${id}-brand">1. Merk</label>
             <select class="select" id="${id}-brand" name="brand"><option value="">Kies uw merk</option>${brandOpts}</select></div>
           <div class="field"><label for="${id}-model">2. Model / generatie</label>
             <select class="select" id="${id}-model" name="model" disabled aria-describedby="${id}-model-err"><option value="">Kies uw model</option></select>
             <span class="field-error" id="${id}-model-err" data-model-err></span></div>
-          <div class="field"><label for="${id}-year">3. Bouwjaar <span class="opt">(optioneel)</span></label>
+          <div class="field finder-year"${tabs ? '' : ' hidden'}><label for="${id}-year">3. Bouwjaar <span class="opt">(optioneel)</span></label>
             <select class="select" id="${id}-year" name="year" disabled><option value="">Onbekend</option></select></div>
           <button class="btn btn--primary" type="submit">${icon('search')} Bekijk mogelijkheden</button>
         </form>
-        <div class="finder-foot">Uw model staat er niet bij? <a href="#/contact">Vraag naar de mogelijkheden.</a></div>
+        <div class="finder-foot"><span>Uw model staat er niet bij? <a href="#/contact">Vraag naar de mogelijkheden.</a></span>
+          ${tabs ? '' : '<span>Liever zoeken op kenteken? <button type="button" data-tab="plate">Zoek op kenteken</button></span>'}</div>
       </div>
       <div class="finder-result" data-result aria-live="polite"></div>
     </div>`;
@@ -4495,19 +5076,23 @@ const VehicleFinder = {
     const modelErr = $('[data-model-err]', finder);
     let busy = false;
 
+    const roleTabs = tabs.filter((t) => t.getAttribute('role') === 'tab');
     const selectTab = (name, focus = false) => {
-      tabs.forEach((t) => {
+      $$('[data-panel]', finder).forEach((p) => { p.hidden = p.dataset.panel !== name; });
+      roleTabs.forEach((t) => {
         const on = t.dataset.tab === name;
         t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1;
-        $(`[data-panel="${t.dataset.tab}"]`, finder).hidden = !on;
         if (on && focus) t.focus();
       });
+      // Without tabs (home), move focus into the newly shown panel.
+      if (focus && !roleTabs.length) { const f = $(`[data-panel="${name}"] input, [data-panel="${name}"] select`, finder); if (f) f.focus(); }
     };
-    tabs.forEach((t) => t.addEventListener('click', () => { selectTab(t.dataset.tab); result.innerHTML = ''; }));
-    $('[role="tablist"]', finder).addEventListener('keydown', (e) => {
+    tabs.forEach((t) => t.addEventListener('click', () => { selectTab(t.dataset.tab, !roleTabs.length); result.innerHTML = ''; }));
+    const tablist = $('[role="tablist"]', finder);
+    if (tablist) tablist.addEventListener('keydown', (e) => {
       if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-      const cur = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
-      selectTab(tabs[(cur + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length].dataset.tab, true);
+      const cur = roleTabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+      selectTab(roleTabs[(cur + (e.key === 'ArrowRight' ? 1 : -1) + roleTabs.length) % roleTabs.length].dataset.tab, true);
     });
 
     // Prefill manual selects with the current vehicle
@@ -4522,6 +5107,8 @@ const VehicleFinder = {
       const nowY = new Date().getFullYear();
       yearSel.innerHTML = '<option value="">Onbekend</option>' + (m ? Array.from({ length: Math.min(m.to || nowY, nowY) - m.from + 1 }, (_, i) => (m.to ? Math.min(m.to, nowY) : nowY) - i).map((y) => `<option value="${y}">${y}</option>`).join('') : '');
       yearSel.disabled = !m;
+      const yf = yearSel.closest('.finder-year');
+      if (yf && finder.classList.contains('finder--simple')) yf.hidden = !m;
     };
     brandSel.addEventListener('change', () => { fillModels(); modelErr.textContent = ''; modelSel.removeAttribute('aria-invalid'); });
     modelSel.addEventListener('change', () => { fillYears(); modelErr.textContent = ''; modelSel.removeAttribute('aria-invalid'); });
@@ -4871,34 +5458,65 @@ const CartUI = {
    PUBLIC PAGES
    ===================================================================== */
 const Pages = {};
+/* How CarTronic works (expertise page, technique card). */
 const STEPS = [
-  ['Originele onderdelen', 'We werken uitsluitend met originele OEM-onderdelen, afgestemd op uw model en uitvoering.', ''],
-  ['Montage', 'Vakkundige montage in onze werkplaats in Rijswijk, volgens fabrieksnormen.', ''],
-  ['Coderen & programmeren', 'Via de online verbinding met de fabriek wordt de optie geprogrammeerd en correct aangemeld in de auto.', ''],
-  ['Kalibratie', 'Rijhulpsystemen zoals adaptieve cruise control, Lane Assist en Night Vision worden uitgelijnd en gekalibreerd.', 'Waar van toepassing'],
-  ['Fabrieksgeïntegreerd resultaat', 'De optie werkt zoals af fabriek: bediend via de originele schermen, knoppen en menu’s.', ''],
+  ['cpu', 'Originele onderdelen', 'OEM-componenten, afgestemd op uw model en uitvoering.'],
+  ['wrench', 'Montage volgens fabrieksnormen', 'Vakkundige inbouw in onze werkplaats in Rijswijk.'],
+  ['settings2', 'Coderen & programmeren', 'Via de online verbinding met de fabriek wordt de optie geprogrammeerd en correct aangemeld in de auto.'],
+  ['target', 'Kalibratie waar nodig', 'Rijhulpsystemen zoals adaptieve cruisecontrol, Lane Assist en Night Vision worden uitgelijnd en gekalibreerd.'],
+  ['check', 'Werkt zoals af fabriek', 'Bediend via de originele schermen, knoppen en menu’s.'],
 ];
-const sequenceHtml = ({ dark = true, headingTag = 'h2', link = true } = {}) => `
-  <div class="sequence">
-    <div class="sequence-intro">
-      <p class="eyebrow">Expertise</p>
-      <${headingTag} class="h2 mt-16" data-split>Inbouwen is één ding.<span class="l2">Integreren is ons vak.</span></${headingTag}>
-      <p class="lead" data-reveal>Originele fabrieksopties achteraf inbouwen vraagt kennis van de auto, de elektronica en de fabriekssystemen. Daarom stopt ons werk niet bij de montage.</p>
-      ${link ? `<p class="mt-32" data-reveal><a class="btn ${dark ? 'btn--outline-light' : 'btn--outline'}" href="#/expertise">Bekijk onze expertise</a></p>` : ''}
+const techCard = ({ headingTag = 'h2', id = 'tech-title', link = true } = {}) => `
+  <div class="tech-card" data-reveal>
+    <div class="tech-media">${Media.html('img:about', 'Volkswagen Golf Sportsvan op de uitlijnbrug in de CarTronic-werkplaats', { kind: 'assist' })}<span class="tech-caption">De werkplaats · Uitlijnen &amp; kalibreren</span></div>
+    <div class="tech-panel on-dark">
+      <p class="eyebrow">Techniek achter het resultaat</p>
+      <${headingTag} id="${id}">Inbouwen is één ding.<br>Integreren is ons vak.</${headingTag}>
+      <p>Een originele optie werkt samen met de rest van uw auto. Daarvoor zijn de juiste onderdelen, programmering en afstelling nodig.</p>
+      <ul class="tech-list">${STEPS.map(([ic, t, p]) => `<li>${icon(ic)}<div><strong>${t}</strong><span>${p}</span></div></li>`).join('')}</ul>
+      ${link ? '<p class="tech-more"><a class="ink-link" href="#/expertise">Meer over onze werkwijze</a></p>' : ''}
     </div>
-    <ol class="steps" data-sequence>
-      <span class="steps-progress" aria-hidden="true"></span>
-      ${STEPS.map(([t, p, tag], i) => `<li class="step"><span class="dot" aria-hidden="true">0${i + 1}</span><h3>${t}</h3><p>${p}</p>${tag ? `<span class="step-tag">${tag}</span>` : ''}</li>`).join('')}
-    </ol>
   </div>`;
-const ctaBand = ({ title = 'Twijfelt u welke opties mogelijk zijn?', text = 'Stuur uw kenteken en de gewenste optie. CarTronic controleert de mogelijkheden voor uw uitvoering.' } = {}) => `
-  <section class="cta-band on-dark" aria-label="Contact">
+const svcCard = (s) => `<article class="svc-card">
+    <span class="svc-icon">${icon(s.icon)}</span>
+    <h3>${esc(s.card)}</h3>
+    <p>${esc(s.cardText)}</p>
+    <ul>${s.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
+    <a class="ink-link" href="${s.cta[1]}">${esc(s.cta[0])}</a>
+  </article>`;
+/* Star rating; the fill shows the real score (9,4 / 10 → 94 %). */
+const starRow = (score, scale = 10, cls = 'stars') => {
+  const pct = Math.max(0, Math.min(100, (parseFloat(String(score).replace(',', '.')) / scale) * 100));
+  const five = icon('star').repeat(5);
+  return `<span class="${cls}" aria-hidden="true"><span class="st-base">${five}</span><span class="st-fill" style="width:${pct.toFixed(1)}%">${five}</span></span>`;
+};
+const reviewCard = (r) => `<article class="review-card">
+    ${starRow(r.score, 10, 'rc-stars')}
+    <h3>${esc(r.title)}</h3>
+    <blockquote>“${esc(r.text)}”</blockquote>
+    <p class="rc-who">${esc(r.name)}, ${esc(r.place)} · ${esc(fmtDate(r.date))}</p>
+  </article>`;
+const reviewsBlock = ({ id = 'reviews-title', headingTag = 'h2', limit = REVIEWS.items.length, eyebrow = true, more = 'external' } = {}) => `
+  <div class="reviews-head">
+    <div class="reviews-score">
+      ${eyebrow ? '<p class="eyebrow">Ervaringen van klanten</p>' : ''}
+      <${headingTag} class="h2" id="${id}" data-split>Vakwerk wordt<br>gewaardeerd.</${headingTag}>
+      <p class="score"><span class="score-num">${REVIEWS.score}</span><span class="score-of">/ ${REVIEWS.scale}</span><span class="sr-only"> gemiddeld, op basis van ${REVIEWS.count} beoordelingen</span></p>
+      ${starRow(REVIEWS.score, REVIEWS.scale)}
+      <p class="score-meta">Gemiddelde van ${REVIEWS.count} beoordelingen op ${esc(REVIEWS.source)}.</p>
+      <p class="reviews-links">${more === 'page'
+        ? '<a class="ink-link" href="#/beoordelingen">Lees meer ervaringen</a>'
+        : `<a class="ink-link" href="${attr(REVIEWS.url)}" target="_blank" rel="noopener">Bekijk alle beoordelingen op ${esc(REVIEWS.source)}<span class="sr-only"> (opent in een nieuw venster)</span></a>`}</p>
+    </div>
+    <div class="review-grid">${REVIEWS.items.slice(0, limit).map(reviewCard).join('')}</div>
+  </div>`;
+const ctaBand = ({ title = 'Wat mist er nog aan uw auto?', text = 'Vertel ons uw merk, model en gewenste optie. Wij denken met u mee.' } = {}) => `
+  <section class="cta-band on-dark" aria-labelledby="cta-title">
     <div class="container cta-band-inner">
-      <div data-reveal><h2>${title}</h2><p>${text}</p></div>
+      <div data-reveal><h2 id="cta-title">${title}</h2><p>${text}</p></div>
       <div class="cta-actions" data-reveal>
-        <a class="btn btn--whatsapp" href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp" data-wa-generic>${icon('whatsapp')} Stuur een WhatsApp</a>
-        <a class="btn btn--outline-light" href="${COMPANY.phoneHref}">${icon('phone')} ${COMPANY.phoneDisplay}</a>
-        <a class="btn btn--primary" href="#/contact">Contactformulier</a>
+        <a class="btn btn--white" href="#/contact">Bespreek uw mogelijkheden</a>
+        <a class="btn btn--outline-light" href="${COMPANY.phoneHref}" aria-label="Bel CarTronic: ${COMPANY.phoneDisplay}">${icon('phone')} Bel CarTronic</a>
       </div>
     </div>
   </section>`;
@@ -4925,7 +5543,6 @@ Pages.home = {
     const featured = Repo.products().filter((p) => isPublicProduct(p) && p.featured).slice(0, 3);
     const projects = Repo.projects().filter((p) => p.active).slice(0, 3);
     const own = v ? Compat.forVehicle(v) : [];
-    const groupCount = (g) => RETROFITS.filter((r) => CATEGORY[r.cat].group === g).length;
     return `
     <section class="hero on-dark" data-hero aria-labelledby="hero-title">
       <div class="hero-media" aria-hidden="true">${Media.html('img:hero', '', { kind: 'cockpit', eager: true })}</div>
@@ -4947,7 +5564,7 @@ Pages.home = {
 
     <section class="brand-band" aria-label="Merken">
       <div class="container brand-band-inner">
-        <p class="tagline">Vier merken.<br>Één specialisme.</p>
+        <p class="tagline">Vier merken.<br>Eén specialisme.</p>
         ${BRANDS.map((b) => `<a href="#/merken/${b.id}" aria-label="${b.name}: modellen en mogelijkheden"><span class="wordmark ${b.wordmark}">${b.name}</span></a>`).join('')}
       </div>
     </section>
@@ -4957,9 +5574,8 @@ Pages.home = {
         <div class="finder-intro">
           <p class="eyebrow">Uw auto, uw mogelijkheden</p>
           <h2 id="finder-title">Welke opties passen bij uw auto?</h2>
-          <p>Vul uw kenteken in of kies merk en model. U ziet direct welke originele opties CarTronic voor uw auto in de catalogus heeft.</p>
         </div>
-        <div>${VehicleFinder.html({ tab: 'plate', context: 'home' })}</div>
+        <div>${VehicleFinder.html({ tab: 'manual', context: 'home', tabs: false })}</div>
       </div>
     </section>
 
@@ -4976,58 +5592,60 @@ Pages.home = {
 
     ${recent.length ? recentSection(recent) : ''}
 
-    <section class="section" aria-labelledby="groups-title" ${v || recent.length ? 'style="padding-top:48px"' : ''}>
+    <section class="section" aria-labelledby="cats-title">
       <div class="container">
-        <div class="section-head">
-          <div><p class="eyebrow">Wat we inbouwen</p><h2 class="h2 mt-16" id="groups-title" data-split>Originele opties,<br>ingedeeld naar wat u wilt.</h2></div>
-          <p class="lead" data-reveal>Van camera tot Virtual Cockpit: elke optie is origineel, gemonteerd in onze werkplaats en correct aangemeld in de auto.</p>
+        <div class="section-intro">
+          <p class="eyebrow">Af fabriek. Achteraf ingebouwd.</p>
+          <h2 class="h2" id="cats-title" data-split>Meer uit uw auto.<br>Met originele opties.</h2>
+          <p class="lead" data-reveal>Van een achteruitrijcamera tot een digitale cockpit. Ontdek de upgrade die bij uw auto past.</p>
         </div>
-        <div class="grid grid-4" data-stagger>
-          ${GROUPS.map((g, i) => `<article class="group-card">
-            <span class="kicker-num">0${i + 1}</span>
-            <div class="gc-icon">${icon(g.icon)}</div>
-            <h3>${g.name}</h3>
-            <p>${g.text}</p>
-            <div class="gc-foot"><span>${plural(groupCount(g.id), 'mogelijkheid', 'mogelijkheden')}</span><a class="link stretch" href="#/mogelijkheden?groep=${g.id}" aria-label="Bekijk ${g.name}">${icon('arrow')}</a></div>
+        <div class="cat-grid" data-stagger>
+          ${CATEGORIES.map((c, i) => `<article class="cat-card">
+            <div class="cc-top"><span class="cc-icon">${icon(c.icon)}</span><span class="cc-num" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span></div>
+            <h3>${esc(c.name)}</h3>
+            <p>${esc(c.tagline)}</p>
+            <a class="cc-link stretch" href="#/mogelijkheden?cat=${c.id}" aria-label="Ontdek de mogelijkheden: ${attr(c.name)}">Ontdek de mogelijkheden</a>
           </article>`).join('')}
         </div>
-        <div class="chips mt-32" data-reveal>
-          ${CATEGORIES.map((c) => `<a class="chip" href="#/mogelijkheden?cat=${c.id}">${icon(c.icon)} ${c.name}</a>`).join('')}
-        </div>
       </div>
     </section>
 
-    <section class="section section--dark on-dark" aria-label="Expertise">
-      <div class="container">${sequenceHtml()}</div>
-    </section>
-
-    <section class="section" aria-labelledby="projects-title">
+    <section class="section section--tight-top" aria-labelledby="svc-title">
       <div class="container">
-        <div class="section-head">
-          <div><p class="eyebrow">Portfolio</p><h2 class="h2 mt-16" id="projects-title" data-split>Uit de werkplaats.</h2></div>
-          <a class="link" href="#/projecten">Alle projecten ${icon('arrow')}</a>
+        <div class="section-intro">
+          <p class="eyebrow">Expertise &amp; diensten</p>
+          <h2 class="h2" id="svc-title" data-split>Van retrofit<br>tot reparatie.</h2>
+          <p class="lead" data-reveal>Naast het inbouwen van originele opties programmeert CarTronic modules, kalibreert rijhulpsystemen en lost elektronische storingen op.</p>
         </div>
-        <div class="grid grid-3" data-stagger>${projects.map((p) => UI.projectCard(p)).join('')}</div>
+        <div class="svc-grid" data-stagger>${SERVICES.slice(0, 3).map(svcCard).join('')}</div>
+        <p class="center-link"><a class="ink-link" href="#/expertise">Bekijk alle diensten en specialismen</a></p>
       </div>
     </section>
 
-    <section class="section section--soft" aria-labelledby="about-title">
-      <div class="container split split--wide-media">
-        <div>
-          <p class="eyebrow">VAG-specialist in Rijswijk</p>
-          <h2 class="h2" id="about-title" data-split>Van onderdeel<br>tot onderdeel van uw auto.</h2>
-          <div class="prose" data-reveal>${aboutProse}</div>
-          <p class="mt-32" data-reveal><a class="btn btn--primary" href="#/over">Over CarTronic</a></p>
-        </div>
-        <div class="split-media" data-mask>${Media.html('img:about', 'Volkswagen op de uitlijnbrug in de CarTronic-werkplaats', { kind: 'assist' })}</div>
-      </div>
+    <section class="section section--tight-top" aria-label="Techniek achter het resultaat">
+      <div class="container">${techCard()}</div>
     </section>
 
-    ${featured.length ? `<section class="section" aria-labelledby="featured-title">
+    <section class="section section--soft" aria-labelledby="projects-title">
       <div class="container">
-        <div class="section-head">
-          <div><p class="eyebrow">Webshop</p><h2 class="h2 mt-16" id="featured-title">Uitgelicht.</h2></div>
-          <a class="link" href="#/webshop">Naar de webshop ${icon('arrow')}</a>
+        <div class="section-intro">
+          <p class="eyebrow">Uit de werkplaats</p>
+          <h2 class="h2" id="projects-title" data-split>Techniek die u terugziet.</h2>
+          <p class="intro-link" data-reveal><a class="ink-link" href="#/projecten">Bekijk alle projecten</a></p>
+        </div>
+        <div class="proj-grid" data-stagger>${projects.map((p) => UI.projectCard(p)).join('')}</div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="reviews-title">
+      <div class="container">${reviewsBlock({ limit: 2, more: 'page' })}</div>
+    </section>
+
+    ${featured.length ? `<section class="section section--soft" aria-labelledby="featured-title">
+      <div class="container">
+        <div class="section-intro section-intro--row">
+          <div><p class="eyebrow">Webshop</p><h2 class="h2" id="featured-title" data-split>Origineel, direct te bestellen.</h2></div>
+          <p class="intro-link"><a class="ink-link" href="#/webshop">Naar de webshop</a></p>
         </div>
         <div class="featured-strip" data-stagger>${featured.map((p) => UI.productCard(p)).join('')}</div>
         <p class="hint mt-16">Testomgeving: producten en prijzen in de webshop zijn demonstratiegegevens.</p>
@@ -5447,17 +6065,29 @@ Pages.projects = {
     const brands = BRANDS.filter((b) => list.some((p) => (p.brands || []).includes(b.id)));
     const types = PROJECT_TYPES.filter((t) => list.some((p) => p.type === t.id));
     const fb = ctx.query.merk || ''; const ft = ctx.query.type || '';
-    return `${UI.pageHeader({ crumbs: [['Uit de werkplaats.']], eyebrow: 'Portfolio', title: 'Uit de werkplaats.', lead: 'Originele upgrades en specialistische werkzaamheden, gefotografeerd in de CarTronic-werkplaats.' })}
-      <section class="section" style="padding-top:64px"><div class="container">
-        ${list.length > 1 ? `<div class="flex wrap gap-24 items-center" style="margin-bottom:40px" role="group" aria-label="Filter projecten">
+    const showFilters = list.length > 3 || !!(fb || ft);
+    return `${UI.pageHeader({ crumbs: [['Projecten']], eyebrow: 'Uit de werkplaats', title: 'Techniek die u terugziet.', lead: 'Originele upgrades en specialistische werkzaamheden, gefotografeerd in de CarTronic-werkplaats in Rijswijk.' })}
+      <section class="section section--first"><div class="container">
+        ${showFilters ? `<div class="project-filters" role="group" aria-label="Filter projecten">
           <div class="chips" data-pf="merk"><button class="chip" type="button" data-v="" aria-pressed="${!fb}">Alle merken</button>${brands.map((b) => `<button class="chip" type="button" data-v="${b.id}" aria-pressed="${fb === b.id}">${b.name}</button>`).join('')}</div>
           <div class="chips" data-pf="type"><button class="chip" type="button" data-v="" aria-pressed="${!ft}">Alle types</button>${types.map((t) => `<button class="chip" type="button" data-v="${t.id}" aria-pressed="${ft === t.id}">${esc(t.name)}</button>`).join('')}</div>
         </div>` : ''}
         <h2 class="sr-only">Projecten</h2>
-        <div class="grid grid-3" data-project-grid>${list.map((p) => UI.projectCard(p)).join('')}</div>
+        <div class="proj-grid" data-project-grid>${list.map((p) => UI.projectCard(p)).join('')}</div>
         <div data-project-empty hidden>${UI.empty({ icon: 'camera', title: 'Geen projecten voor deze selectie', text: 'Kies een ander merk of type.', actions: '<button class="btn btn--dark btn--sm" type="button" data-pf-reset>Toon alle projecten</button>' })}</div>
       </div></section>
-      ${ctaBand({ title: 'Ook uw auto een originele upgrade?', text: 'Bekijk de mogelijkheden voor uw model of stuur ons uw kenteken.' })}`;
+      <section class="section section--tight-top" aria-labelledby="more-title"><div class="container">
+        <div class="section-intro">
+          <p class="eyebrow">Meer van ons werk</p>
+          <h2 class="h2" id="more-title" data-split>Ook deze auto’s kregen een upgrade.</h2>
+        </div>
+        <div class="more-grid" data-stagger>${MORE_WORK.map((m) => `<article class="more-card">
+          <h3>${esc(m.title)}</h3><p>${esc(m.text)}</p>
+          <div class="more-links">${m.links.map(([l, u]) => `<a class="ink-link" href="${attr(u)}" target="_blank" rel="noopener">${esc(l)}<span class="sr-only"> (Facebook, opent in een nieuw venster)</span></a>`).join('')}</div>
+        </article>`).join('')}</div>
+        <div class="note-rule mt-48" data-reveal>Projecten blijven als referentie beschikbaar. Ze zijn geen overzicht van actuele levertijden of voorraad. Vraag naar de mogelijkheden voor uw auto.</div>
+      </div></section>
+      ${ctaBand()}`;
   },
   mount(root, ctx) {
     const state = { merk: ctx.query.merk || '', type: ctx.query.type || '' };
@@ -5522,29 +6152,25 @@ Pages.project = {
 /* ---------- Expertise & services ---------- */
 Pages.expertise = {
   id: 'expertise', nav: 'expertise',
-  meta: { title: 'Expertise — inbouwen, programmeren en kalibreren', description: 'Originele onderdelen, montage volgens fabrieksnormen, online programmeren via de fabriek en kalibratie van ACC, Lane Assist en Night Vision.' },
+  meta: { title: 'Expertise — inbouwen, programmeren en kalibreren', description: 'Originele fabrieksopties inbouwen, online programmeren via de fabriek, kalibratie van ACC, Lane Assist en Night Vision, diagnose en reparatie voor Volkswagen, Audi, SEAT en Škoda.' },
   render() {
-    return `${UI.pageHeader({ crumbs: [['Expertise']], eyebrow: 'Expertise', title: 'Inbouwen is één ding.<br>Integreren is ons vak.', lead: 'Originele fabrieksopties achteraf inbouwen vraagt om kennis van de auto, de elektronica en de fabriekssystemen.' })}
-      <section class="section section--dark on-dark"><div class="container">${sequenceHtml({ link: false })}</div></section>
-      <section class="section" id="diensten" aria-labelledby="svc-title"><div class="container">
-        <div class="section-head"><div><p class="eyebrow">Diensten</p><h2 class="h2 mt-16" id="svc-title" data-split>Van retrofit tot reparatie.</h2></div>
-        <p class="lead" data-reveal>Naast het inbouwen van originele opties lost CarTronic elektronische storingen op en kalibreert rijhulpsystemen.</p></div>
-        <div class="grid grid-3" data-stagger>${SERVICES.map((s) => `<article class="service-card">
-          <span class="sv-icon">${icon(s.icon)}</span><h3>${esc(s.title)}</h3><p>${esc(s.short)}</p>
-          <a class="link stretch" href="#/diensten/${s.slug}">Meer informatie ${icon('arrow')}</a></article>`).join('')}</div>
+    return `${UI.pageHeader({ crumbs: [['Expertise']], eyebrow: 'Expertise & diensten', title: 'Van retrofit<br>tot reparatie.', lead: 'Originele fabrieksopties inbouwen, programmeren en kalibreren — en elektronische storingen oplossen. Voor Volkswagen, Audi, SEAT en Škoda.' })}
+      <section class="section section--first" id="diensten" aria-labelledby="svc-title"><div class="container">
+        <h2 class="sr-only" id="svc-title">Diensten</h2>
+        <div class="svc-grid" data-stagger>${SERVICES.map(svcCard).join('')}</div>
       </div></section>
-      <section class="section section--soft"><div class="container split split--wide-media">
-        <div>
+      <section class="section section--tight-top" aria-labelledby="tech-title"><div class="container">${techCard({ link: false })}</div></section>
+      <section class="section section--soft" aria-labelledby="tools-title"><div class="container">
+        <div class="section-intro">
           <p class="eyebrow">Uitrusting</p>
-          <h2 class="h2" data-split>Gereedschap<br>op dealerniveau.</h2>
-          <ul class="fact-list" data-stagger>
-            <li>${icon('activity')}<span><strong>Diagnoseapparatuur op dealerniveau.</strong> Voor storingszoeken en het controleren van de aanwezige systemen.</span></li>
-            <li>${icon('refresh')}<span><strong>Online verbinding met de fabriek.</strong> Net als grote Volkswagen- en Audi-dealers hebben we toegang tot de online database van de fabriek.</span></li>
-            <li>${icon('target')}<span><strong>Complete uitlijn- en kalibratieset.</strong> Voor het afstellen van adaptieve cruise control, Lane Assist en Night Vision — apparatuur die verder vooral bij grote dealers staat.</span></li>
-            <li>${icon('box')}<span><strong>Originele OEM-onderdelen.</strong> Gemonteerd volgens fabrieksnormen.</span></li>
-          </ul>
+          <h2 class="h2" id="tools-title" data-split>Gereedschap<br>op dealerniveau.</h2>
         </div>
-        <div class="split-media" data-mask>${Media.html('img:about', 'Kalibratie van rijhulpsystemen in de CarTronic-werkplaats', { kind: 'assist' })}</div>
+        <div class="plain-features plain-features--4" data-stagger>
+          <div><h3>Diagnose op dealerniveau</h3><p>Voor storingszoeken en het controleren van de aanwezige systemen in uw auto.</p></div>
+          <div><h3>Online verbinding met de fabriek</h3><p>Net als grote Volkswagen- en Audi-dealers hebben we toegang tot de online database van de fabriek.</p></div>
+          <div><h3>Uitlijn- en kalibratieset</h3><p>Voor het afstellen van adaptieve cruisecontrol, Lane Assist en Night Vision — apparatuur die verder vooral bij grote dealers staat.</p></div>
+          <div><h3>Originele OEM-onderdelen</h3><p>Gemonteerd volgens de fabrieksnormen en passend bij de systemen in uw auto.</p></div>
+        </div>
       </div></section>
       <section class="section" aria-labelledby="dealer-title"><div class="container container--narrow text-center">
         <p class="eyebrow">Voor dealers</p>
@@ -5570,14 +6196,14 @@ Pages.service = {
         <div>
           <div class="prose">${s.body.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
           <div class="detail-actions">
-            <a class="btn btn--primary" href="#/contact">Afspraak of vraag</a>
+            <a class="btn btn--primary" href="#/contact${SERVICE_TOPIC[s.slug] ? `?onderwerp=${SERVICE_TOPIC[s.slug]}` : ''}">Afspraak of vraag</a>
             <a class="btn btn--whatsapp" href="${WhatsApp.url(wa)}" target="_blank" rel="noopener" data-action="whatsapp">${icon('whatsapp')} WhatsApp</a>
             <a class="btn btn--light" href="${COMPANY.phoneHref}">${icon('phone')} Bel ons</a>
           </div>
           ${cats.length ? `<div class="detail-block"><h2>Gerelateerde mogelijkheden</h2><div class="chips">${cats.map((c) => `<a class="chip" href="#/mogelijkheden?cat=${c.id}">${icon(c.icon)} ${esc(c.name)}</a>`).join('')}</div></div>` : ''}
           ${projects.length ? `<div class="detail-block"><h2>Uit de werkplaats</h2><div class="grid">${projects.map((p) => `<div class="mini-item"><div class="mi-media">${Media.html(p.image, p.title, { kind: 'camera' })}</div><div><div class="mi-type">Project</div><a class="mi-title stretch" href="#/projecten/${p.slug}">${esc(p.title)}</a></div><div class="mi-aside"></div></div>`).join('')}</div></div>` : ''}
         </div>
-        <div>${s.image ? `<div class="split-media" data-mask>${Media.html(`img:${s.image}`, s.title, { kind: 'assist' })}</div>` : `<div class="split-media" style="aspect-ratio:4/3">${Art.html(s.icon === 'radar' || s.icon === 'target' ? 'assist' : (s.icon === 'cpu' ? 'module' : (s.icon === 'refresh' ? 'cockpit' : (s.icon === 'activity' ? 'module' : 'camera'))), 1, s.title)}</div>`}</div>
+        <div>${s.image ? `<div class="split-media" data-mask>${Media.html(`img:${s.image}`, s.title, { kind: 'assist' })}</div>` : `<div class="split-media" style="aspect-ratio:4/3">${Art.html(s.icon === 'radar' || s.icon === 'target' ? 'assist' : (s.icon === 'cpu' || s.icon === 'settings2' ? 'module' : (s.icon === 'refresh' ? 'cockpit' : (s.icon === 'activity' ? 'module' : 'camera'))), 1, s.title)}</div>`}</div>
       </div></section>
       <section class="section section--soft section--sm"><div class="container">
         <h2 class="h3" style="margin-bottom:24px">Andere diensten</h2>
@@ -5592,29 +6218,29 @@ Pages.about = {
   id: 'about', nav: 'over',
   meta: { title: 'Over CarTronic — vier merken, één specialisme', description: 'CarTronic in Rijswijk richt zich op Volkswagen, Audi, SEAT en Škoda: originele fabrieksopties achteraf inbouwen, met diagnoseapparatuur op dealerniveau.' },
   render() {
-    return `${UI.pageHeader({ crumbs: [['Vier merken. Eén specialisme.']], eyebrow: 'Over CarTronic', title: 'Vier merken. Eén specialisme.', lead: 'Originele fabrieksopties achteraf inbouwen vraagt om kennis van de auto, de elektronica en de fabriekssystemen.' })}
-      <section class="section" style="padding-top:64px"><div class="container split split--wide-media">
-        <div>
-          <p class="eyebrow">VAG-specialist in Rijswijk</p>
-          <h2 class="h2" data-split>Van onderdeel<br>tot onderdeel van uw auto.</h2>
-          <div class="prose" data-reveal>${aboutProse}</div>
-          <p class="mt-32" data-reveal><a class="btn btn--primary" href="#/expertise">Bekijk onze expertise</a></p>
+    return `${UI.pageHeader({ crumbs: [['Vier merken. Eén specialisme.']], eyebrow: 'Over CarTronic', title: 'Vier merken.<br>Eén specialisme.', lead: 'Originele fabrieksopties achteraf inbouwen vraagt om kennis van de auto, de elektronica en de fabriekssystemen.' })}
+      <section class="section section--first"><div class="container">
+        <div class="split split--wide-media">
+          <div>
+            <p class="eyebrow">VAG-specialist in Rijswijk</p>
+            <h2 class="h2" data-split>Van onderdeel<br>tot onderdeel van uw auto.</h2>
+            <div class="prose" data-reveal>${aboutProse}</div>
+            <p class="mt-32" data-reveal><a class="btn btn--primary" href="#/expertise">Bekijk onze expertise</a></p>
+          </div>
+          <div class="split-media" data-mask>${Media.html('img:about', 'Volkswagen Golf Sportsvan op de uitlijnbrug in de CarTronic-werkplaats', { kind: 'assist', eager: true })}</div>
         </div>
-        <div class="split-media" data-mask>${Media.html('img:about', 'Volkswagen op de uitlijnbrug in de CarTronic-werkplaats', { kind: 'assist', eager: true })}</div>
-      </div>
-      <div class="container"><hr style="margin:96px 0 72px">
-        <div class="grid grid-4" data-stagger>
-          ${[['box', 'Originele OEM-onderdelen', 'Geen universele oplossingen: we monteren originele onderdelen, afgestemd op uw model.'],
-            ['activity', 'Diagnose op dealerniveau', 'Diagnoseapparatuur en kennis zoals bij een grote dealer.'],
-            ['refresh', 'Online fabrieksverbinding', 'Opties programmeren en correct aanmelden in de auto.'],
-            ['user', 'Particulieren en dealers', 'Een groot deel van onze klanten bestaat uit VAG-dealers.']]
-            .map(([ic, t, p]) => `<div class="stack" style="--stack:12px"><span class="icon-circle">${icon(ic)}</span><h3 class="h4">${t}</h3><p class="text-muted" style="font-size:14px;line-height:1.65">${p}</p></div>`).join('')}
+        <hr class="rule">
+        <div class="plain-features" data-stagger>
+          <div><h3>Originele onderdelen</h3><p>OEM-componenten en inbouw volgens de fabrieksnormen.</p></div>
+          <div><h3>Werkplaats voor 10 auto’s</h3><p>Een ruime werkplaats met gespecialiseerde diagnoseapparatuur.</p></div>
+          <div><h3>Uitleg na de inbouw</h3><p>Bij veel werkzaamheden kunt u wachten. Na afloop lichten we de werking van het systeem toe.</p></div>
         </div>
+        <div class="note-rule mt-48" data-reveal>Ruim 14 jaar ervaring met modellen uit de VAG-groep.<br>Kennis van de techniek én van de originele mogelijkheden.</div>
       </div></section>
-      <section class="section section--soft"><div class="container split">
+      <section class="section section--soft" aria-labelledby="visit-title"><div class="container split">
         <div>
           <p class="eyebrow">Bezoek de werkplaats</p>
-          <h2 class="h2 mt-16" data-split>Patrijsweg 22,<br>Rijswijk.</h2>
+          <h2 class="h2 mt-16" id="visit-title" data-split>${esc(COMPANY.street)},<br>${esc(COMPANY.city)}.</h2>
           <p class="lead mt-24" data-reveal>Kom langs voor advies of een afspraak. We zijn bereikbaar via telefoon, WhatsApp en e-mail.</p>
           <div class="detail-actions" data-reveal>
             <a class="btn btn--dark" href="${COMPANY.mapsUrl}" target="_blank" rel="noopener">${icon('pin')} Route plannen</a>
@@ -5623,11 +6249,12 @@ Pages.about = {
         </div>
         <div class="panel" style="padding:28px 30px" data-reveal>
           <h3 class="h4">Openingstijden</h3>
-          <dl class="footer-hours footer-hours--light" style="font-size:15px;gap:10px 32px">${COMPANY.hours.map(([d, t]) => `<dt>${d}</dt><dd>${t}</dd>`).join('')}</dl>
+          <dl class="footer-hours footer-hours--light" style="font-size:15px;gap:10px 32px">${COMPANY.hours.map(([d, t]) => `<dt>${esc(d)}</dt><dd>${esc(t)}</dd>`).join('')}</dl>
           <hr style="margin:24px 0">
-          <dl class="kv"><dt>Adres</dt><dd>${COMPANY.street}, ${COMPANY.postal} ${COMPANY.city}</dd><dt>Telefoon</dt><dd><a class="text-link" href="${COMPANY.phoneHref}">${COMPANY.phoneDisplay}</a></dd><dt>E-mail</dt><dd><a class="text-link" href="mailto:${COMPANY.email}">${COMPANY.email}</a></dd></dl>
+          <dl class="kv"><dt>Adres</dt><dd>${esc(COMPANY.street)}, ${esc(COMPANY.postal)} ${esc(COMPANY.city)}</dd><dt>Telefoon</dt><dd><a class="text-link" href="${COMPANY.phoneHref}">${COMPANY.phoneDisplay}</a></dd><dt>E-mail</dt><dd><a class="text-link" href="mailto:${COMPANY.email}">${COMPANY.email}</a></dd></dl>
         </div>
-      </div></section>`;
+      </div></section>
+      ${ctaBand()}`;
   },
 };
 
@@ -5636,24 +6263,27 @@ Pages.contact = {
   id: 'contact', nav: 'contact',
   meta: { title: 'Contact — vraag naar de mogelijkheden', description: 'Neem contact op met CarTronic in Rijswijk: Patrijsweg 22, 070 383 9836, info@cartronic.nl. Stuur uw kenteken en gewenste optie via WhatsApp of e-mail.' },
   render() {
-    return `${UI.pageHeader({ crumbs: [['Contact']], eyebrow: 'Contact', title: 'Vraag naar de mogelijkheden.', lead: 'Stuur uw kenteken en de gewenste optie. CarTronic controleert wat er mogelijk is voor uw uitvoering.' })}
-      <section class="section section--sm" style="padding-top:56px"><div class="container contact-grid">
-        <form class="contact-form" data-contact novalidate>
-          <div data-contact-body></div>
-        </form>
-        <aside class="contact-card on-dark" aria-label="Contactgegevens">
-          <h2>CarTronic</h2>
-          <dl>
-            <div><dt>Adres</dt><dd>${COMPANY.street}<br>${COMPANY.postal} ${COMPANY.city}</dd></div>
-            <div><dt>Telefoon</dt><dd><a href="${COMPANY.phoneHref}">${COMPANY.phoneDisplay}</a></dd></div>
-            <div><dt>WhatsApp</dt><dd><a href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp" data-wa-generic>${COMPANY.phoneDisplay}</a></dd></div>
-            <div><dt>E-mail</dt><dd><a href="mailto:${COMPANY.email}">${COMPANY.email}</a></dd></div>
-            <div><dt>Openingstijden</dt><dd><dl class="footer-hours">${COMPANY.hours.map(([d, t]) => `<dt>${d}</dt><dd>${t}</dd>`).join('')}</dl></dd></div>
-          </dl>
-          <div class="cc-actions">
-            <a class="btn btn--outline-light btn--sm" href="${COMPANY.mapsUrl}" target="_blank" rel="noopener">${icon('pin')} Route plannen</a>
-          </div>
-        </aside>
+    return `${UI.pageHeader({ crumbs: [['Uw auto. Onze expertise.']], eyebrow: 'Contact & aanvragen', title: 'Uw auto. Onze expertise.', lead: 'Een optie laten inbouwen of een elektronische storing bespreken? Geef ons uw model en vraag door.' })}
+      <section class="section section--first"><div class="container contact-layout">
+        <div class="contact-info">
+          <p class="eyebrow">CarTronic · Rijswijk</p>
+          <h2 class="h2" data-split>We horen graag van u.</h2>
+          <p class="lead" data-reveal>Vermeld bij een aanvraag uw merk, model, bouwjaar en bij voorkeur het kenteken. Zo kunnen we de juiste mogelijkheden voor uw auto bekijken.</p>
+          <ul class="contact-rows">
+            <li>${icon('phone')}<div><span class="cr-label">Bellen</span><a class="cr-value" href="${COMPANY.phoneHref}">${COMPANY.phoneDisplay}</a></div></li>
+            <li>${icon('chat')}<div><span class="cr-label">WhatsApp op ons vaste nummer</span><a class="cr-value" href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp" data-wa-generic>${COMPANY.phoneDisplay}</a></div></li>
+            <li>${icon('mail')}<div><span class="cr-label">E-mail</span><a class="cr-value" href="mailto:${COMPANY.email}">${COMPANY.email}</a></div></li>
+            <li>${icon('pin')}<div><span class="cr-label">Adres</span><span class="cr-value">${esc(COMPANY.street)}<br>${esc(COMPANY.postal)} ${esc(COMPANY.city)}</span><a class="cr-more" href="${COMPANY.mapsUrl}" target="_blank" rel="noopener">Route plannen</a></div></li>
+            <li>${icon('clock')}<div><span class="cr-label">Openingstijden</span><dl class="footer-hours footer-hours--light">${COMPANY.hours.map(([d, t]) => `<dt>${esc(d)}</dt><dd>${esc(t)}</dd>`).join('')}</dl></div></li>
+          </ul>
+        </div>
+        <div class="contact-form-wrap">
+          <h2 class="h3 contact-form-title" id="contact-form-title">Stel uw vraag</h2>
+          <p class="contact-form-sub">Vul in wat u weet. Uw aanvraag opent daarna in WhatsApp of uw e-mailprogramma.</p>
+          <form class="contact-form" data-contact novalidate aria-labelledby="contact-form-title">
+            <div data-contact-body></div>
+          </form>
+        </div>
       </div></section>`;
   },
   mount(root, ctx) {
@@ -5664,41 +6294,49 @@ Pages.contact = {
     const state = {
       name: draft.name || '', email: draft.email || '', phone: draft.phone || '',
       vehicle: draft.vehicle || (v ? VehicleStore.name(v) : ''), plate: draft.plate || VehicleStore.plate() || '', year: draft.year || (v && v.year ? String(v.year) : ''),
-      options: optionSlugs, products: productIds, question: draft.question || '',
+      options: optionSlugs, products: productIds, question: draft.question || '', vin: draft.vin || '',
+      topic: [ctx.query.onderwerp, draft.topic].find((t) => t && ENQUIRY_TOPIC[t]) || (optionSlugs.length ? 'inbouw' : ''),
     };
+    const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
     const body = $('[data-contact-body]', root);
     const err = {};
     const summary = () => WhatsApp.enquiry({
-      name: state.name, vehicle: state.vehicle, plate: Plate.format(state.plate) || state.plate, year: state.year,
+      name: state.name, topic: state.topic ? ENQUIRY_TOPIC[state.topic].label : '', vin: state.vin,
+      vehicle: state.vehicle, plate: Plate.format(state.plate) || state.plate, year: state.year,
       options: state.options.map((s) => RETROFIT[s].title), products: state.products.map((id) => Repo.product(id)).filter(Boolean).map((p) => `${p.name} (${p.sku})`), question: state.question,
     });
     const save = () => Storage.set('contactDraft', { ...state }, 'session');
     const render = () => {
       body.innerHTML = `
-        <div class="form-section"><h2>Uw auto</h2>
+        <fieldset class="form-section topic-field"><legend class="topic-legend">Waar gaat uw vraag over?</legend>
+          <div class="chips topic-chips">${ENQUIRY_TOPICS.map((t) => `<label class="chip chip-radio${state.topic === t.id ? ' is-checked' : ''}"><input type="radio" name="topic" value="${t.id}"${state.topic === t.id ? ' checked' : ''}><span>${esc(t.label)}</span></label>`).join('')}</div>
+          ${state.topic === 'optielijst' ? '<p class="hint mt-8">De optielijst maakt CarTronic op basis van het chassisnummer (VIN). Dat staat op uw kentekenbewijs. U kunt het hieronder invullen of later sturen.</p>' : ''}
+        </fieldset>
+        <div class="form-section"><h3>Uw auto</h3>
           <div class="form-grid">
             <div class="field span-2"><label for="c-vehicle">Merk en model</label><input class="input" id="c-vehicle" data-k="vehicle" value="${attr(state.vehicle)}" placeholder="Bijv. Volkswagen Golf 8"></div>
             <div class="field"><label for="c-plate">Kenteken <span class="opt">(optioneel)</span></label><input class="input" id="c-plate" data-k="plate" value="${attr(state.plate)}" placeholder="AB-123-C" autocapitalize="characters" aria-describedby="c-plate-e"><span class="field-error" id="c-plate-e">${err.plate || ''}</span></div>
             <div class="field"><label for="c-year">Bouwjaar <span class="opt">(optioneel)</span></label><input class="input" id="c-year" data-k="year" inputmode="numeric" maxlength="4" value="${attr(state.year)}" placeholder="2019"></div>
+            <div class="field span-2"><label for="c-vin">Chassisnummer (VIN) <span class="opt">(optioneel)</span></label><input class="input" id="c-vin" data-k="vin" maxlength="17" autocapitalize="characters" spellcheck="false" value="${attr(state.vin)}" placeholder="17 tekens, staat op uw kentekenbewijs" aria-describedby="c-vin-e"${err.vin ? ' aria-invalid="true"' : ''}><span class="field-error" id="c-vin-e">${err.vin || ''}</span></div>
           </div>
           ${v ? '' : `<p class="hint mt-8">Tip: <button type="button" class="text-link" data-action="open-vehicle">zoek uw auto op kenteken</button> om dit automatisch in te vullen.</p>`}
         </div>
-        <div class="form-section"><h2>Geselecteerde opties</h2>
+        <div class="form-section"><h3>Geselecteerde opties</h3>
           <div class="chips" data-opt-list>${state.options.length ? state.options.map((s) => `<span class="chip chip--removable">${esc(RETROFIT[s].title)}<button type="button" data-rm-opt="${s}" aria-label="Verwijder ${attr(RETROFIT[s].title)}">${icon('x')}</button></span>`).join('') : '<span class="hint">Nog geen opties geselecteerd. Bewaar opties in de catalogus of voeg er hieronder een toe.</span>'}</div>
           <div class="field mt-16"><label for="c-addopt">Optie toevoegen</label><select class="select" id="c-addopt" data-add-opt><option value="">Kies een optie…</option>${(v ? Compat.forVehicle(v).map((x) => x.item) : RETROFITS).filter((r) => !state.options.includes(r.slug)).map((r) => `<option value="${r.slug}">${esc(r.title)}</option>`).join('')}</select></div>
           ${state.products.length ? `<div class="mt-16"><p class="label" style="margin-bottom:8px">Producten uit de webshop</p><div class="chips">${state.products.map((id) => { const p = Repo.product(id); return `<span class="chip chip--removable">${esc(p.name)}<button type="button" data-rm-prod="${id}" aria-label="Verwijder ${attr(p.name)}">${icon('x')}</button></span>`; }).join('')}</div></div>` : ''}
         </div>
-        <div class="form-section"><h2>Uw vraag</h2>
+        <div class="form-section"><h3>Uw vraag</h3>
           <div class="field"><label for="c-q">Vraag of opmerking</label><textarea class="textarea" id="c-q" data-k="question" placeholder="Bijv. welke uitvoering heb ik nodig, of wanneer kan ik langskomen?" aria-describedby="c-q-e">${esc(state.question)}</textarea><span class="field-error" id="c-q-e">${err.question || ''}</span></div>
         </div>
-        <div class="form-section"><h2>Uw gegevens</h2>
+        <div class="form-section"><h3>Uw gegevens</h3>
           <div class="form-grid">
             <div class="field span-2"><label for="c-name">Naam</label><input class="input" id="c-name" data-k="name" autocomplete="name" value="${attr(state.name)}" aria-describedby="c-name-e"${err.name ? ' aria-invalid="true"' : ''}><span class="field-error" id="c-name-e">${err.name || ''}</span></div>
             <div class="field"><label for="c-email">E-mail <span class="opt">(optioneel)</span></label><input class="input" id="c-email" type="email" data-k="email" autocomplete="email" value="${attr(state.email)}" aria-describedby="c-email-e"${err.email ? ' aria-invalid="true"' : ''}><span class="field-error" id="c-email-e">${err.email || ''}</span></div>
             <div class="field"><label for="c-phone">Telefoon <span class="opt">(optioneel)</span></label><input class="input" id="c-phone" type="tel" data-k="phone" autocomplete="tel" value="${attr(state.phone)}" aria-describedby="c-phone-e"${err.phone ? ' aria-invalid="true"' : ''}><span class="field-error" id="c-phone-e">${err.phone || ''}</span></div>
           </div>
         </div>
-        <div class="form-section"><h2>Samenvatting van uw aanvraag</h2>
+        <div class="form-section"><h3>Samenvatting van uw aanvraag</h3>
           <div class="enquiry-summary"><pre data-summary>${esc(summary())}</pre></div>
           <div class="detail-actions">
             <button class="btn btn--whatsapp" type="button" data-send="whatsapp">${icon('whatsapp')} Verstuur via WhatsApp</button>
@@ -5713,18 +6351,22 @@ Pages.contact = {
       if (state.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(state.email)) err.email = 'Vul een geldig e-mailadres in.';
       if (state.phone && !/^(\+|0)[0-9\s-]{8,15}$/.test(state.phone.trim())) err.phone = 'Vul een geldig telefoonnummer in.';
       if (state.plate && !Plate.isValid(state.plate)) err.plate = 'Dit is geen geldig Nederlands kenteken.';
-      if (!state.question.trim() && !state.options.length && !state.products.length) err.question = 'Stel uw vraag of selecteer ten minste één optie.';
+      if (state.vin && !VIN_RE.test(state.vin)) err.vin = 'Een chassisnummer heeft 17 tekens (letters en cijfers, zonder I, O en Q).';
+      const topicSays = state.topic && state.topic !== 'anders';
+      if (!state.question.trim() && !state.options.length && !state.products.length && !topicSays) err.question = 'Kies een onderwerp, stel uw vraag of selecteer ten minste één optie.';
       return !Object.keys(err).length;
     };
     render();
     body.addEventListener('input', (e) => {
       const k = e.target.dataset.k; if (!k) return;
-      state[k] = e.target.value;
+      state[k] = k === 'vin' ? e.target.value.toUpperCase().replace(/\s+/g, '') : e.target.value;
+      if (k === 'vin' && e.target.value !== state.vin) e.target.value = state.vin;
       if (k === 'plate') { const f = Plate.format(e.target.value); if (f) { state.plate = f; } }
       $('[data-summary]', body).textContent = summary();
       save();
     });
     body.addEventListener('change', (e) => {
+      if (e.target.name === 'topic') { state.topic = e.target.value; save(); render(); const r = $(`input[name="topic"][value="${state.topic}"]`, body); if (r) r.focus(); return; }
       if (e.target.matches('[data-add-opt]') && e.target.value) { state.options.push(e.target.value); save(); render(); $('[data-add-opt]', body).focus(); }
       if (e.target.dataset.k === 'plate') { const f = Plate.format(state.plate); if (f) e.target.value = f; }
     });
@@ -5751,6 +6393,159 @@ Pages.contact = {
       }
       Toast.show('Uw aanvraag is klaargezet. Controleer en verstuur het bericht.');
     });
+  },
+};
+
+/* ---------- Beoordelingen ---------- */
+Pages.reviews = {
+  id: 'reviews', nav: 'beoordelingen',
+  meta: { title: 'Beoordelingen — ervaringen van klanten', description: `CarTronic scoort gemiddeld ${REVIEWS.score} uit ${REVIEWS.scale} op ${REVIEWS.source}, op basis van ${REVIEWS.count} beoordelingen.` },
+  render() {
+    return `${UI.pageHeader({ crumbs: [['Beoordelingen']], eyebrow: 'Beoordelingen', title: 'Ervaringen van klanten.', lead: `Klanten beoordelen CarTronic op ${esc(REVIEWS.source)}. Hieronder ziet u de gemiddelde score en een selectie van hun ervaringen.` })}
+      <section class="section section--first"><div class="container">${reviewsBlock({ eyebrow: false })}</div></section>
+      <section class="section section--soft section--sm" aria-labelledby="write-title"><div class="container">
+        <div class="review-cta">
+          <div><h2 class="h3" id="write-title">Ook bij CarTronic geweest?</h2><p>Deel uw ervaring op ${esc(REVIEWS.source)}. Zo helpt u andere autobezitters bij hun keuze.</p></div>
+          <a class="btn btn--dark" href="${attr(REVIEWS.writeUrl)}" target="_blank" rel="noopener">Schrijf een beoordeling</a>
+        </div>
+        <p class="hint mt-24">Score, aantal beoordelingen en citaten zoals gepubliceerd op ${esc(REVIEWS.source)}. De citaten zijn letterlijk overgenomen; “…” markeert een inkorting.</p>
+      </div></section>
+      ${ctaBand()}`;
+  },
+};
+
+/* ---------- Berichten & kennis ---------- */
+const kbCard = (a, h = 'h2') => `<article class="kb-card">
+    <p class="kb-tag">${esc(a.tag)}</p>
+    <${h} class="kb-title">${esc(a.title)}</${h}>
+    <p>${esc(a.short)}</p>
+    <a class="red-link stretch" href="#/kennis/${a.slug}" aria-label="Lees verder: ${attr(a.title)}">Lees verder</a>
+  </article>`;
+Pages.knowledge = {
+  id: 'knowledge', nav: 'kennis',
+  meta: { title: 'Berichten & kennis', description: 'Uitleg van CarTronic over originele opties, programmeren via de fabriek, kalibratie van rijhulpsystemen, origineel alarm, CarPlay en de optielijst van uw auto.' },
+  render() {
+    return `${UI.pageHeader({ crumbs: [['Berichten & kennis']], eyebrow: 'Berichten & kennis', title: 'Weten hoe het werkt.', lead: 'Korte uitleg over originele opties, programmeren en kalibreren — en over wat er voor uw auto mogelijk is.' })}
+      <section class="section section--first"><div class="container">
+        <div class="kb-grid" data-stagger>${ARTICLES.map((a) => kbCard(a)).join('')}</div>
+      </div></section>
+      ${ctaBand()}`;
+  },
+};
+Pages.article = {
+  id: 'article', nav: 'kennis',
+  meta(ctx) { const a = ARTICLE[ctx.params.slug]; return a ? { title: a.title, description: a.short } : { title: 'Bericht niet gevonden' }; },
+  render(ctx) {
+    const a = ARTICLE[ctx.params.slug];
+    if (!a) return Pages.notFound.render(ctx, { title: 'Dit bericht bestaat niet (meer).', text: 'Bekijk de andere berichten of ga verder via de homepage.' });
+    const others = ARTICLES.filter((x) => x.slug !== a.slug).slice(0, 3);
+    const block = ([t, c]) => (t === 'h' ? `<h2>${esc(c)}</h2>` : t === 'ul' ? `<ul>${c.map((li) => `<li>${esc(li)}</li>`).join('')}</ul>` : `<p>${esc(c)}</p>`);
+    return `${UI.pageHeader({ crumbs: [['Berichten & kennis', '#/kennis'], [a.title]], eyebrow: a.tag, title: esc(a.title), lead: esc(a.short), compact: true })}
+      <section class="section section--first"><div class="container article-layout">
+        <article class="article">
+          ${a.body.map(block).join('')}
+          ${a.links && a.links.length ? `<div class="article-links">${a.links.map(([l, h]) => `<a class="ink-link" href="${attr(h)}">${esc(l)}</a>`).join('')}</div>` : ''}
+        </article>
+        <aside class="article-aside" aria-labelledby="ask-title">
+          <h2 class="h4" id="ask-title">Vraag het CarTronic</h2>
+          <p>Twijfelt u wat er voor uw auto mogelijk is? Stuur uw kenteken en uw vraag.</p>
+          <div class="aside-actions">
+            <a class="btn btn--primary btn--block" href="#/contact">Stel uw vraag</a>
+            <a class="btn btn--whatsapp btn--block" href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp" data-wa-generic>${icon('whatsapp')} WhatsApp</a>
+          </div>
+        </aside>
+      </div></section>
+      ${others.length ? `<section class="section section--soft section--sm" aria-labelledby="more-kb-title"><div class="container">
+        <div class="section-head" style="margin-bottom:28px"><h2 class="h3" id="more-kb-title">Meer berichten</h2><a class="link" href="#/kennis">Alle berichten ${icon('arrow')}</a></div>
+        <div class="kb-grid">${others.map((x) => kbCard(x, 'h3')).join('')}</div>
+      </div></section>` : ''}
+      ${ctaBand()}`;
+  },
+};
+
+/* ---------- Productinformatie ---------- */
+Pages.productInfo = {
+  id: 'productinfo', nav: 'productinformatie',
+  meta: { title: 'Productinformatie — onderdelen, garantie en compatibiliteit', description: 'Hoe CarTronic werkt: originele OEM-onderdelen, garantie, prijzen en aanbiedingen, en hoe u ziet of een optie bij uw auto past.' },
+  render() {
+    const st = (k, text) => `<li>${Compat.badge({ key: k })}<span>${text}</span></li>`;
+    return `${UI.pageHeader({ crumbs: [['Productinformatie']], eyebrow: 'Productinformatie', title: 'Origineel, en goed om te weten.', lead: 'Hoe CarTronic werkt met onderdelen, garantie en prijzen — en hoe u ziet of een optie bij uw auto past.' })}
+      <section class="section section--first"><div class="container">
+        <div class="info-grid" data-stagger>
+          <article class="info-block"><span class="ib-icon">${icon('box')}</span><h2>Originele onderdelen</h2>
+            <p>CarTronic werkt uitsluitend met originele OEM-onderdelen. Ze worden ingebouwd volgens de fabrieksnormen en passen bij de systemen in uw auto.</p></article>
+          <article class="info-block"><span class="ib-icon">${icon('shield')}</span><h2>Garantie</h2>
+            <p>Bij de meeste opties in de catalogus staat de garantie vermeld, vaak 3 jaar. Staat er bij een optie geen garantie, vraag er dan naar bij uw aanvraag.</p></article>
+          <article class="info-block"><span class="ib-icon">${icon('euro')}</span><h2>Prijzen en aanbiedingen</h2>
+            <p>De prijs hangt af van model, bouwjaar en uitvoering. Waar CarTronic een prijs of aanbieding publiceert, ziet u die bij de optie. Anders is de prijs op aanvraag.</p></article>
+          <article class="info-block"><span class="ib-icon">${icon('sliders')}</span><h2>Programmeren inbegrepen</h2>
+            <p>Een ingebouwde optie wordt via de online verbinding met de fabriek geprogrammeerd en correct aangemeld in de auto. Daarna werkt ze via de originele schermen, knoppen en menu’s.</p></article>
+        </div>
+      </div></section>
+      <section class="section section--soft" aria-labelledby="fit-title"><div class="container split split--top">
+        <div>
+          <p class="eyebrow">Compatibiliteit</p>
+          <h2 class="h2 mt-16" id="fit-title" data-split>Past het op<br>mijn auto?</h2>
+          <p class="lead mt-24" data-reveal>Kies uw auto via het kenteken of merk en model. Bij elke optie ziet u dan een van deze statussen. CarTronic controleert de uitvoering van uw auto altijd vooraf.</p>
+          <p class="mt-32" data-reveal><button class="btn btn--primary" type="button" data-action="open-vehicle">${icon('car')} Kies uw auto</button></p>
+        </div>
+        <ul class="status-legend" data-reveal>
+          ${st('ok', 'De optie staat in de catalogus voor uw model en bouwjaar.')}
+          ${st('variant', 'Mogelijk voor uw model; welke uitvoering nodig is, hangt af van de uitrusting van uw auto.')}
+          ${st('check', 'Mogelijk voor uw merk of model, maar CarTronic controleert eerst uw uitvoering of bouwjaar.')}
+          ${st('contact', 'Online staat een ander bouwjaar of een andere carrosserie vermeld. CarTronic bekijkt de mogelijkheden graag persoonlijk.')}
+        </ul>
+      </div></section>
+      <section class="section" aria-labelledby="optlist-title"><div class="container split split--top">
+        <div>
+          <p class="eyebrow">Service</p>
+          <h2 class="h2 mt-16" id="optlist-title" data-split>Welke opties heeft<br>uw auto al?</h2>
+        </div>
+        <div class="prose" data-reveal>
+          <p>CarTronic levert een optielijst van uw Audi, Volkswagen, SEAT of Škoda: een overzicht van de fabrieksopties op basis van het chassisnummer, als PDF of Word-bestand. Volgens CarTronic is dit mogelijk voor bouwjaren 1990 tot en met 2025.</p>
+          <p><strong>Prijs: € 10,00.</strong> Vraag de optielijst aan via WhatsApp, e-mail of het contactformulier en vermeld uw chassisnummer (VIN).</p>
+          <p class="mt-24"><a class="ink-link" href="#/contact?onderwerp=optielijst">Vraag een optielijst aan</a></p>
+        </div>
+      </div></section>
+      <section class="section section--soft section--sm" aria-labelledby="shopinfo-title"><div class="container">
+        <div class="note-rule"><strong id="shopinfo-title">Over de webshop.</strong> De webshop in deze omgeving is een demonstratie: producten, prijzen, voorraad en betalingen zijn testgegevens en er wordt niets echt afgerekend. Een retrofit (inbouw in uw auto) bestelt u niet online; die vraagt u aan via de optie in de catalogus.</div>
+      </div></section>
+      ${ctaBand()}`;
+  },
+};
+
+/* ---------- Privacy ---------- */
+Pages.privacy = {
+  id: 'privacy', nav: '',
+  meta: { title: 'Privacy — wat deze website bewaart', description: 'Welke gegevens deze website in uw browser bewaart, wat er naar de RDW gaat bij het opzoeken van een kenteken, en hoe u alles wist.' },
+  render() {
+    return `${UI.pageHeader({ crumbs: [['Privacy']], eyebrow: 'Privacy', title: 'Wat deze website bewaart.', lead: 'Zonder account en zonder trackers. Wat u kiest en bewaart, blijft in uw eigen browser.', compact: true })}
+      <section class="section section--first"><div class="container article-layout">
+        <article class="article">
+          <h2>In uw browser</h2>
+          <p>Deze website bewaart een aantal gegevens alleen in uw eigen browser (lokale opslag). Ze worden niet naar CarTronic of anderen verstuurd:</p>
+          <ul>
+            <li>uw gekozen auto (merk, model, bouwjaar en uitvoering);</li>
+            <li>bewaarde opties en producten en recent bekeken pagina’s;</li>
+            <li>de inhoud van uw winkelmand;</li>
+            <li>een kenteken, alleen in deze browsersessie en maximaal 24 uur;</li>
+            <li>concepten van het contact- en bestelformulier, alleen in deze browsersessie.</li>
+          </ul>
+          <h2>Kenteken opzoeken</h2>
+          <p>Zoekt u uw auto op kenteken, dan vraagt de website de voertuiggegevens op bij RDW Open Data, de openbare database van de Rijksdienst voor het Wegverkeer. Daarvoor wordt alleen het kenteken verstuurd.</p>
+          <h2>Contact via WhatsApp of e-mail</h2>
+          <p>Het contactformulier verstuurt zelf niets. Uw aanvraag opent in WhatsApp of in uw e-mailprogramma, zodat u alles kunt controleren voordat u het verstuurt.</p>
+          <h2>Statistieken</h2>
+          <p>Deze versie van de website gebruikt geen trackingcookies en verstuurt geen statistieken.</p>
+          <h2>Alles wissen</h2>
+          <p>U kunt alle gegevens die deze website in uw browser bewaart in één keer verwijderen.</p>
+          <p class="mt-24"><button class="btn btn--dark" type="button" data-action="wipe-local">${icon('trash')} Alles wissen uit deze browser</button></p>
+        </article>
+        <aside class="article-aside" aria-labelledby="privacy-q-title">
+          <h2 class="h4" id="privacy-q-title">Vragen?</h2>
+          <p>Neem contact op met CarTronic via <a class="text-link" href="mailto:${COMPANY.email}">${COMPANY.email}</a> of ${COMPANY.phoneDisplay}.</p>
+        </aside>
+      </div></section>`;
   },
 };
 
@@ -7553,6 +8348,11 @@ function registerRoutes() {
   Router.add('/over', Pages.about);
   Router.add('/contact', Pages.contact);
   Router.add('/mijn-auto', Pages.garage);
+  Router.add('/beoordelingen', Pages.reviews);
+  Router.add('/kennis', Pages.knowledge);
+  Router.add('/kennis/:slug', Pages.article);
+  Router.add('/productinformatie', Pages.productInfo);
+  Router.add('/privacy', Pages.privacy);
   Router.add('/zoeken', Pages.search);
   Router.add('/webshop', Pages.shop);
   Router.add('/webshop/:slug', Pages.product);
