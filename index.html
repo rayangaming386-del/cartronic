@@ -124,7 +124,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-padding-top: calc(var(--header-h) + 16px); }
 body {
   margin: 0;
   font-family: var(--font);
@@ -212,6 +212,7 @@ legend { padding: 0; }
   font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
   color: var(--red); line-height: 1.4;
 }
+p.eyebrow { margin: 0; }
 .eyebrow--line::before { content: ""; width: 26px; height: 1.5px; background: currentColor; flex: none; }
 .on-dark .eyebrow, .eyebrow--soft { color: #FDA4AF; }
 .display {
@@ -407,6 +408,8 @@ legend { padding: 0; }
   .textarea { font-size: 16px; }
 }
 @media (max-width: 480px) { .hide-xs { display: none !important; } }
+.br-sm { display: none; }
+@media (max-width: 760px) { .br-sm { display: inline; } }
 
 /* =========================================================
    Layout — header, hero, page headers, footer, mobile bar
@@ -626,13 +629,12 @@ legend { padding: 0; }
 
 /* ---------- Brand band ---------- */
 .brand-band { background: var(--dark-3); color: #fff; }
-.brand-band-inner { display: grid; grid-template-columns: 220px repeat(4, minmax(0, 1fr)); align-items: center; min-height: 90px; }
+.brand-band-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 90px; }
 .brand-band .tagline { font-size: 11px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--dark-muted); line-height: 1.75; }
 .brand-band a {
-  justify-self: center; display: inline-flex; align-items: center; height: 90px; position: relative;
+  display: inline-flex; align-items: center; height: 90px; position: relative;
   color: #F1F2F4; transition: color var(--t-fast);
 }
-.brand-band a:last-child { justify-self: end; }
 .brand-band a::after { content: ""; position: absolute; left: 0; right: 0; bottom: 22px; height: 1.5px; background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform var(--t) var(--ease-out); }
 .brand-band a:hover { color: #fff; }
 .brand-band a:hover::after { transform: scaleX(1); }
@@ -651,7 +653,7 @@ legend { padding: 0; }
 
 /* ---------- Page header (sub pages) ---------- */
 .page-header { background: var(--dark-2); color: #fff; padding: 64px 0 66px; position: relative; overflow: hidden; }
-.page-header .crumbs { margin-bottom: 40px; }
+.page-header .crumbs { margin-bottom: 28px; }
 .page-header h1 { margin-top: 18px; max-width: 900px; }
 .page-header .lead { margin-top: 26px; max-width: 680px; color: #C3C8CF; font-size: 17px; line-height: 1.6; }
 .page-header--compact { padding: 44px 0 46px; }
@@ -673,7 +675,7 @@ legend { padding: 0; }
 @media (max-width: 760px) {
   .page-header { padding: 28px 0 40px; }
   .page-header--compact { padding: 28px 0 36px; }
-  .page-header .crumbs { margin-bottom: 30px; font-size: clamp(11px, 2.82vw, 12.5px); }
+  .page-header .crumbs { margin-bottom: 20px; font-size: clamp(11px, 2.82vw, 12.5px); }
   .page-header h1 { margin-top: 14px; }
   .page-header .lead { font-size: clamp(15px, 3.9vw, 17px); line-height: 1.6; margin-top: 18px; }
 }
@@ -818,7 +820,7 @@ legend { padding: 0; }
 }
 .chip:hover { border-color: var(--ink); color: var(--ink); }
 .chip[aria-pressed="true"], .chip.is-active { background: var(--ink); border-color: var(--ink); color: #fff; }
-.chip .n { font-size: 11px; font-weight: 700; color: var(--muted-2); font-variant-numeric: tabular-nums; }
+.chip .n { font-size: 11px; font-weight: 700; color: #6B7280; font-variant-numeric: tabular-nums; }
 .chip[aria-pressed="true"] .n, .chip.is-active .n { color: rgba(255, 255, 255, .6); }
 .chip svg { width: 14px; height: 14px; }
 .chip--removable { padding-right: 8px; }
@@ -935,7 +937,8 @@ legend { padding: 0; }
 .results-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; min-height: 36px; flex-wrap: wrap; }
 .results-count { font-size: 13.5px; color: var(--muted); }
 .results-count strong { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
-.results-tools { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
+.results-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; max-width: 100%; font-size: 12.5px; color: var(--muted); }
+.results-tools .select { min-width: 0; max-width: 100%; flex: 1 1 auto; }
 .results-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .results-grid.is-updating { opacity: .45; transition: opacity .15s; }
 .active-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
@@ -1226,6 +1229,7 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
 .search-option .so-type[data-type="DIENST"] { color: var(--ok); background: var(--ok-bg); }
 .search-option .so-type[data-type="PROJECT"] { color: var(--warn); background: var(--warn-bg); }
 .search-option .so-type[data-type="KENNIS"] { color: #5B3A8E; background: #F0EAF8; }
+.search-option .so-type[data-type="PAGINA"] { color: var(--ink-2); background: var(--bg-soft-2); }
 .search-option .so-type[data-type="CATEGORIE"], .search-option .so-type[data-type="MODEL"] { color: var(--ink-2); background: var(--bg-soft-2); }
 .search-option .so-title { font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; }
 .search-option .so-title mark { background: transparent; color: var(--red); }
@@ -1404,7 +1408,9 @@ hr.rule { margin: 64px 0 56px; }
 
 /* Home finder without tabs: merk | model | button on one row, foot below */
 .finder--simple .finder-form--manual { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) auto; }
-.finder--simple .finder-form--manual:has(.finder-year:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, .7fr) auto; }
+.finder--simple .finder-form--manual:has(.finder-year:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, .8fr); }
+.finder--simple .finder-form--manual:has(.finder-year:not([hidden])) > .btn { grid-column: 1 / -1; }
+.finder--simple .field > label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .finder--simple .field > label { font-size: 12px; font-weight: 700; color: var(--ink-2); }
 .finder--simple .finder-foot { font-size: 12px; gap: 6px 22px; }
 .finder--simple .finder-foot a, .finder--simple .finder-foot button { font-size: inherit; }
@@ -1469,9 +1475,10 @@ hr.rule { margin: 64px 0 56px; }
 .project-card .card-media .media-tag { left: 16px; bottom: 16px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; border-radius: 0; box-shadow: none; }
 .project-card .card-body { padding-top: 28px; gap: 0; }
 .project-card .card-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .16em; color: var(--muted); }
+.project-card .card-eyebrow, .project-card .card-text { margin-bottom: 0; }
 .project-card .card-title { margin-top: 14px; font-size: 22.5px; font-weight: 700; letter-spacing: -.025em; line-height: 1.25; }
 .project-card .card-text { margin-top: 14px; font-size: 14px; line-height: 1.7; color: var(--text); }
-.project-card .card-foot { padding-top: 20px; }
+.project-card .card-foot { padding-top: 18px; }
 .project-card .card-foot .link { font-size: 13px; }
 .project-filters { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; margin-bottom: 40px; }
 
@@ -1565,7 +1572,7 @@ hr.rule { margin: 64px 0 56px; }
 .info-block p { margin-top: 12px; font-size: 15px; line-height: 1.65; color: var(--text); }
 .split--top { align-items: start; }
 .status-legend { list-style: none; display: grid; gap: 0; border-top: 1px solid var(--line); }
-.status-legend li { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 18px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.6; color: var(--ink-2); }
+.status-legend li { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 18px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.6; color: var(--ink-2); }
 .status-legend .status { justify-self: start; }
 
 @media (max-width: 1100px) {
@@ -1574,10 +1581,13 @@ hr.rule { margin: 64px 0 56px; }
   .article-layout { grid-template-columns: minmax(0, 1fr); gap: 40px; }
   .article-aside { position: static; max-width: 560px; }
 }
+@media (min-width: 761px) and (max-width: 1024px) {
+  .svc-grid > :last-child:nth-child(odd), .kb-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 @media (max-width: 1024px) {
   .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .svc-grid, .kb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .proj-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .proj-grid { gap: 36px 18px; }
   .tech-card { grid-template-columns: minmax(0, 1fr); }
   .tech-media img, .tech-media .art { min-height: 0; aspect-ratio: 16 / 10; }
   .reviews-head { grid-template-columns: minmax(0, 1fr); gap: 36px; }
@@ -1767,7 +1777,7 @@ hr.rule { margin: 64px 0 56px; }
 
 /* Featured strip (home) */
 .featured-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-@media (max-width: 1024px) { .featured-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1024px) { .featured-strip { gap: 14px; } }
 @media (max-width: 600px) {
   /* Swipeable row on phones, so the home page keeps the length of the approved design. */
   .featured-strip {
@@ -2533,6 +2543,13 @@ const Router = (() => {
   }
   async function onHashChange() {
     if (location.hash === lastHash) return; // popstate + hashchange can both fire for one navigation
+    // In-page anchors (e.g. "#main") are not routes: restore the route URL and focus the target.
+    if (location.hash && !location.hash.startsWith('#/')) {
+      const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      history.replaceState(null, '', lastHash);
+      if (target) { if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1'); target.focus({ preventScroll: true }); target.scrollIntoView(); }
+      return;
+    }
     if (guard) {
       const msg = guard();
       if (msg) {
@@ -2701,14 +2718,14 @@ const MODELS = [
   { id: 'a3-8y', brand: 'audi', name: 'A3 8Y', base: 'A3', from: 2020, to: null, match: ['A3', 'S3', 'RS3'], types: ['GY'] },
   { id: 'a4-b9', brand: 'audi', name: 'A4 B9/8W', base: 'A4', from: 2015, to: 2024, match: ['A4', 'S4', 'RS4'], types: ['8W'] },
   { id: 'a5-f5', brand: 'audi', name: 'A5 F5', base: 'A5', from: 2016, to: 2024, match: ['A5', 'S5', 'RS5'], types: ['F5'] },
-  { id: 'a6-c8', brand: 'audi', name: 'A6 C8', base: 'A6', from: 2018, to: 2024, match: ['A6', 'S6', 'RS6'], exclude: ['A6ETRON', 'A6AVANTETRON', 'A6SPORTBACKETRON'], types: ['4A'] },
+  { id: 'a6-c8', brand: 'audi', name: 'A6 C8', base: 'A6', from: 2018, to: 2024, match: ['A6', 'S6', 'RS6'], exclude: ['A6ETRON', 'A6AVANTETRON', 'A6SPORTBACKETRON', 'S6ETRON', 'S6AVANTETRON', 'S6SPORTBACKETRON', 'RS6ETRON', 'RS6AVANTETRON', 'RS6SPORTBACKETRON'], types: ['4A'] },
   { id: 'a7-c8', brand: 'audi', name: 'A7 C8', base: 'A7', from: 2018, to: null, match: ['A7', 'S7', 'RS7'], types: ['4K'] },
   { id: 'q2-ga', brand: 'audi', name: 'Q2 GA', base: 'Q2', from: 2016, to: null, match: ['Q2', 'SQ2'], types: ['GA'] },
   { id: 'q3-f3', brand: 'audi', name: 'Q3 F3', base: 'Q3', from: 2018, to: null, match: ['Q3', 'RSQ3'], types: ['F3'] },
   { id: 'q4-etron', brand: 'audi', name: 'Q4 e-tron', base: 'Q4 e-tron', from: 2021, to: null, match: ['Q4'], types: ['F4'] },
   { id: 'q5-fy', brand: 'audi', name: 'Q5 FY', base: 'Q5', from: 2017, to: 2024, match: ['Q5', 'SQ5'], types: ['FY'] },
   { id: 'q7-4m', brand: 'audi', name: 'Q7 4M', base: 'Q7', from: 2015, to: null, match: ['Q7', 'SQ7'], types: ['4M'] },
-  { id: 'q8', brand: 'audi', name: 'Q8', base: 'Q8', from: 2018, to: null, match: ['Q8', 'SQ8', 'RSQ8'], exclude: ['Q8ETRON', 'Q8SPORTBACKETRON'], types: [] },
+  { id: 'q8', brand: 'audi', name: 'Q8', base: 'Q8', from: 2018, to: null, match: ['Q8', 'SQ8', 'RSQ8'], exclude: ['Q8ETRON', 'Q8SPORTBACKETRON', 'SQ8ETRON', 'SQ8SPORTBACKETRON'], types: [] },
   // SEAT
   { id: 'ibiza-kj', brand: 'seat', name: 'Ibiza KJ', base: 'Ibiza', from: 2017, to: null, match: ['IBIZA'], types: ['KJ'] },
   { id: 'arona', brand: 'seat', name: 'Arona', base: 'Arona', from: 2017, to: null, match: ['ARONA'], types: [] },
@@ -2740,7 +2757,7 @@ const CATEGORIES = [
   { id: 'cockpit', name: 'Digitale cockpit', icon: 'gauge', group: 'connectiviteit', art: 'cockpit',
     tagline: 'Alle informatie in één oogopslag.', text: 'Virtual Cockpit en Active Info Display.' },
   { id: 'assistentie', name: 'Cruisecontrol & assistentie', icon: 'radar', group: 'assistentie', art: 'assist',
-    tagline: 'Originele ondersteuning onderweg.', text: 'Cruise control, dodehoekassistent, Lane Assist en verkeersbordherkenning.' },
+    tagline: 'Originele ondersteuning onderweg.', text: 'Cruisecontrol, dodehoekassistent, Lane Assist en verkeersbordherkenning.' },
   { id: 'comfort', name: 'Comfort', icon: 'comfort', group: 'comfort', art: 'mirror',
     tagline: 'Gemak zoals af fabriek.', text: 'Inklapbare spiegels, elektrische achterklep, keyless entry en meer.' },
   { id: 'verlichting', name: 'Verlichting', icon: 'light', group: 'comfort', art: 'light',
@@ -2824,12 +2841,12 @@ const FEATURES = {
   wegrijassistent: { name: 'Wegrijassistent', cat: 'assistentie', art: 'assist', keywords: ['wegrijassistent', 'auto hold', 'helling', 'hellingproef'],
     short: 'Origineel Audi-assistentiesysteem dat met Auto Hold voorkomt dat de auto op een helling achteruit rolt. U schakelt het in met een druk op de knop; het blijft actief tot u het uitschakelt.' },
   'cruise-control': { name: 'Cruise control', cat: 'assistentie', art: 'gauge', keywords: KW_CRUISE,
-    short: 'Originele cruise control om een ingestelde snelheid vast te houden.' },
+    short: 'Originele cruisecontrol om een ingestelde snelheid vast te houden.' },
   'cruise-control-stuur': { name: 'Cruise control (bediening op het stuur)', cat: 'assistentie', art: 'gauge', keywords: [...KW_CRUISE, 'stuur', 'stuurknoppen'],
-    short: 'Originele cruise control die u met de knoppen op het stuur bedient: snelheid vasthouden, verhogen of verlagen.',
+    short: 'Originele cruisecontrol die u met de knoppen op het stuur bedient: snelheid vasthouden, verhogen of verlagen.',
     variantNote: 'Uitvoering met bediening op het stuur; er is ook een uitvoering met bediening via de knipperlichthendel.' },
   'cruise-control-hendel': { name: 'Cruise control (bediening via hendel)', cat: 'assistentie', art: 'gauge', keywords: [...KW_CRUISE, 'hendel'],
-    short: 'Originele cruise control die u bedient via de knipperlichthendel.',
+    short: 'Originele cruisecontrol die u bedient via de knipperlichthendel.',
     variantNote: 'Uitvoering met bediening via de knipperlichthendel; er is ook een uitvoering met bediening op het stuur.' },
   'inklapbare-spiegels': { name: 'Inklapbare spiegels', cat: 'comfort', art: 'mirror', image: 'cat_mirror', keywords: ['inklapbare spiegels', 'inklapspiegels', 'spiegels', 'buitenspiegels'],
     short: 'Elektrisch inklapbare buitenspiegels. Inklapbare spiegels helpen schade aan de buitenspiegels te voorkomen.' },
@@ -3297,10 +3314,10 @@ const SERVICES = [
     keywords: ['coderen', 'programmeren', 'software update', 'activeren'], cats: ['infotainment', 'cockpit'] },
   { slug: 'kalibratie-rijhulpsystemen', title: 'Kalibratie rijhulpsystemen', icon: 'target', card: 'Kalibratie rijhulpsystemen',
     cardText: 'Na schade of het vervangen van de voorruit moet een rijhulpsysteem opnieuw worden afgesteld. Daarvoor beschikken we over een complete uitlijn- en kalibratieset.',
-    points: ['Adaptieve cruise control (ACC)', 'Lane Assist', 'Night Vision'],
+    points: ['Adaptieve cruisecontrol (ACC)', 'Lane Assist', 'Night Vision'],
     cta: ['Meer over kalibratie', '#/diensten/kalibratie-rijhulpsystemen'],
-    short: 'Uitlijnen en kalibreren van adaptieve cruise control, Lane Assist en Night Vision.',
-    body: ['Na schade of het vervangen van de voorruit kan een rijhulpsysteem zoals adaptieve cruise control niet meer goed werken. CarTronic kalibreert deze systemen opnieuw.', 'Voor het afstellen van adaptieve cruise control, Lane Assist en Night Vision beschikken we over een complete VW/Audi uitlijn- en kalibratieset — apparatuur die verder vooral bij grote dealers staat.'],
+    short: 'Uitlijnen en kalibreren van adaptieve cruisecontrol, Lane Assist en Night Vision.',
+    body: ['Na schade of het vervangen van de voorruit kan een rijhulpsysteem zoals adaptieve cruisecontrol niet meer goed werken. CarTronic kalibreert deze systemen opnieuw.', 'Voor het afstellen van adaptieve cruisecontrol, Lane Assist en Night Vision beschikken we over een complete VW/Audi uitlijn- en kalibratieset — apparatuur die verder vooral bij grote dealers staat.'],
     keywords: ['acc', 'adaptive cruise control', 'adaptieve cruise control', 'lane assist', 'night vision', 'kalibreren', 'uitlijnen', 'voorruit'], cats: ['assistentie'], image: 'about' },
   { slug: 'diagnose-storingen', title: 'Diagnose & storingen', icon: 'activity', card: 'Diagnose & storingen',
     cardText: 'Een storingslampje of een systeem dat niet meer werkt? We stellen de diagnose met apparatuur op dealerniveau en zoeken de oorzaak.',
@@ -3354,7 +3371,7 @@ const DEFAULT_PROJECTS = [
     image: 'img:proj_golf8', before: '', after: '', related: [], services: ['fabrieksopties-inbouwen'], active: true },
   { id: 'prj_kalibratie', slug: 'precisie-in-kalibratie', title: 'Precisie in kalibratie', vehicle: 'Volkswagen · Audi', brands: ['volkswagen', 'audi'], models: [], type: 'kalibratie', tag: 'Kalibratie',
     short: 'Uitlijnen en kalibreren van ACC, Lane Assist en Night Vision.',
-    body: 'Op de uitlijnbrug in onze werkplaats worden rijhulpsystemen zoals adaptieve cruise control, Lane Assist en Night Vision uitgelijnd en gekalibreerd — bijvoorbeeld na schade of het vervangen van de voorruit.',
+    body: 'Op de uitlijnbrug in onze werkplaats worden rijhulpsystemen zoals adaptieve cruisecontrol, Lane Assist en Night Vision uitgelijnd en gekalibreerd — bijvoorbeeld na schade of het vervangen van de voorruit.',
     image: 'img:proj_kalibratie', gallery: ['img:about'], before: '', after: '', related: [], services: ['kalibratie-rijhulpsystemen'], active: true },
 ];
 const PROJECT_TYPES = [
@@ -3386,11 +3403,11 @@ const REVIEWS = {
 /* "Meer van ons werk" — portfolio items published on CarTronic's Facebook page. */
 const MORE_WORK = [
   { title: 'Škoda Octavia IV', text: 'Een originele achteruitrijcamera ingebouwd in de vierde generatie Octavia. Bekijk de foto’s in het Facebook-portfolio.',
-    links: [['Bekijk het Octavia-project', FACEBOOK_URL]] },
+    links: [['Bekijk het portfolio op Facebook', FACEBOOK_URL]] },
   { title: 'Volkswagen ID.3 & Golf 8', text: 'Originele Volkswagen-camera’s ingebouwd. Het Facebook-portfolio bevat foto’s en video’s van deze werkzaamheden.',
-    links: [['Bekijk de ID.3-inbouw', FACEBOOK_URL]] },
+    links: [['Bekijk het portfolio op Facebook', FACEBOOK_URL]] },
   { title: 'Audi RS6', text: 'Een Audi RS6 in de CarTronic-werkplaats. Bekijk de originele foto en het bijbehorende bericht in het portfolio.',
-    links: [['Bekijk de RS6 in de werkplaats', FACEBOOK_URL]] },
+    links: [['Bekijk het portfolio op Facebook', FACEBOOK_URL]] },
   { title: 'De camera’s in beeld', text: 'Video’s van CarTronic op Facebook: parkassist en een originele camera in de nieuwste Audi Q7, en uitleg over de werking van de 360-gradencamera.',
     links: [['Bekijk de eerste video', 'https://www.facebook.com/Cartronic-382532161837663/videos/de-nieuwste-q7-ook-parkassist-en-originele-camera-inbouw-mogelijk-bij-cartronic-/1177318202359051/'],
       ['Bekijk de tweede video', 'https://www.facebook.com/Cartronic-382532161837663/videos/uitleg-over-de-werking-van-360-graden-camera/1537344069689794/']] },
@@ -3405,7 +3422,7 @@ const ARTICLES = [
       ['p', 'Een originele optie is pas af als de auto haar herkent. Daarvoor heeft CarTronic, net als grote Volkswagen- en Audi-dealers, een online verbinding met de database van de fabriek.'],
       ['p', 'Via die verbinding programmeren we ingebouwde opties en melden we ze correct aan in de auto. Ook software-updates van modules voeren we online uit.'],
       ['h', 'Wat betekent dat voor u?'],
-      ['ul', ['De optie werkt zoals af fabriek: via de originele schermen, knoppen en menu’s.', 'Geen losse kastjes of omwegen in de software.', 'Software-updates van modules zonder bezoek aan de dealer.']],
+      ['ul', ['De optie werkt zoals af fabriek: via de originele schermen, knoppen en menu’s.', 'Opties worden geprogrammeerd en correct aangemeld in de auto, net als bij een dealer.', 'Ook software-updates van modules voeren we online uit.']],
     ], links: [['Meer over programmeren', '#/diensten/online-programmeren']] },
   { slug: 'acc-en-lane-assist-kalibreren', tag: 'Kalibratie', icon: 'target', title: 'Adaptieve cruisecontrol en Lane Assist kalibreren', keywords: ['acc', 'lane assist', 'night vision', 'kalibratie', 'uitlijnen', 'voorruit'],
     short: 'Na schade of het vervangen van de voorruit moet een rijhulpsysteem opnieuw worden afgesteld.',
@@ -3415,7 +3432,7 @@ const ARTICLES = [
       ['h', 'Welke systemen?'],
       ['ul', ['Adaptieve cruisecontrol (ACC)', 'Lane Assist', 'Night Vision']],
     ], links: [['Meer over kalibratie', '#/diensten/kalibratie-rijhulpsystemen'], ['Bekijk het kalibratieproject', '#/projecten/precisie-in-kalibratie']] },
-  { slug: 'origineel-alarm-met-scm-certificaat', tag: 'Beveiliging', icon: 'shield', title: 'Origineel af-fabriek alarm met SCM-certificaat', keywords: ['alarm', 'scm', 'diefstal', 'verzekering'],
+  { slug: 'origineel-alarm-met-scm-certificaat', tag: 'Beveiliging', icon: 'shield', title: 'Zo werkt het originele alarm met SCM-certificaat', keywords: ['alarm', 'scm', 'diefstal', 'verzekering'],
     short: 'Het originele alarmsysteem, inclusief SCM-certificaat voor uw verzekeraar.',
     body: [
       ['p', 'CarTronic bouwt het originele alarmsysteem in, inclusief SCM-certificaat voor uw verzekeraar. Volgens CarTronic is dat mogelijk op de meeste modellen van Audi, SEAT, Škoda en Volkswagen, ook nieuwere modellen.'],
@@ -3666,6 +3683,13 @@ const Repo = (() => {
       write('orders', list);
       Bus.emit('orders:changed', o);
       return o;
+    },
+    /** Removes the orders matching pred (used by "Alles wissen" for orders placed in this browser). */
+    removeOrders(pred) {
+      const list = this.orders();
+      const keep = list.filter((o) => !pred(o));
+      if (keep.length !== list.length) { write('orders', keep); Bus.emit('orders:changed', null); }
+      return list.length - keep.length;
     },
     // Settings
     settings() { return { ...deepClone(DEFAULT_SETTINGS), ...read('settings', {}) }; },
@@ -4227,7 +4251,7 @@ const CheckoutService = {
       order.history.push({ at: nowIso(), status: order.orderStatus, note: 'Dezelfde bestelling opnieuw bevestigd (dubbele bestelling voorkomen)' });
     } else {
       order = {
-        id: uid('ord'), orderNumber: Repo.nextOrderNumber(), idempotencyKey: idem, isDemo: true,
+        id: uid('ord'), orderNumber: Repo.nextOrderNumber(), idempotencyKey: idem, isDemo: true, placedHere: true,
         customer, delivery: { method: method.id, label: method.label, price: method.price },
         vehicle: v ? { label: VehicleStore.name(v), year: v.year || null } : null,
         note: (form.note || '').trim(), items, ...totals, currency: 'EUR',
@@ -4313,9 +4337,9 @@ const DemoAuth = {
 /* ---------- Search ---------- */
 const Search = {
   index: null,
-  TYPE_LABEL: { CATEGORIE: 'Categorie', DIENST: 'Dienst', RETROFIT: 'Retrofit', MODEL: 'Model', PRODUCT: 'Product', PROJECT: 'Project', KENNIS: 'Kennis' },
-  TYPE_ORDER: ['CATEGORIE', 'DIENST', 'RETROFIT', 'MODEL', 'PRODUCT', 'PROJECT', 'KENNIS'],
-  TYPE_BOOST: { CATEGORIE: 6, DIENST: 5, RETROFIT: 0, MODEL: 4, PRODUCT: 0, PROJECT: -2, KENNIS: -3 },
+  TYPE_LABEL: { CATEGORIE: 'Categorie', DIENST: 'Dienst', RETROFIT: 'Retrofit', MODEL: 'Model', PRODUCT: 'Product', PROJECT: 'Project', KENNIS: 'Kennis', PAGINA: 'Pagina' },
+  TYPE_ORDER: ['CATEGORIE', 'DIENST', 'RETROFIT', 'MODEL', 'PRODUCT', 'PROJECT', 'KENNIS', 'PAGINA'],
+  TYPE_BOOST: { CATEGORIE: 6, DIENST: 5, RETROFIT: 0, MODEL: 4, PRODUCT: 0, PROJECT: -2, KENNIS: -3, PAGINA: 2 },
   invalidate() { this.index = null; },
   build() {
     const docs = [];
@@ -4325,6 +4349,12 @@ const Search = {
       catText: normText(CATEGORY[r.cat].name), catIdx: CATEGORIES.findIndex((c) => c.id === r.cat), models: r.models, brands: Compat.brandsOf(r), wide: r.scope === 'brand',
     }));
     SERVICES.forEach((s) => docs.push({ type: 'DIENST', id: s.slug, title: s.title, sub: s.short, href: `#/diensten/${s.slug}`, text: [s.short, s.keywords.join(' ')].join(' ') }));
+    [
+      ['beoordelingen', 'Beoordelingen', 'Ervaringen van klanten', '#/beoordelingen', 'beoordelingen reviews ervaringen klantenvertellen score klanten'],
+      ['productinformatie', 'Productinformatie', 'Onderdelen, garantie, prijzen en compatibiliteit', '#/productinformatie', 'productinformatie garantie onderdelen origineel oem prijzen aanbiedingen compatibiliteit'],
+      ['privacy', 'Privacy', 'Wat deze website in uw browser bewaart', '#/privacy', 'privacy gegevens kenteken opslag wissen cookies'],
+      ['contact', 'Contact', `${COMPANY.street}, ${COMPANY.city} · ${COMPANY.phoneDisplay}`, '#/contact', 'contact adres telefoon whatsapp email openingstijden route afspraak'],
+    ].forEach(([id, title, sub, href, text]) => docs.push({ type: 'PAGINA', id, title, sub, href, text }));
     ARTICLES.forEach((a) => docs.push({ type: 'KENNIS', id: a.slug, title: a.title, sub: a.short, href: `#/kennis/${a.slug}`, text: [a.tag, a.short, (a.keywords || []).join(' ')].join(' ') }));
     CATEGORIES.forEach((c) => docs.push({ type: 'CATEGORIE', id: c.id, title: c.name, sub: c.text, href: `#/mogelijkheden?cat=${c.id}`, text: c.text }));
     MODELS.forEach((m) => {
@@ -4363,7 +4393,9 @@ const Search = {
   /* Finds brand/model mentions ("golf 7 camera", "a4 b9 carplay", "t6 camera") and returns
      the rest of the query, so the remaining words are matched against the option itself. */
   parseVehicle(nq) {
-    const words = nq.split(' ');
+    const ALIAS = { enyak: 'enyaq' }; // CarTronic's own spelling on its product pages
+    const BODY = new Set(['avant', 'sportback', 'limousine', 'sedan', 'variant', 'combi', 'kombi', 'coupe', 'cabrio', 'cabriolet', 'allspace', 'hatchback', 'sline', 'rline']);
+    const words = nq.split(' ').map((w) => ALIAS[w] || w);
     const set = new Set(words);
     for (let i = 0; i < words.length - 1; i++) set.add(words[i] + words[i + 1]);
     const used = new Set();
@@ -4376,10 +4408,12 @@ const Search = {
       const baseC = baseW.join('');
       const codes = normText(m.name).split(' ').filter((w) => !baseW.includes(w));
       const codeHit = codes.filter((c) => set.has(c) || set.has(baseC + c));
-      const baseHit = baseW.every((w) => set.has(w)) || set.has(baseC) || codes.some((c) => set.has(baseC + c));
+      // Sport variants count as the model ("rs6", "sq8", "s3").
+      const varHit = (m.match || []).map((t) => t.toLowerCase()).filter((t) => /\d/.test(t) && !baseW.includes(t) && set.has(t));
+      const baseHit = baseW.every((w) => set.has(w)) || set.has(baseC) || codes.some((c) => set.has(baseC + c)) || varHit.length > 0;
       // A distinctive generation code on its own also counts ("t6", "b8", "8v").
       if (!baseHit && !codeHit.some((c) => c.length > 1 && /\d/.test(c) && /[a-z]/.test(c))) return;
-      hits.push({ m, baseW, baseC, codes, codeHit, baseHit });
+      hits.push({ m, baseW, baseC, codes, codeHit, baseHit, varHit });
     });
     if (!hits.length) return { brand, models: null, rest: words.filter((w) => !used.has(w)).join(' ') };
     let pick = hits.filter((h) => h.codeHit.length);
@@ -4393,7 +4427,9 @@ const Search = {
     }
     const longest = Math.max(...pick.map((h) => (h.baseHit ? h.baseW.length : 0)));
     pick = pick.filter((h) => (h.baseHit ? h.baseW.length : 0) === longest);
-    pick.forEach((h) => { if (h.baseHit) { h.baseW.forEach((w) => used.add(w)); used.add(h.baseC); } h.codeHit.forEach((c) => { used.add(c); used.add(h.baseC + c); }); });
+    pick.forEach((h) => { if (h.baseHit) { h.baseW.forEach((w) => used.add(w)); used.add(h.baseC); h.varHit.forEach((t) => used.add(t)); } h.codeHit.forEach((c) => { used.add(c); used.add(h.baseC + c); }); });
+    // Body styles ("avant", "sportback") describe the car, not the option.
+    BODY.forEach((w) => used.add(w));
     const rest = words.filter((w, i) => !used.has(w) && !(i < words.length - 1 && used.has(w + words[i + 1])) && !(i > 0 && used.has(words[i - 1] + w))).join(' ');
     return { brand: brand || pick[0].m.brand, models: pick.map((h) => h.m.id), rest };
   },
@@ -4404,7 +4440,7 @@ const Search = {
     let score = 0;
     if (d.nTitle === nq) score += 100;
     if (d.nTitle.startsWith(nq)) score += 40;
-    if (d.nTitle.includes(nq)) score += 30; else if (d.nText.includes(nq)) score += 16;
+    if (d.nTitle.includes(nq)) score += 30; else if ((` ${d.nText}`).includes(` ${nq}`)) score += 16;
     let syn = 0;
     ctx.phraseSyn.forEach((ph) => { syn = Math.max(syn, d.nTitle.includes(ph) ? 14 : (d.nText.includes(ph) ? 9 : 0)); });
     score += syn;
@@ -4480,6 +4516,7 @@ const Search = {
       } else {
         if (!rq) return;
         score = run(rq);
+        if (d.type === 'KENNIS' && score > 0) score = Math.max(1, score - 15); // vehicle queries: the options first
       }
       if (score <= 0) return;
       if (v && d.models && d.models.includes(v.modelId)) score += 15;
@@ -4801,7 +4838,7 @@ const Layout = {
     btn.setAttribute('aria-label', open ? 'Menu sluiten' : 'Menu');
     document.body.classList.toggle('is-locked', open);
     // The menu is a modal panel: keep keyboard and screen-reader focus inside it while it is open.
-    ['#siteHeader', '#main', '#siteFooter'].forEach((sel) => { const el = $(sel); if (el) el.inert = open; });
+    [...document.body.children].forEach((el) => { if (el !== nav && el.tagName !== 'SCRIPT') el.inert = open; });
     if (open) { const c = $('.mn-close', nav); if (c) c.focus({ preventScroll: true }); } else if (nav.contains(document.activeElement)) btn.focus({ preventScroll: true });
   },
   closeMenu() { if ($('#mobileNav')?.classList.contains('is-open')) this.toggleMenu(false); },
@@ -5047,7 +5084,7 @@ const VehicleFinder = {
       <div ${panelAttrs('manual')} data-panel="manual"${tab === 'manual' ? '' : ' hidden'}>
         <form class="finder-form finder-form--manual" data-manual-form novalidate>
           <div class="field"><label for="${id}-brand">1. Merk</label>
-            <select class="select" id="${id}-brand" name="brand"><option value="">Kies uw merk</option>${brandOpts}</select></div>
+            <select class="select" id="${id}-brand" name="brand" aria-describedby="${id}-model-err"><option value="">Kies uw merk</option>${brandOpts}</select></div>
           <div class="field"><label for="${id}-model">2. Model / generatie</label>
             <select class="select" id="${id}-model" name="model" disabled aria-describedby="${id}-model-err"><option value="">Kies uw model</option></select>
             <span class="field-error" id="${id}-model-err" data-model-err></span></div>
@@ -5110,14 +5147,17 @@ const VehicleFinder = {
       const yf = yearSel.closest('.finder-year');
       if (yf && finder.classList.contains('finder--simple')) yf.hidden = !m;
     };
-    brandSel.addEventListener('change', () => { fillModels(); modelErr.textContent = ''; modelSel.removeAttribute('aria-invalid'); });
+    brandSel.addEventListener('change', () => { fillModels(); modelErr.textContent = ''; modelSel.removeAttribute('aria-invalid'); brandSel.removeAttribute('aria-invalid'); });
     modelSel.addEventListener('change', () => { fillYears(); modelErr.textContent = ''; modelSel.removeAttribute('aria-invalid'); });
-    const cur = VehicleStore.get();
-    if (cur) {
+    // Prefill the manual selects with the chosen car (at mount and when "Wijzig" opens them after a plate match).
+    const prefill = () => {
+      const cur = VehicleStore.get();
+      if (!cur) return;
       brandSel.value = cur.brandId; fillModels();
       if (cur.modelId) { modelSel.value = cur.modelId; fillYears(); }
       if (cur.year) yearSel.value = String(cur.year);
-    }
+    };
+    prefill();
 
     $('[data-manual-form]', finder).addEventListener('submit', (e) => {
       e.preventDefault();
@@ -5169,12 +5209,12 @@ const VehicleFinder = {
       busy = false;
       submit.classList.remove('is-loading'); submit.removeAttribute('aria-busy');
       if (res.status === 'invalid') { result.innerHTML = ''; plateBox.classList.add('is-invalid'); plateErr.textContent = 'Dit is geen geldig Nederlands kenteken.'; return; }
-      this.renderResult(finder, res, { onDone, selectTab, showDemo, retry: runLookup });
+      this.renderResult(finder, res, { onDone, selectTab, showDemo, retry: runLookup, prefill });
     };
     $('[data-plate-form]', finder).addEventListener('submit', (e) => { e.preventDefault(); runLookup(); });
   },
 
-  renderResult(finder, res, { onDone, selectTab, showDemo, retry }) {
+  renderResult(finder, res, { onDone, selectTab, showDemo, retry, prefill = () => {} }) {
     const result = $('[data-result]', finder);
     const srcTag = res.source === 'demo'
       ? `<span class="demo-flag">${icon('info')} Demo-gegevens</span>`
@@ -5247,7 +5287,7 @@ const VehicleFinder = {
       if (g) { matched(g.dataset.gen, 'user'); return; }
       const r = e.target.closest('[data-r]'); if (!r) return;
       const act = r.dataset.r;
-      if (act === 'manual') { e.preventDefault(); result.innerHTML = ''; selectTab('manual', true); }
+      if (act === 'manual') { e.preventDefault(); result.innerHTML = ''; prefill(); selectTab('manual', true); }
       if (act === 'edit') { result.innerHTML = ''; const inp = $('input[name="plate"]', finder); inp.focus(); inp.select(); }
       if (act === 'retry') retry();
       if (act === 'demo') showDemo(true);
@@ -5276,7 +5316,7 @@ const VehicleModal = {
             Toast.show(`Uw auto is ingesteld: ${VehicleStore.name(veh)}`, { action: { label: 'Mogelijkheden', href: '#/mogelijkheden' } });
             const path = Router.current && Router.current.path;
             // Catalog, home and garage jump to the options for this car; detail pages re-render in place.
-            if (via === 'plate' || ['/', '/mijn-auto', '/mogelijkheden'].includes(path)) Router.go('/mogelijkheden'); else Router.render();
+            if (path !== '/contact' && (via === 'plate' || ['/', '/mijn-auto', '/mogelijkheden'].includes(path))) Router.go('/mogelijkheden'); else Router.render();
           },
         });
         const clr = $('[data-clear-vehicle]', panel);
@@ -5491,7 +5531,7 @@ const starRow = (score, scale = 10, cls = 'stars') => {
   return `<span class="${cls}" aria-hidden="true"><span class="st-base">${five}</span><span class="st-fill" style="width:${pct.toFixed(1)}%">${five}</span></span>`;
 };
 const reviewCard = (r) => `<article class="review-card">
-    ${starRow(r.score, 10, 'rc-stars')}
+    ${starRow(r.score, 10, 'rc-stars')}<span class="sr-only">Score: ${esc(String(r.score))} van 10.</span>
     <h3>${esc(r.title)}</h3>
     <blockquote>“${esc(r.text)}”</blockquote>
     <p class="rc-who">${esc(r.name)}, ${esc(r.place)} · ${esc(fmtDate(r.date))}</p>
@@ -6066,7 +6106,7 @@ Pages.projects = {
     const types = PROJECT_TYPES.filter((t) => list.some((p) => p.type === t.id));
     const fb = ctx.query.merk || ''; const ft = ctx.query.type || '';
     const showFilters = list.length > 3 || !!(fb || ft);
-    return `${UI.pageHeader({ crumbs: [['Projecten']], eyebrow: 'Uit de werkplaats', title: 'Techniek die u terugziet.', lead: 'Originele upgrades en specialistische werkzaamheden, gefotografeerd in de CarTronic-werkplaats in Rijswijk.' })}
+    return `${UI.pageHeader({ crumbs: [['Uit de werkplaats.']], eyebrow: 'Portfolio', title: 'Uit de werkplaats.', lead: 'Originele upgrades en specialistische werkzaamheden, gefotografeerd in de CarTronic-werkplaats.' })}
       <section class="section section--first"><div class="container">
         ${showFilters ? `<div class="project-filters" role="group" aria-label="Filter projecten">
           <div class="chips" data-pf="merk"><button class="chip" type="button" data-v="" aria-pressed="${!fb}">Alle merken</button>${brands.map((b) => `<button class="chip" type="button" data-v="${b.id}" aria-pressed="${fb === b.id}">${b.name}</button>`).join('')}</div>
@@ -6083,7 +6123,7 @@ Pages.projects = {
         </div>
         <div class="more-grid" data-stagger>${MORE_WORK.map((m) => `<article class="more-card">
           <h3>${esc(m.title)}</h3><p>${esc(m.text)}</p>
-          <div class="more-links">${m.links.map(([l, u]) => `<a class="ink-link" href="${attr(u)}" target="_blank" rel="noopener">${esc(l)}<span class="sr-only"> (Facebook, opent in een nieuw venster)</span></a>`).join('')}</div>
+          <div class="more-links">${m.links.map(([l, u]) => `<a class="ink-link" href="${attr(u)}" target="_blank" rel="noopener">${esc(l)}<span class="sr-only"> (opent in een nieuw venster)</span></a>`).join('')}</div>
         </article>`).join('')}</div>
         <div class="note-rule mt-48" data-reveal>Projecten blijven als referentie beschikbaar. Ze zijn geen overzicht van actuele levertijden of voorraad. Vraag naar de mogelijkheden voor uw auto.</div>
       </div></section>
@@ -6218,7 +6258,7 @@ Pages.about = {
   id: 'about', nav: 'over',
   meta: { title: 'Over CarTronic — vier merken, één specialisme', description: 'CarTronic in Rijswijk richt zich op Volkswagen, Audi, SEAT en Škoda: originele fabrieksopties achteraf inbouwen, met diagnoseapparatuur op dealerniveau.' },
   render() {
-    return `${UI.pageHeader({ crumbs: [['Vier merken. Eén specialisme.']], eyebrow: 'Over CarTronic', title: 'Vier merken.<br>Eén specialisme.', lead: 'Originele fabrieksopties achteraf inbouwen vraagt om kennis van de auto, de elektronica en de fabriekssystemen.' })}
+    return `${UI.pageHeader({ crumbs: [['Vier merken. Eén specialisme.']], eyebrow: 'Over CarTronic', title: 'Vier merken.<br class="br-sm"> Eén specialisme.', lead: 'Originele fabrieksopties achteraf inbouwen vraagt om kennis van de auto, de elektronica en de fabriekssystemen.' })}
       <section class="section section--first"><div class="container">
         <div class="split split--wide-media">
           <div>
@@ -6237,23 +6277,6 @@ Pages.about = {
         </div>
         <div class="note-rule mt-48" data-reveal>Ruim 14 jaar ervaring met modellen uit de VAG-groep.<br>Kennis van de techniek én van de originele mogelijkheden.</div>
       </div></section>
-      <section class="section section--soft" aria-labelledby="visit-title"><div class="container split">
-        <div>
-          <p class="eyebrow">Bezoek de werkplaats</p>
-          <h2 class="h2 mt-16" id="visit-title" data-split>${esc(COMPANY.street)},<br>${esc(COMPANY.city)}.</h2>
-          <p class="lead mt-24" data-reveal>Kom langs voor advies of een afspraak. We zijn bereikbaar via telefoon, WhatsApp en e-mail.</p>
-          <div class="detail-actions" data-reveal>
-            <a class="btn btn--dark" href="${COMPANY.mapsUrl}" target="_blank" rel="noopener">${icon('pin')} Route plannen</a>
-            <a class="btn btn--light" href="#/contact">Contact</a>
-          </div>
-        </div>
-        <div class="panel" style="padding:28px 30px" data-reveal>
-          <h3 class="h4">Openingstijden</h3>
-          <dl class="footer-hours footer-hours--light" style="font-size:15px;gap:10px 32px">${COMPANY.hours.map(([d, t]) => `<dt>${esc(d)}</dt><dd>${esc(t)}</dd>`).join('')}</dl>
-          <hr style="margin:24px 0">
-          <dl class="kv"><dt>Adres</dt><dd>${esc(COMPANY.street)}, ${esc(COMPANY.postal)} ${esc(COMPANY.city)}</dd><dt>Telefoon</dt><dd><a class="text-link" href="${COMPANY.phoneHref}">${COMPANY.phoneDisplay}</a></dd><dt>E-mail</dt><dd><a class="text-link" href="mailto:${COMPANY.email}">${COMPANY.email}</a></dd></dl>
-        </div>
-      </div></section>
       ${ctaBand()}`;
   },
 };
@@ -6271,7 +6294,7 @@ Pages.contact = {
           <p class="lead" data-reveal>Vermeld bij een aanvraag uw merk, model, bouwjaar en bij voorkeur het kenteken. Zo kunnen we de juiste mogelijkheden voor uw auto bekijken.</p>
           <ul class="contact-rows">
             <li>${icon('phone')}<div><span class="cr-label">Bellen</span><a class="cr-value" href="${COMPANY.phoneHref}">${COMPANY.phoneDisplay}</a></div></li>
-            <li>${icon('chat')}<div><span class="cr-label">WhatsApp op ons vaste nummer</span><a class="cr-value" href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp" data-wa-generic>${COMPANY.phoneDisplay}</a></div></li>
+            <li>${icon('chat')}<div><span class="cr-label">WhatsApp op ons vaste nummer</span><a class="cr-value" href="${WhatsApp.generic()}" target="_blank" rel="noopener" data-action="whatsapp" data-wa-generic><span class="sr-only">WhatsApp: </span>${COMPANY.phoneDisplay}<span class="sr-only"> (opent in een nieuw venster)</span></a></div></li>
             <li>${icon('mail')}<div><span class="cr-label">E-mail</span><a class="cr-value" href="mailto:${COMPANY.email}">${COMPANY.email}</a></div></li>
             <li>${icon('pin')}<div><span class="cr-label">Adres</span><span class="cr-value">${esc(COMPANY.street)}<br>${esc(COMPANY.postal)} ${esc(COMPANY.city)}</span><a class="cr-more" href="${COMPANY.mapsUrl}" target="_blank" rel="noopener">Route plannen</a></div></li>
             <li>${icon('clock')}<div><span class="cr-label">Openingstijden</span><dl class="footer-hours footer-hours--light">${COMPANY.hours.map(([d, t]) => `<dt>${esc(d)}</dt><dd>${esc(t)}</dd>`).join('')}</dl></div></li>
@@ -6295,7 +6318,9 @@ Pages.contact = {
       name: draft.name || '', email: draft.email || '', phone: draft.phone || '',
       vehicle: draft.vehicle || (v ? VehicleStore.name(v) : ''), plate: draft.plate || VehicleStore.plate() || '', year: draft.year || (v && v.year ? String(v.year) : ''),
       options: optionSlugs, products: productIds, question: draft.question || '', vin: draft.vin || '',
-      topic: [ctx.query.onderwerp, draft.topic].find((t) => t && ENQUIRY_TOPIC[t]) || (optionSlugs.length ? 'inbouw' : ''),
+      topic: (ctx.query.onderwerp && ENQUIRY_TOPIC[ctx.query.onderwerp] ? ctx.query.onderwerp : '')
+        || (ctx.query.optie && RETROFIT[ctx.query.optie] ? 'inbouw' : '')
+        || (draft.topic && ENQUIRY_TOPIC[draft.topic] ? draft.topic : '') || (optionSlugs.length ? 'inbouw' : ''),
     };
     const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
     const body = $('[data-contact-body]', root);
@@ -6317,7 +6342,7 @@ Pages.contact = {
             <div class="field span-2"><label for="c-vehicle">Merk en model</label><input class="input" id="c-vehicle" data-k="vehicle" value="${attr(state.vehicle)}" placeholder="Bijv. Volkswagen Golf 8"></div>
             <div class="field"><label for="c-plate">Kenteken <span class="opt">(optioneel)</span></label><input class="input" id="c-plate" data-k="plate" value="${attr(state.plate)}" placeholder="AB-123-C" autocapitalize="characters" aria-describedby="c-plate-e"><span class="field-error" id="c-plate-e">${err.plate || ''}</span></div>
             <div class="field"><label for="c-year">Bouwjaar <span class="opt">(optioneel)</span></label><input class="input" id="c-year" data-k="year" inputmode="numeric" maxlength="4" value="${attr(state.year)}" placeholder="2019"></div>
-            <div class="field span-2"><label for="c-vin">Chassisnummer (VIN) <span class="opt">(optioneel)</span></label><input class="input" id="c-vin" data-k="vin" maxlength="17" autocapitalize="characters" spellcheck="false" value="${attr(state.vin)}" placeholder="17 tekens, staat op uw kentekenbewijs" aria-describedby="c-vin-e"${err.vin ? ' aria-invalid="true"' : ''}><span class="field-error" id="c-vin-e">${err.vin || ''}</span></div>
+            <div class="field span-2"><label for="c-vin">Chassisnummer (VIN) <span class="opt">(optioneel)</span></label><input class="input" id="c-vin" data-k="vin" maxlength="30" autocapitalize="characters" spellcheck="false" value="${attr(state.vin)}" placeholder="17 tekens, staat op uw kentekenbewijs" aria-describedby="c-vin-e"${err.vin ? ' aria-invalid="true"' : ''}><span class="field-error" id="c-vin-e">${err.vin || ''}</span></div>
           </div>
           ${v ? '' : `<p class="hint mt-8">Tip: <button type="button" class="text-link" data-action="open-vehicle">zoek uw auto op kenteken</button> om dit automatisch in te vullen.</p>`}
         </div>
@@ -6359,15 +6384,21 @@ Pages.contact = {
     render();
     body.addEventListener('input', (e) => {
       const k = e.target.dataset.k; if (!k) return;
-      state[k] = k === 'vin' ? e.target.value.toUpperCase().replace(/\s+/g, '') : e.target.value;
-      if (k === 'vin' && e.target.value !== state.vin) e.target.value = state.vin;
+      if (k === 'vin') {
+        const pos = e.target.selectionStart || 0;
+        const before = e.target.value.slice(0, pos).replace(/\s+/g, '').length;
+        state.vin = e.target.value.toUpperCase().replace(/\s+/g, '');
+        if (e.target.value !== state.vin) { e.target.value = state.vin; try { e.target.setSelectionRange(before, before); } catch (er) { /* type without selection */ } }
+      } else state[k] = e.target.value;
+      if (err[k]) { delete err[k]; e.target.removeAttribute('aria-invalid'); const fe = document.getElementById(`${e.target.id}-e`); if (fe) fe.textContent = ''; }
+      if (k === 'question' && err.question) delete err.question;
       if (k === 'plate') { const f = Plate.format(e.target.value); if (f) { state.plate = f; } }
       $('[data-summary]', body).textContent = summary();
       save();
     });
     body.addEventListener('change', (e) => {
-      if (e.target.name === 'topic') { state.topic = e.target.value; save(); render(); const r = $(`input[name="topic"][value="${state.topic}"]`, body); if (r) r.focus(); return; }
-      if (e.target.matches('[data-add-opt]') && e.target.value) { state.options.push(e.target.value); save(); render(); $('[data-add-opt]', body).focus(); }
+      if (e.target.name === 'topic') { state.topic = e.target.value; delete err.question; save(); render(); const r = $(`input[name="topic"][value="${state.topic}"]`, body); if (r) r.focus(); return; }
+      if (e.target.matches('[data-add-opt]') && e.target.value) { state.options.push(e.target.value); delete err.question; save(); render(); $('[data-add-opt]', body).focus(); }
       if (e.target.dataset.k === 'plate') { const f = Plate.format(state.plate); if (f) e.target.value = f; }
     });
     body.addEventListener('click', (e) => {
@@ -6478,7 +6509,7 @@ Pages.productInfo = {
             <p>Bij de meeste opties in de catalogus staat de garantie vermeld, vaak 3 jaar. Staat er bij een optie geen garantie, vraag er dan naar bij uw aanvraag.</p></article>
           <article class="info-block"><span class="ib-icon">${icon('euro')}</span><h2>Prijzen en aanbiedingen</h2>
             <p>De prijs hangt af van model, bouwjaar en uitvoering. Waar CarTronic een prijs of aanbieding publiceert, ziet u die bij de optie. Anders is de prijs op aanvraag.</p></article>
-          <article class="info-block"><span class="ib-icon">${icon('sliders')}</span><h2>Programmeren inbegrepen</h2>
+          <article class="info-block"><span class="ib-icon">${icon('sliders')}</span><h2>Geprogrammeerd en aangemeld</h2>
             <p>Een ingebouwde optie wordt via de online verbinding met de fabriek geprogrammeerd en correct aangemeld in de auto. Daarna werkt ze via de originele schermen, knoppen en menu’s.</p></article>
         </div>
       </div></section>
@@ -6528,6 +6559,7 @@ Pages.privacy = {
             <li>uw gekozen auto (merk, model, bouwjaar en uitvoering);</li>
             <li>bewaarde opties en producten en recent bekeken pagina’s;</li>
             <li>de inhoud van uw winkelmand;</li>
+            <li>demobestellingen die u in de testwebshop plaatst, met de naam, het e-mailadres, het telefoonnummer en het adres die u bij het afrekenen invult;</li>
             <li>een kenteken, alleen in deze browsersessie en maximaal 24 uur;</li>
             <li>concepten van het contact- en bestelformulier, alleen in deze browsersessie.</li>
           </ul>
@@ -6706,7 +6738,7 @@ Pages.shop = {
               <div class="results-tools">
                 <button class="btn btn--light btn--sm filters-toggle" type="button" data-action="open-filters">${icon('sliders')} Filters</button>
                 <label class="sr-only" for="shop-sort">Sorteren</label>
-                <select class="select select--sm" id="shop-sort" data-sort style="width:auto">
+                <select class="select select--sm" id="shop-sort" data-sort>
                   ${[['aanbevolen', 'Aanbevolen'], ['prijs-op', 'Prijs: laag naar hoog'], ['prijs-af', 'Prijs: hoog naar laag'], ['nieuw', 'Nieuwste']].map(([k, l]) => `<option value="${k}"${s.sort === k ? ' selected' : ''}>${l}</option>`).join('')}
                 </select>
               </div>
@@ -8383,6 +8415,19 @@ function registerRoutes() {
 
 function bindGlobal() {
   document.addEventListener('click', async (e) => {
+    // Skip link: move focus to the content instead of routing to "#main".
+    if (e.target.closest('.skip-link')) {
+      e.preventDefault();
+      const m = document.getElementById('main');
+      if (m) { m.focus({ preventScroll: true }); m.scrollIntoView(); }
+      return;
+    }
+    // Any link in the mobile menu closes it, also the link to the page that is already open.
+    const navLink = e.target.closest('#mobileNav a[href]');
+    if (navLink) {
+      Layout.closeMenu();
+      if (navLink.getAttribute('href') === location.hash) window.scrollTo(0, 0);
+    }
     const el = e.target.closest('[data-action]');
     if (!el) return;
     const act = el.dataset.action;
@@ -8428,9 +8473,10 @@ function bindGlobal() {
       case 'clear-recent': Recent.clear(); Toast.show('Geschiedenis gewist.'); Router.render(); break;
       case 'forget-plate': VehicleStore.forgetPlate(); Toast.show('Uw kenteken is vergeten.'); Router.render(); break;
       case 'wipe-local': {
-        const ok = await Overlay.confirm({ title: 'Alles wissen?', message: 'Uw auto, kenteken, bewaarde opties en producten, geschiedenis, winkelmand en concepten worden uit deze browser verwijderd.', confirmLabel: 'Alles wissen', danger: true });
+        const ok = await Overlay.confirm({ title: 'Alles wissen?', message: 'Uw auto, kenteken, bewaarde opties en producten, geschiedenis, winkelmand, uw demobestellingen en concepten worden uit deze browser verwijderd.', confirmLabel: 'Alles wissen', danger: true });
         if (!ok) break;
         VehicleStore.clear(); Storage.remove('saved'); Recent.clear(); Cart.clear();
+        Repo.removeOrders((o) => o.placedHere || !String(o.id).startsWith('ord_demo'));
         Storage.remove('contactDraft', 'session'); Storage.remove('checkoutForm', 'session'); Storage.remove('checkoutKey', 'session');
         Bus.emit('saved:changed'); Toast.show('Uw gegevens zijn uit deze browser verwijderd.'); Router.render();
         break;
