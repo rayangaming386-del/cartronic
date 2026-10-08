@@ -180,6 +180,13 @@ aliases resolve), every detail page rendered without errors, example searches ("
 "T-Roc inklapbare spiegels", "A3 Virtual Cockpit", "Kodiaq camera", "Ateca parkeerhulp"), 16 representative
 RDW records across VW, Audi, SEAT and Škoda, redirects with back/forward, and all earlier suites re-run.
 
+Review round (Beheer, SEO, publishing): six independent reviewers (content layer, router/SEO, publishing,
+catalog screens, public pages, security) reported 31 bugs, each reproduced by a separate verifier before it was
+accepted — e.g. damaged published shop data breaking pages, edits lost across two tabs, Back with unsaved changes
+rewriting history, placeholders in editor text expanding in the published file, sub-path zip layout, opening-hours
+parsing. All 31 are fixed and covered by `qa/review-fixes.cjs` (41 checks), and a second, independent round
+re-verified the fixes and hunted for regressions introduced by them.
+
 Beheer & SEO round: a snapshot of all 372 public routes (header, page, footer, mobile menu, title, description) was
 compared before and after the content layer — identical except the intentionally shortened search descriptions.
 New suites: every Beheer screen at 1440 and 390 px (no errors, no overflow), 58 checks that each screen saves,
