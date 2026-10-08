@@ -1,0 +1,2 @@
+# Netlify: every path is served by index.html, so clean URLs such as /mogelijkheden work after a reload.
+/*    /index.html    200
