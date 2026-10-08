@@ -2602,8 +2602,11 @@ const Router = (() => {
     return p + location.search;
   }
   function parse(raw) {
-    const h = safeDecode(raw == null ? rawRoute() : String(raw).replace(/^#/, '')) || '/';
-    const [rawPath, qs = ''] = h.split('?');
+    const r = raw == null ? rawRoute() : String(raw).replace(/^#/, '');
+    const qi = r.indexOf('?');
+    // Only the path is decoded here; URLSearchParams decodes the query itself (decoding twice would turn "%2541" into "A").
+    const rawPath = safeDecode(qi < 0 ? r : r.slice(0, qi));
+    const qs = qi < 0 ? '' : r.slice(qi + 1);
     const path = ('/' + rawPath.replace(/^\/+/, '')).replace(/\/+$/, '') || '/';
     const query = {};
     new URLSearchParams(qs).forEach((v, k) => { query[k] = v; });
@@ -2627,7 +2630,7 @@ const Router = (() => {
     let t = String(target == null ? '/' : target);
     if (t.startsWith('#')) t = t.slice(1);
     else if (pathMode && BASE !== '/' && (`${t}/`).startsWith(BASE)) t = `/${t.slice(BASE.length)}`;
-    return t.startsWith('/') ? t : `/${t}`;
+    return `/${t.replace(/^[/\\]+/, '')}`; // "//host" would leave the site
   }
   /** The URL to put in an href for a route, in the current URL style. */
   function href(path, query) {
@@ -2646,20 +2649,23 @@ const Router = (() => {
     if (ok) guard = null;
     return ok;
   }
+  /* History bookkeeping: every entry the app creates carries its position (ctIdx). When Back/Forward is
+     pressed while a form has unsaved changes, the app can then return to the form entry without
+     rewriting any history entry, and continue the traversal if the user decides to leave. */
+  let idx = 0;
+  let deciding = false;
+  const stamp = (i) => ({ ctIdx: i });
+  function pushUrl(url) { idx += 1; history.pushState(stamp(idx), '', url); lastKey = urlKey(); }
+  function replaceUrl(url) { history.replaceState(stamp(idx), '', url); lastKey = urlKey(); }
+  const keyUrl = (key) => key || location.pathname + location.search;
   function go(path, query) {
-    if (!pathMode) {
-      const hash = query && typeof query === 'object' ? buildHash(path, query) : `#${toRoute(path)}`;
-      if (hash === location.hash) { render({ force: true }); return; }
-      location.hash = hash;
-      return;
-    }
-    const url = href(path, query);
-    if (url === location.pathname + location.search) { render({ force: true }); return; }
+    const url = pathMode ? href(path, query) : (query && typeof query === 'object' ? buildHash(path, query) : `#${toRoute(path)}`);
+    const same = url === urlKey();
+    // Unsaved changes are checked before anything changes, also when the open page is simply re-rendered.
     passGuard().then((ok) => {
       if (!ok) return;
-      history.pushState(null, '', url);
-      lastKey = urlKey();
-      render();
+      if (!same) pushUrl(url);
+      render({ force: same });
     });
   }
   /** True when an href points at the page that is currently open. */
@@ -2673,53 +2679,47 @@ const Router = (() => {
     const { path } = parse();
     const url = pathMode ? href(path, query) : buildHash(path, query);
     if (url === urlKey()) return;
-    if (replace) history.replaceState(null, '', url); else history.pushState(null, '', url);
-    lastKey = urlKey();
+    if (replace) replaceUrl(url); else pushUrl(url);
   }
   function focusAnchor(id) {
-    const target = document.getElementById(id);
+    const target = id && document.getElementById(id);
     if (target) { if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1'); target.focus({ preventScroll: true }); target.scrollIntoView(); }
   }
-  async function onHashChange() {
-    if (pathMode) {
-      if (location.hash.startsWith('#/')) { // an old-style link: switch to the clean URL
-        history.replaceState(null, '', href(location.hash.slice(1)));
-        lastKey = urlKey(); render(); return;
-      }
-      const id = decodeURIComponent(location.hash.slice(1));
-      history.replaceState(null, '', location.pathname + location.search);
-      lastKey = urlKey();
-      if (id) focusAnchor(id);
+  const anchorId = (hash) => { try { return decodeURIComponent(hash.replace(/^#/, '')); } catch (e) { return ''; } };
+  /** Back/Forward, typed addresses and hash changes (popstate in path mode, hashchange in hash mode). */
+  async function onTraverse() {
+    const key = urlKey();
+    if (key === lastKey) return; // also the return to the form entry below
+    if (!pathMode && location.hash && !location.hash.startsWith('#/')) {
+      // A typed in-page anchor (e.g. "#main") is not a route: keep the route address and focus the target.
+      idx += 1; history.replaceState(stamp(idx), '', keyUrl(lastKey));
+      focusAnchor(anchorId(location.hash));
       return;
     }
-    if (location.hash === lastKey) return; // popstate + hashchange can both fire for one navigation
-    // In-page anchors (e.g. "#main") are not routes: restore the route URL and focus the target.
-    if (location.hash && !location.hash.startsWith('#/')) {
-      const id = decodeURIComponent(location.hash.slice(1));
-      history.replaceState(null, '', lastKey || location.pathname + location.search);
-      focusAnchor(id);
-      return;
-    }
+    const st = history.state;
+    const known = !!st && Number.isInteger(st.ctIdx);
+    const to = known ? st.ctIdx : idx + 1; // an unknown entry is a typed address: a new entry
+    const back = known && to !== idx;
+    if (deciding) { if (back) history.go(idx - to); return; }
     if (guard && guard()) {
-      const target = location.hash;
-      history.replaceState(null, '', lastKey); // revert the URL while asking (does not fire hashchange)
-      if (!(await passGuard())) return;
-      history.pushState(null, '', target);
+      deciding = true;
+      const target = pathMode ? key : location.hash;
+      if (back) history.go(idx - to); // return to the form entry; history stays as it was
+      else history.replaceState(stamp(idx), '', keyUrl(lastKey));
+      let ok = false;
+      try { ok = await passGuard(); } finally { deciding = false; }
+      if (!ok) return;
+      if (back) { history.go(to - idx); return; } // continue the traversal; its event renders the page
+      pushUrl(target); render(); return;
     }
-    lastKey = location.hash;
+    if (!known) history.replaceState(stamp(to), '');
+    idx = to; lastKey = key;
     render();
   }
-  async function onPopState() {
-    if (urlKey() === lastKey) return;
-    if (!pathMode) { onHashChange(); return; }
-    if (guard && guard()) {
-      const target = urlKey();
-      history.replaceState(null, '', lastKey);
-      if (!(await passGuard())) return;
-      history.pushState(null, '', target);
-    }
-    lastKey = urlKey();
-    render();
+  /** Path mode: old "#/…" links become clean addresses; other fragments are in-page anchors. */
+  function onPathHash() {
+    if (location.hash.startsWith('#/')) { idx += 1; replaceUrl(href(location.hash.slice(1))); render(); return; }
+    if (location.hash.length > 1) focusAnchor(anchorId(location.hash));
   }
   /** fn(path) → new path or null. Old URLs are replaced in history, so Back skips them. */
   function redirect(fn) { redirects.push(fn); }
@@ -2731,25 +2731,27 @@ const Router = (() => {
     scan(document.body);
     new MutationObserver((list) => list.forEach((m) => { if (m.type === 'attributes') { if (m.target.matches && m.target.matches('a[href^="#/"]')) fixLink(m.target); } else m.addedNodes.forEach(scan); }))
       .observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
-    // Same-site links navigate inside the app (runs after other click handlers, which may cancel it).
-    window.addEventListener('click', (e) => {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      const a = e.target.closest && e.target.closest('a[href]');
-      if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
-      const raw = a.getAttribute('href');
-      if (raw.startsWith('#/')) { e.preventDefault(); go(raw); return; }
-      if (raw.startsWith('#')) return;
-      let u; try { u = new URL(a.href, location.href); } catch (er) { return; }
-      if (u.origin !== location.origin || !(`${u.pathname}/`).startsWith(BASE) || /\.[a-z0-9]{2,5}$/i.test(u.pathname)) return;
-      e.preventDefault();
-      go(u.pathname + u.search);
-    });
+  }
+  /** Links to pages of this site navigate inside the app, so the unsaved-changes check runs first.
+      Runs after other click handlers (which may cancel it); new-tab clicks are left to the browser. */
+  function onLinkClick(e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest && e.target.closest('a[href]');
+    if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+    const raw = a.getAttribute('href');
+    if (raw.startsWith('#/')) { e.preventDefault(); go(raw); return; }
+    if (raw.startsWith('#')) { e.preventDefault(); focusAnchor(anchorId(raw)); return; } // in-page anchor: no history entry
+    if (!pathMode) return;
+    let u; try { u = new URL(a.href, location.href); } catch (er) { return; }
+    if (u.origin !== location.origin || !(`${u.pathname}/`).startsWith(BASE) || /\.[a-z0-9]{2,5}$/i.test(u.pathname)) return;
+    e.preventDefault();
+    go(u.pathname + u.search);
   }
   async function render({ force = false } = {}) {
     const { path, query } = parse();
     for (const fn of redirects) {
       const to = fn(path);
-      if (to && to !== path) { history.replaceState(null, '', pathMode ? href(to, query) : buildHash(to, query)); lastKey = urlKey(); return render({ force }); }
+      if (to && to !== path) { replaceUrl(pathMode ? href(to, query) : buildHash(to, query)); return render({ force }); }
     }
     const m = match(path) || { route: routes.find((r) => r.pattern === '*'), params: {} };
     const page = m.route.page;
@@ -2795,15 +2797,22 @@ const Router = (() => {
     RouteProgress.done();
   }
   function start() {
+    const st = history.state;
+    idx = st && Number.isInteger(st.ctIdx) ? st.ctIdx : 0;
     if (pathMode) {
       // An old-style URL (/#/mogelijkheden) becomes the clean one.
-      if (location.hash.startsWith('#/')) history.replaceState(null, '', href(location.hash.slice(1)));
-      else if (/\/(index|404)\.html$/.test(location.pathname)) history.replaceState(null, '', BASE + location.search + location.hash);
-      lastKey = urlKey();
+      if (location.hash.startsWith('#/')) history.replaceState(stamp(idx), '', href(location.hash.slice(1)));
+      else if (/\/(index|404)\.html$/.test(location.pathname)) history.replaceState(stamp(idx), '', BASE + location.search + location.hash);
+      else history.replaceState(stamp(idx), '');
       watchLinks();
+      window.addEventListener('popstate', onTraverse);
+      window.addEventListener('hashchange', onPathHash);
+    } else {
+      history.replaceState(stamp(idx), '');
+      window.addEventListener('hashchange', onTraverse);
     }
-    window.addEventListener('hashchange', onHashChange);
-    window.addEventListener('popstate', onPopState);
+    window.addEventListener('click', onLinkClick);
+    lastKey = urlKey();
     render();
   }
   /** The page and params that a path would render (used by Beheer → SEO and the sitemap). */
@@ -2821,7 +2830,10 @@ const Router = (() => {
 })();
 
 /* ---------- SEO: title, description, canonical, robots, Open Graph and structured data ---------- */
-const DAY_NAMES = { maandag: 'Monday', dinsdag: 'Tuesday', woensdag: 'Wednesday', donderdag: 'Thursday', vrijdag: 'Friday', zaterdag: 'Saturday', zondag: 'Sunday' };
+const DAY_NAMES = {
+  maandag: 'Monday', dinsdag: 'Tuesday', woensdag: 'Wednesday', donderdag: 'Thursday', vrijdag: 'Friday', zaterdag: 'Saturday', zondag: 'Sunday',
+  ma: 'Monday', di: 'Tuesday', wo: 'Wednesday', do: 'Thursday', vr: 'Friday', za: 'Saturday', zo: 'Sunday',
+};
 const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const Seo = {
   get defaultTitle() { return Content.seo().homeTitle; },
@@ -2836,9 +2848,13 @@ const Seo = {
   /** The canonical form of the current page: no filters or tracking, except the meaningful catalog ones. */
   canonicalRoute(ctx) {
     if (!ctx) return '/';
-    const keep = ctx.path === '/mogelijkheden' ? ['merk', 'model', 'cat'] : [];
-    const q = {}; keep.forEach((k) => { if (ctx.query[k]) q[k] = ctx.query[k]; });
-    return Router.buildHash(ctx.path, q).slice(1);
+    if (ctx.path !== '/mogelijkheden') return ctx.path;
+    // Only valid filters, with the brand taken from the model: one address per selection, as in the sitemap.
+    const q = ctx.query || {};
+    const model = MODEL[q.model] ? q.model : '';
+    const merk = model ? MODEL[model].brand : (BRAND[q.merk] ? q.merk : '');
+    const cat = CATEGORY[q.cat] ? q.cat : '';
+    return Router.buildHash(ctx.path, { merk, model, cat }).slice(1);
   },
   /** Automatic descriptions are cut at a word boundary, so search results show a complete sentence part. */
   clamp(text, max = 160) {
@@ -2896,10 +2912,10 @@ const Seo = {
   openingHours(rows) {
     const out = [];
     (rows || []).forEach(([days, time]) => {
-      const t = String(time).match(/^(\d{1,2})[:.](\d{2})\s*[–-]\s*(\d{1,2})[:.](\d{2})$/);
+      const t = String(time).trim().match(/^(\d{1,2})[:.](\d{2})\s*(?:[–—-]|tot)\s*(\d{1,2})[:.](\d{2})(?:\s*uur)?$/i);
       if (!t) return;
-      const names = normText(days).split(/\s+(?:t\/m|tot en met|tot|en)\s+|\s+/).filter((d) => DAY_NAMES[d]);
-      const range = /\s[–-]\s|t\/m|tot/.test(String(days)) && names.length === 2;
+      const names = normText(String(days).replace(/t\/m/gi, ' tm ')).split(/\s+/).filter((d) => DAY_NAMES[d]);
+      const range = /[–—-]|t\/m|\btot\b/i.test(String(days)) && names.length === 2;
       let list = names.map((d) => DAY_NAMES[d]);
       if (range) { const a = DAY_ORDER.indexOf(list[0]); const b = DAY_ORDER.indexOf(list[1]); list = a <= b ? DAY_ORDER.slice(a, b + 1) : []; }
       if (!list.length) return;
@@ -3912,15 +3928,16 @@ const DEFAULT_SETTINGS = {
 /* ---------- Editable texts ----------
    [key, label, default, options]. The default is plain text: Enter = new line, **tekst** = bold,
    [label](adres) = link. `html` keeps the original markup when a default needs more than that.
-   `vars` lists placeholders such as {bron}; `optional` texts may be left empty to hide them. */
+   `vars` lists placeholders such as {bron}; `optional` texts may be left empty to hide them;
+   `control` texts sit inside a button or link, so link syntax there only keeps the link text. */
 const TEXT_GROUPS = [
   ['home', 'Home', [
     ['home.hero.eyebrow', 'Hero — bovenregel', 'De specialist in originele VAG-opties'],
     ['home.hero.line1', 'Hero — titel, regel 1', 'Origineel.'],
     ['home.hero.line2', 'Hero — titel, regel 2', 'Tot in detail.'],
     ['home.hero.lead', 'Hero — introductie', 'De fabrieksopties die uw auto nog mist. Vakkundig ingebouwd, geprogrammeerd en afgestemd op uw Volkswagen, Audi, SEAT of Škoda.', { multi: true }],
-    ['home.hero.cta1', 'Hero — eerste knop', 'Bekijk opties voor uw auto'],
-    ['home.hero.cta2', 'Hero — tweede knop', 'Bekijk ons werk'],
+    ['home.hero.cta1', 'Hero — eerste knop', 'Bekijk opties voor uw auto', { control: true }],
+    ['home.hero.cta2', 'Hero — tweede knop', 'Bekijk ons werk', { control: true }],
     ['home.hero.check1', 'Hero — vinkje 1', 'Originele OEM-onderdelen'],
     ['home.hero.check2', 'Hero — vinkje 2', 'Diagnose op dealerniveau'],
     ['home.hero.caption', 'Hero — bijschrift bij de foto', 'Audi MMI\nOriginele integratie', { multi: true }],
@@ -3930,17 +3947,17 @@ const TEXT_GROUPS = [
     ['home.cats.eyebrow', 'Categorieën — bovenregel', 'Af fabriek. Achteraf ingebouwd.'],
     ['home.cats.title', 'Categorieën — titel', 'Meer uit uw auto.\nMet originele opties.', { multi: true }],
     ['home.cats.lead', 'Categorieën — introductie', 'Van een achteruitrijcamera tot een digitale cockpit. Ontdek de upgrade die bij uw auto past.', { multi: true }],
-    ['home.cats.link', 'Categorieën — linktekst op elke kaart', 'Ontdek de mogelijkheden'],
+    ['home.cats.link', 'Categorieën — linktekst op elke kaart', 'Ontdek de mogelijkheden', { control: true }],
     ['home.svc.eyebrow', 'Diensten — bovenregel', 'Expertise & diensten'],
     ['home.svc.title', 'Diensten — titel', 'Van retrofit\ntot reparatie.', { multi: true }],
     ['home.svc.lead', 'Diensten — introductie', 'Naast het inbouwen van originele opties programmeert CarTronic modules, kalibreert rijhulpsystemen en lost elektronische storingen op.', { multi: true }],
-    ['home.svc.link', 'Diensten — link onder de kaarten', 'Bekijk alle diensten en specialismen'],
+    ['home.svc.link', 'Diensten — link onder de kaarten', 'Bekijk alle diensten en specialismen', { control: true }],
     ['home.proj.eyebrow', 'Projecten — bovenregel', 'Uit de werkplaats'],
     ['home.proj.title', 'Projecten — titel', 'Techniek die u terugziet.'],
-    ['home.proj.link', 'Projecten — link', 'Bekijk alle projecten'],
+    ['home.proj.link', 'Projecten — link', 'Bekijk alle projecten', { control: true }],
     ['home.shop.eyebrow', 'Webshop — bovenregel', 'Webshop'],
     ['home.shop.title', 'Webshop — titel', 'Origineel, direct te bestellen.'],
-    ['home.shop.link', 'Webshop — link', 'Naar de webshop'],
+    ['home.shop.link', 'Webshop — link', 'Naar de webshop', { control: true }],
     ['home.shop.hint', 'Webshop — opmerking onder de producten', 'Testomgeving: producten en prijzen in de webshop zijn demonstratiegegevens.', { optional: true }],
   ]],
   ['werkwijze', 'Werkwijze & techniek', [
@@ -3958,13 +3975,13 @@ const TEXT_GROUPS = [
     ['tech.step4.text', 'Stap 4 — tekst', 'Rijhulpsystemen zoals adaptieve cruisecontrol, Lane Assist en Night Vision worden uitgelijnd en gekalibreerd.', { multi: true }],
     ['tech.step5.title', 'Stap 5 — titel', 'Werkt zoals af fabriek'],
     ['tech.step5.text', 'Stap 5 — tekst', 'Bediend via de originele schermen, knoppen en menu’s.', { multi: true }],
-    ['tech.link', 'Link naar de expertisepagina', 'Meer over onze werkwijze'],
+    ['tech.link', 'Link naar de expertisepagina', 'Meer over onze werkwijze', { control: true }],
   ]],
   ['algemeen', 'Algemeen, header & footer', [
     ['cta.title', 'Afsluitende balk — titel', 'Wat mist er nog aan uw auto?'],
     ['cta.text', 'Afsluitende balk — tekst', 'Vertel ons uw merk, model en gewenste optie. Wij denken met u mee.', { multi: true }],
-    ['cta.btn1', 'Afsluitende balk — knop', 'Bespreek uw mogelijkheden'],
-    ['cta.btn2', 'Afsluitende balk — belknop', 'Bel CarTronic'],
+    ['cta.btn1', 'Afsluitende balk — knop', 'Bespreek uw mogelijkheden', { control: true }],
+    ['cta.btn2', 'Afsluitende balk — belknop', 'Bel CarTronic', { control: true }],
     ['mn.sub', 'Mobiel menu — ondertitel', 'Originele opties voor uw Volkswagen, Audi, SEAT en Škoda.'],
     ['footer.tagline', 'Footer — slogan', 'Originele fabrieksopties.\nSpecialistische inbouw.\nVolkswagen · Audi · SEAT · Škoda.', { multi: true }],
     ['footer.legal', 'Footer — merkenvermelding', 'Volkswagen, Audi, SEAT en Škoda zijn merken van hun respectievelijke eigenaren.'],
@@ -4018,7 +4035,7 @@ const TEXT_GROUPS = [
     ['exp.dealer.eyebrow', 'Dealers — bovenregel', 'Voor dealers'],
     ['exp.dealer.title', 'Dealers — titel', 'Partner van de werkplaats.'],
     ['exp.dealer.text', 'Dealers — tekst', 'Een groot deel van onze klanten bestaat uit Audi-, Volkswagen-, SEAT- en Škoda-dealers. Voor retrofits, programmeerwerk en kalibratie die u liever uitbesteedt.', { multi: true }],
-    ['exp.dealer.btn', 'Dealers — knop', 'Neem contact op'],
+    ['exp.dealer.btn', 'Dealers — knop', 'Neem contact op', { control: true }],
   ]],
   ['over', 'Over CarTronic', [
     ['about.eyebrow', 'Bovenregel', 'Over CarTronic'],
@@ -4029,7 +4046,7 @@ const TEXT_GROUPS = [
     ['about.p1', 'Verhaal — alinea 1', 'CarTronic richt zich op Volkswagen, Audi, SEAT en Škoda. Onze werkplaats is ingericht voor het achteraf monteren van originele fabrieksopties, met diagnoseapparatuur op dealerniveau.', { multi: true }],
     ['about.p2', 'Verhaal — alinea 2', 'We werken voor particuliere klanten en dealers. De online verbinding met de fabriek maakt het mogelijk om geïnstalleerde opties te programmeren en correct aan te melden in de auto.', { multi: true }],
     ['about.p3', 'Verhaal — alinea 3', 'Voor het afstellen van adaptieve cruisecontrol, Lane Assist en Night Vision beschikken we over een complete uitlijn- en kalibratieset.', { multi: true, optional: true }],
-    ['about.btn', 'Verhaal — knop', 'Bekijk onze expertise'],
+    ['about.btn', 'Verhaal — knop', 'Bekijk onze expertise', { control: true }],
     ['about.f1.title', 'Kenmerk 1 — titel', 'Originele onderdelen'],
     ['about.f1.text', 'Kenmerk 1 — tekst', 'OEM-componenten en inbouw volgens de fabrieksnormen.', { multi: true }],
     ['about.f2.title', 'Kenmerk 2 — titel', 'Werkplaats voor 10 auto’s'],
@@ -4060,13 +4077,13 @@ const TEXT_GROUPS = [
   ['beoordelingen', 'Beoordelingen', [
     ['rev.eyebrow', 'Blok — bovenregel', 'Ervaringen van klanten'],
     ['rev.title', 'Blok — titel', 'Vakwerk wordt\ngewaardeerd.', { multi: true }],
-    ['rev.more', 'Blok — link naar alle ervaringen', 'Lees meer ervaringen'],
+    ['rev.more', 'Blok — link naar alle ervaringen', 'Lees meer ervaringen', { control: true }],
     ['reviews.eyebrow', 'Pagina — bovenregel', 'Beoordelingen'],
     ['reviews.title', 'Pagina — titel', 'Ervaringen van klanten.'],
     ['reviews.lead', 'Pagina — introductie', 'Klanten beoordelen CarTronic op {bron}. Hieronder ziet u de gemiddelde score en een selectie van hun ervaringen.', { multi: true, vars: ['bron'] }],
     ['reviews.write.title', 'Pagina — oproep, titel', 'Ook bij CarTronic geweest?'],
     ['reviews.write.text', 'Pagina — oproep, tekst', 'Deel uw ervaring op {bron}. Zo helpt u andere autobezitters bij hun keuze.', { multi: true, vars: ['bron'] }],
-    ['reviews.write.btn', 'Pagina — oproep, knop', 'Schrijf een beoordeling'],
+    ['reviews.write.btn', 'Pagina — oproep, knop', 'Schrijf een beoordeling', { control: true }],
     ['reviews.note', 'Pagina — bronvermelding', 'Score, aantal beoordelingen en citaten zoals gepubliceerd op {bron}. De citaten zijn letterlijk overgenomen; “…” markeert een inkorting.', { multi: true, vars: ['bron'] }],
   ]],
   ['kennis', 'Berichten & kennis', [
@@ -4075,7 +4092,7 @@ const TEXT_GROUPS = [
     ['kb.lead', 'Introductie', 'Korte uitleg over originele opties, programmeren en kalibreren — en over wat er voor uw auto mogelijk is.', { multi: true }],
     ['kb.aside.title', 'Bericht — kader, titel', 'Vraag het CarTronic'],
     ['kb.aside.text', 'Bericht — kader, tekst', 'Twijfelt u wat er voor uw auto mogelijk is? Stuur uw kenteken en uw vraag.', { multi: true }],
-    ['kb.aside.btn', 'Bericht — kader, knop', 'Stel uw vraag'],
+    ['kb.aside.btn', 'Bericht — kader, knop', 'Stel uw vraag', { control: true }],
   ]],
   ['productinfo', 'Productinformatie', [
     ['pi.eyebrow', 'Bovenregel', 'Productinformatie'],
@@ -4100,7 +4117,7 @@ const TEXT_GROUPS = [
     ['pi.opt.title', 'Optielijst — titel', 'Welke opties heeft\nuw auto al?', { multi: true }],
     ['pi.opt.p1', 'Optielijst — alinea 1', 'CarTronic levert een optielijst van uw Audi, Volkswagen, SEAT of Škoda: een overzicht van de fabrieksopties op basis van het chassisnummer, als PDF of Word-bestand. Volgens CarTronic is dit mogelijk voor bouwjaren 1990 tot en met 2025.', { multi: true }],
     ['pi.opt.p2', 'Optielijst — alinea 2', '**Prijs: € 10,00.** Vraag de optielijst aan via WhatsApp, e-mail of het contactformulier en vermeld uw chassisnummer (VIN).', { multi: true }],
-    ['pi.opt.link', 'Optielijst — link', 'Vraag een optielijst aan'],
+    ['pi.opt.link', 'Optielijst — link', 'Vraag een optielijst aan', { control: true }],
     ['pi.shop.title', 'Webshop — titel', 'Over de webshop.'],
     ['pi.shop.text', 'Webshop — tekst', 'De webshop in deze omgeving is een demonstratie: producten, prijzen, voorraad en betalingen zijn testgegevens en er wordt niets echt afgerekend. Een retrofit (inbouw in uw auto) bestelt u niet online; die vraagt u aan via de optie in de catalogus.', { multi: true }],
   ]],
@@ -4128,14 +4145,15 @@ const TEXT = Object.create(null);
 TEXT_GROUPS.forEach(([gid, , rows]) => rows.forEach(([key, label, def, opts = {}]) => { TEXT[key] = { key, group: gid, label, def, ...opts }; }));
 
 /* ---------- Text formatting ---------- */
-const SAFE_HREF = /^(#\/|\/(?!\/)|https:\/\/|http:\/\/|mailto:|tel:)/i;
-/** Plain text → safe HTML: escapes, then **bold**, [label](address) and line breaks. */
-function fmtText(s) {
+const SAFE_HREF = /^(#\/(?![/\\])|\/(?![/\\])|https:\/\/|http:\/\/|mailto:|tel:)/i;
+/** Plain text → safe HTML: escapes, then **bold**, [label](address) and line breaks.
+    noLinks: for texts inside a button or link (a link cannot contain another link). */
+function fmtText(s, noLinks = false) {
   return esc(s)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, (m, label, url) => {
       const raw = url.replace(/&amp;/g, '&');
-      if (!SAFE_HREF.test(raw)) return label;
+      if (noLinks || !SAFE_HREF.test(raw)) return label;
       const href = raw.startsWith('/') ? `#${raw}` : raw;
       const ext = /^https?:/i.test(href);
       return `<a class="text-link" href="${attr(href)}"${ext ? ' target="_blank" rel="noopener"' : ''}>${label}</a>`;
@@ -4236,7 +4254,7 @@ const Content = (() => {
     return out;
   }
   function cleanService(s) {
-    if (!plainObj(s) || !isSlug(s.slug) || !str(s.title).trim()) return null;
+    if (!plainObj(s) || !isSlug(s.slug) || s.slug === 'nieuw' || !str(s.title).trim()) return null;
     const title = str(s.title, 160).trim();
     const short = str(s.short, 400).trim() || title;
     const body = strList(s.body, 20, 3000);
@@ -4247,11 +4265,11 @@ const Content = (() => {
       cta: [str(Array.isArray(s.cta) ? s.cta[0] : '', 80).trim() || 'Meer informatie', safeHref(Array.isArray(s.cta) ? s.cta[1] : '') || `#/diensten/${s.slug}`],
       keywords: strList(s.keywords, 30, 60), cats: strList(s.cats, 10, 40).filter((c) => CATEGORY[c]),
       ...(isImageRef(s.image) ? { image: s.image } : {}),
-      ...(typeof s.topic === 'string' && ENQUIRY_TOPIC[s.topic] ? { topic: s.topic } : {}),
+      ...(typeof s.topic === 'string' && (s.topic === '' || ENQUIRY_TOPIC[s.topic]) ? { topic: s.topic } : {}),
     };
   }
   function cleanArticle(a) {
-    if (!plainObj(a) || !isSlug(a.slug) || !str(a.title).trim()) return null;
+    if (!plainObj(a) || !isSlug(a.slug) || a.slug === 'nieuw' || !str(a.title).trim()) return null;
     const body = (Array.isArray(a.body) ? a.body : []).filter((b) => Array.isArray(b) && (
       (['p', 'h'].includes(b[0]) && typeof b[1] === 'string' && b[1].trim()) || (b[0] === 'ul' && strList(b[1]).length)))
       .slice(0, 80).map((b) => (b[0] === 'ul' ? ['ul', strList(b[1], 40, 600)] : [b[0], b[1].trim().slice(0, 3000)]));
@@ -4305,11 +4323,17 @@ const Content = (() => {
     if (e.image === '' || isImageRef(e.image)) out.image = e.image;
     if (typeof e.feature === 'string' && (e.feature === '' || FEATURES[e.feature])) out.feature = e.feature;
     if (typeof e.art === 'string' && /^[a-zA-Z]+$/.test(e.art)) out.art = e.art;
+    if (plainObj(e.yearsByModel)) {
+      const y = Object.entries(e.yearsByModel).filter(([m, v]) => MODEL[m] && Array.isArray(v) && v.length === 2
+        && v.every((n) => Number.isInteger(n) && n >= 1950 && n <= 2100) && v[0] <= v[1]);
+      if (y.length) out.yearsByModel = Object.fromEntries(y.map(([m, v]) => [m, [v[0], v[1]]]));
+    }
+    if (typeof e.body === 'string' && /^[a-z]{1,30}$/.test(e.body)) out.body = e.body;
     return out;
   }
   /** A new option from Beheer as a complete catalog entry, or null when it is incomplete. */
   function buildAdded(a) {
-    if (!plainObj(a) || !isSlug(a.slug) || PR[a.slug]) return null;
+    if (!plainObj(a) || !isSlug(a.slug) || a.slug === 'nieuw' || PR[a.slug]) return null;
     const item = { slug: a.slug, models: [], keywords: [], ...cleanRetrofitFields(a), added: true };
     if (item.scope === 'brand') { item.models = []; if (!item.brands || !item.brands.length) return null; item.brand = item.brands.length === 1 ? item.brands[0] : null; }
     else { delete item.scope; delete item.brands; }
@@ -4353,17 +4377,47 @@ const Content = (() => {
     if (['live', 'demo'].includes(s.vehicleLookupMode)) d.vehicleLookupMode = s.vehicleLookupMode;
     return d;
   }
+  const bool = (v, d) => (typeof v === 'boolean' ? v : d);
+  const intOr = (v, d, min = 0) => (Number.isInteger(v) && v >= min ? v : d);
+  const isDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  /** A product exactly in the shape the shop pages use; unknown fields are dropped. */
+  function cleanProduct(p) {
+    const c = plainObj(p.compatibility) ? p.compatibility : {};
+    return {
+      ...PRODUCT_BASE, id: p.id, slug: p.slug, name: p.name.trim().slice(0, 160),
+      sku: str(p.sku, 40), shortDescription: str(p.shortDescription, 600), description: str(p.description, 12000),
+      category: str(p.category, 80), brand: BRAND[p.brand] ? p.brand : '', model: MODEL[p.model] ? p.model : '',
+      regularPrice: p.regularPrice,
+      discountType: ['none', 'sale', 'percent', 'fixed'].includes(p.discountType) ? p.discountType : 'none',
+      salePrice: intOr(p.salePrice, null, 1), discountValue: intOr(p.discountValue, null, 1),
+      startDate: isDay(p.startDate) ? p.startDate : '', endDate: isDay(p.endDate) ? p.endDate : '',
+      trackStock: bool(p.trackStock, true), stock: intOr(p.stock, 0),
+      active: bool(p.active, true), featured: bool(p.featured, false), archived: bool(p.archived, false), isDemo: bool(p.isDemo, false),
+      type: PRODUCT_TYPES[p.type] ? p.type : 'PHYSICAL_PRODUCT', installationIncluded: bool(p.installationIncluded, false),
+      images: strList(p.images, 12, 3000000),
+      compatibility: { brands: strList(c.brands, 8, 40).filter((b) => BRAND[b]), models: strList(c.models, 80, 40).filter((m) => MODEL[m]), note: str(c.note, 600) },
+      createdAt: str(p.createdAt, 40) || null, updatedAt: str(p.updatedAt, 40) || null,
+    };
+  }
+  /** A portfolio project in the shape the project pages use. */
+  function cleanProject(p) {
+    return {
+      id: p.id, slug: p.slug, title: p.title.trim().slice(0, 160), vehicle: str(p.vehicle, 120), tag: str(p.tag, 60),
+      short: str(p.short, 400), body: str(p.body, 6000), type: str(p.type, 60), active: p.active !== false,
+      image: str(p.image, 3000000), before: str(p.before, 3000000), after: str(p.after, 3000000),
+      brands: strList(p.brands, 8, 40).filter((b) => BRAND[b]), models: strList(p.models, 40, 40).filter((m) => MODEL[m]),
+      related: strList(p.related, 10, 120), services: strList(p.services, 10, 120),
+      ...(Array.isArray(p.gallery) ? { gallery: strList(p.gallery, 12, 3000000) } : {}),
+    };
+  }
   function cleanShop(sh) {
     if (!plainObj(sh) || !Array.isArray(sh.products) || !Array.isArray(sh.shopCategories)) return null;
     const cats = sh.shopCategories.filter((c) => plainObj(c) && typeof c.id === 'string' && str(c.name).trim())
       .map((c, i) => ({ id: c.id, name: c.name.slice(0, 60), slug: isSlug(c.slug) ? c.slug : slugify(c.name), order: Number.isFinite(c.order) ? c.order : i + 1 }));
     const products = sh.products.filter((p) => plainObj(p) && typeof p.id === 'string' && isSlug(p.slug) && str(p.name).trim() && Number.isInteger(p.regularPrice) && p.regularPrice > 0)
-      .map((p) => ({ ...PRODUCT_BASE, ...p, images: Array.isArray(p.images) ? p.images.filter((i) => typeof i === 'string') : [],
-        compatibility: { brands: [], models: [], note: '', ...(plainObj(p.compatibility) ? p.compatibility : {}) } }));
+      .map(cleanProduct);
     const projects = Array.isArray(sh.projects) ? sh.projects.filter((p) => plainObj(p) && typeof p.id === 'string' && isSlug(p.slug) && str(p.title).trim())
-      .map((p) => ({ vehicle: '', tag: '', short: '', body: '', image: '', before: '', after: '', type: '', active: true, ...p,
-        brands: strList(p.brands, 8, 40), models: strList(p.models, 40, 40), related: strList(p.related, 10, 120), services: strList(p.services, 10, 120),
-        ...(Array.isArray(p.gallery) ? { gallery: strList(p.gallery, 12, 3000000) } : {}) })) : deepClone(DEFAULT_PROJECTS);
+      .map(cleanProject) : deepClone(DEFAULT_PROJECTS);
     return { products, shopCategories: cats, projects, settings: cleanSettings(sh.settings) };
   }
 
@@ -4379,16 +4433,51 @@ const Content = (() => {
   const pubStamp = typeof published.stamp === 'string' ? published.stamp : '';
   let pubShop;
   try { pubShop = cleanShop(published.shop); } catch (e) { pubShop = null; console.error(e); }
-  const contentOf = (b) => { const o = { ...(b || {}) }; delete o.stamp; delete o.base; delete o.updatedAt; delete o.shop; delete o.v; return o; };
+  /** The content of a bundle, normalised so that saving a screen without changes never counts as a change:
+      empty containers, values equal to the defaults and lists equal to the built-in lists are left out. */
+  function contentOf(b) {
+    const o = { ...(plainObj(b) ? b : {}) };
+    ['stamp', 'base', 'updatedAt', 'shop', 'v'].forEach((k) => delete o[k]);
+    const same = (a, c) => stableStringify(a) === stableStringify(c);
+    const isEmpty = (v) => (Array.isArray(v) ? !v.length : plainObj(v) && !Object.keys(v).length);
+    const prune = (obj, defaults) => {
+      const r = { ...obj };
+      Object.keys(r).forEach((k) => {
+        if (defaults && k in defaults && plainObj(defaults[k]) && plainObj(r[k])) r[k] = prune(r[k], defaults[k]);
+        if (isEmpty(r[k]) || (defaults && k in defaults && same(r[k], defaults[k]))) delete r[k];
+      });
+      return r;
+    };
+    try {
+      ['texts', 'company', 'categories', 'brands'].forEach((k) => { if (isEmpty(o[k])) delete o[k]; });
+      if (plainObj(o.retrofits)) o.retrofits = prune(o.retrofits);
+      if (plainObj(o.seo)) o.seo = prune(o.seo, SEO_DEFAULTS);
+      if (plainObj(o.display)) o.display = prune(o.display, DISPLAY_DEFAULTS);
+      const services = (list) => list.map(cleanService).filter(Boolean).map((s) => ({ ...s, topic: 'topic' in s ? s.topic : (P.serviceTopic[s.slug] || '') }));
+      if (Array.isArray(o.services) && same(services(o.services), services(P.services))) delete o.services;
+      if (Array.isArray(o.articles) && same(o.articles.map(cleanArticle).filter(Boolean), P.articles.map(cleanArticle))) delete o.articles;
+      if (plainObj(o.reviews) && same({ ...P.reviews, ...cleanReviews(o.reviews) }, P.reviews)) delete o.reviews;
+      if (Array.isArray(o.moreWork) && same(cleanMoreWork(o.moreWork), cleanMoreWork(P.moreWork))) delete o.moreWork;
+      // Empty means "nothing changed" for these; an empty list of articles or portfolio cards is a real choice.
+      ['texts', 'company', 'categories', 'brands', 'retrofits', 'seo', 'display', 'reviews', 'services'].forEach((k) => { if (isEmpty(o[k])) delete o[k]; });
+    } catch (e) { console.error(e); }
+    return o;
+  }
   const isEditor = () => Storage.get('editor', false) === true;
-  let draft = isEditor() ? Storage.get('siteDraft', null) : null;
-  if (!plainObj(draft)) draft = null;
+  let draft = null;
   /* A draft based on an older publication is parked: it is only used once the editor chooses so. */
   let parked = false;
-  if (draft && (draft.base || '') !== pubStamp) {
-    if (stableStringify(contentOf(draft)) === stableStringify(contentOf(published))) { Storage.remove('siteDraft'); draft = null; }
-    else parked = true;
+  /** Reads the editor's draft from storage (also when another tab changed it). */
+  function syncDraft() {
+    const s = isEditor() ? Storage.get('siteDraft', null) : null;
+    draft = plainObj(s) ? s : null;
+    parked = false;
+    if (draft && (draft.base || '') !== pubStamp) {
+      if (stableStringify(contentOf(draft)) === stableStringify(contentOf(published))) { Storage.remove('siteDraft'); draft = null; }
+      else parked = true;
+    }
   }
+  syncDraft();
   const active = () => (draft && !parked ? draft : published);
 
   /* ---------- Apply: defaults first, then the active bundle ---------- */
@@ -4419,7 +4508,12 @@ const Content = (() => {
         const o = (plainObj(b.categories) && plainObj(b.categories[c.id])) ? b.categories[c.id] : {};
         ['name', 'tagline', 'text'].forEach((k) => { c[k] = str(o[k], 300).trim() || P.categories[c.id][k]; });
         const copy = deepClone(P.categoryCopy[c.id] || {});
-        ['install', 'program', 'calibrate'].forEach((k) => { if (str(o[k]).trim()) copy[k] = o[k].trim().slice(0, 1500); });
+        // An empty programme or calibration text is a deliberate choice: the general text is used, or the block disappears.
+        ['install', 'program', 'calibrate'].forEach((k) => {
+          if (typeof o[k] !== 'string') return;
+          const t = o[k].trim().slice(0, 1500);
+          if (t || k !== 'install') copy[k] = t;
+        });
         const ben = strList(o.benefits, 8, 200);
         if (ben.length) copy.benefits = ben;
         CATEGORY_COPY[c.id] = copy;
@@ -4433,7 +4527,8 @@ const Content = (() => {
       const final = (list.length ? list : deepClone(P.services)).filter((s) => !seen.has(s.slug) && seen.add(s.slug));
       SERVICES.length = 0; SERVICES.push(...final);
       resetMap(SERVICE, SERVICES.map((s) => [s.slug, s]));
-      resetMap(SERVICE_TOPIC, SERVICES.map((s) => [s.slug, s.topic || P.serviceTopic[s.slug]]).filter(([, t]) => t));
+      // An explicit empty topic means "no topic"; a missing one falls back to the built-in topic.
+      resetMap(SERVICE_TOPIC, SERVICES.map((s) => [s.slug, 'topic' in s ? s.topic : P.serviceTopic[s.slug]]).filter(([, t]) => t));
     });
     section('articles', () => {
       const list = Array.isArray(b.articles) ? b.articles.map(cleanArticle).filter(Boolean) : null;
@@ -4521,8 +4616,11 @@ const Content = (() => {
   /* ---------- Draft editing ---------- */
   const emptyBundle = () => ({ v: 1 });
   function working() { return deepClone(active()); }
-  /** Changes the editor's working copy: fn receives a mutable copy of the active bundle. */
+  /** Changes the editor's working copy: fn receives a mutable copy of the active bundle.
+      Returns false (and changes nothing) while a draft from an older publication awaits a decision. */
   function update(fn) {
+    syncDraft(); // another tab may have saved meanwhile: build on the latest stored draft
+    if (parked) { apply(); return false; }
     const d = working();
     fn(d);
     d.v = 1; d.base = pubStamp; d.updatedAt = nowIso();
@@ -4531,9 +4629,15 @@ const Content = (() => {
     Storage.set('editor', true);
     Storage.set('siteDraft', d);
     apply();
+    return true;
   }
   function discardDraft() { draft = null; parked = false; Storage.remove('siteDraft'); apply(); }
-  function resumeParked() { if (!draft) return; draft.base = pubStamp; parked = false; Storage.set('siteDraft', draft); apply(); }
+  function resumeParked() { syncDraft(); if (!draft) { apply(); return; } draft.base = pubStamp; parked = false; Storage.set('siteDraft', draft); apply(); }
+  // A draft saved in another tab: use it here too, so open screens and the site show the latest version.
+  window.addEventListener('storage', (e) => {
+    if (e.key !== null && e.key !== `${Storage.PREFIX}siteDraft` && e.key !== `${Storage.PREFIX}editor`) return;
+    syncDraft(); apply();
+  });
   function hasDraftChanges() { return !!draft && !parked && stableStringify(contentOf(draft)) !== stableStringify(contentOf(published)); }
 
   /** Per-section summary of what the draft changes compared with the published version. */
@@ -4574,7 +4678,7 @@ function tx(key, vars) {
   const custom = typeof ov === 'string' && (ov.trim() || (d.optional && ov === ''));
   let out;
   if (d.rich) out = custom ? parseRich(ov).map(richBlockHtml).join('') : (d.html != null ? d.html : parseRich(d.def).map(richBlockHtml).join(''));
-  else out = custom ? fmtText(ov) : (d.html != null ? d.html : fmtText(d.def));
+  else out = custom ? fmtText(ov, !!d.control) : (d.html != null ? d.html : fmtText(d.def, !!d.control));
   return vars ? out.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? esc(vars[k]) : m)) : out;
 }
 /** Editable text without markup (for attributes and plain-text contexts). Not escaped. */
@@ -4625,14 +4729,16 @@ const Repo = (() => {
       });
     },
     invalidate() { Object.keys(cache).forEach((k) => delete cache[k]); Search.invalidate(); },
-    /** Seeds all webshop data: from the published version, or from the built-in demo data (source 'defaults'). */
-    reset({ silent = false, source = 'published' } = {}) {
+    /** Seeds all webshop data: from the published version, or from the built-in demo data (source 'defaults').
+        keepOrders: leave the orders and the order counter as they are. */
+    reset({ silent = false, source = 'published', keepOrders = false } = {}) {
       const pub = source === 'defaults' ? null : Content.publishedShop();
+      const seq = keepOrders ? (this.settings().orderSeq || 0) : 0;
       const products = pub ? pub.products : seedProducts();
       write('products', products);
       write('shopCategories', pub ? pub.shopCategories : deepClone(DEFAULT_SHOP_CATEGORIES));
-      write('orders', seedOrders(products));
-      write('settings', pub ? pub.settings : deepClone(DEFAULT_SETTINGS));
+      if (!keepOrders) write('orders', seedOrders(products));
+      write('settings', { ...(pub ? pub.settings : deepClone(DEFAULT_SETTINGS)), orderSeq: seq });
       write('projects', pub ? pub.projects : deepClone(DEFAULT_PROJECTS));
       Storage.set('seeded', true);
       Storage.set('schema', SCHEMA);
@@ -5626,13 +5732,14 @@ const Art = {
 /* Media references:  "img:<key>" embedded photo │ "art:<kind>:<variant>" illustration │ https://… / data:image URL */
 const Media = {
   src(ref) {
-    if (!ref) return null;
+    if (!ref || typeof ref !== 'string') return null;
     if (ref.startsWith('img:')) return (window.CT_IMAGES || {})[ref.slice(4)] || null;
     if (/^(https?:|data:image\/)/i.test(ref)) return ref;
     return null;
   },
-  isPhoto(ref) { return !!ref && !ref.startsWith('art:') && !!this.src(ref); },
+  isPhoto(ref) { return typeof ref === 'string' && !!ref && !ref.startsWith('art:') && !!this.src(ref); },
   html(ref, alt = '', { kind = 'box', eager = false, cls = '', sizes = '' } = {}) {
+    if (typeof ref !== 'string') ref = '';
     if (!ref || ref.startsWith('art:')) {
       const [, k, v] = String(ref || `art:${kind}:0`).split(':');
       return Art.html(k || kind, v || 0, alt);
@@ -5668,6 +5775,8 @@ const EU_STARS = '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="#FFD94A">
 }).join('') + '</g></svg>';
 /** A link to a page of this site (#/… in hash mode, /… in path mode). */
 const isAppLink = (a) => { const h = a.getAttribute('href') || ''; return h.startsWith('#/') || (h.startsWith('/') && !h.startsWith('//')); };
+/** A plain left click (no new tab or window): only then does the current page navigate. */
+const plainClick = (e) => !(e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
 const plateChip = (plate) => `<span class="plate plate--sm" aria-label="Kenteken ${attr(plate)}"><span class="plate-eu" aria-hidden="true">${EU_STARS}NL</span><span class="val">${esc(plate)}</span></span>`;
 
 /* ---------- WhatsApp ---------- */
@@ -6369,7 +6478,7 @@ const VehicleModal = {
         const clr = $('[data-clear-vehicle]', panel);
         if (clr) clr.addEventListener('click', () => { VehicleStore.clear(); close(); Toast.show('Uw auto is verwijderd.'); Router.render(); });
         // Links inside the dialog lead to another page: close it first.
-        panel.addEventListener('click', (e) => { const a = e.target.closest('a[href]'); if (a && isAppLink(a)) close(); });
+        panel.addEventListener('click', (e) => { const a = e.target.closest('a[href]'); if (a && isAppLink(a) && plainClick(e)) close(); });
       },
     });
   },
@@ -6441,7 +6550,7 @@ const SearchOverlay = {
         list.addEventListener('click', (e) => {
           const s = e.target.closest('[data-suggest]');
           if (s) { input.value = s.dataset.suggest; run(); input.focus(); return; }
-          if (e.target.closest('a')) close();
+          if (e.target.closest('a') && plainClick(e)) close();
         });
         list.addEventListener('mousemove', (e) => {
           const o = e.target.closest('[role="option"]'); if (!o) return;
@@ -6508,7 +6617,7 @@ const CartUI = {
         panel.addEventListener('click', (e) => {
           const rm = e.target.closest('[data-remove]');
           if (rm) { Cart.remove(rm.dataset.remove); render(panel); announce('Product verwijderd uit winkelmand'); return; }
-          const a = e.target.closest('a[href]'); if (a && isAppLink(a)) close();
+          const a = e.target.closest('a[href]'); if (a && isAppLink(a) && plainClick(e)) close();
         });
       },
     });
@@ -6673,7 +6782,7 @@ Pages.home = {
       </div>
     </section>` : ''}
 
-    ${recent.length ? recentSection(recent) : ''}
+    ${recent.length && Content.section('recent') ? recentSection(recent) : ''}
 
     ${on('home.categories') ? `<section class="section" aria-labelledby="cats-title">
       <div class="container">
@@ -6823,11 +6932,11 @@ Pages.catalog = {
   },
   filtersHtml(s) {
     const modelOpts = (brand) => (brand ? MODELS.filter((m) => m.brand === brand).map((m) => `<option value="${m.id}"${m.id === s.model ? ' selected' : ''}>${esc(m.name)}</option>`).join('')
-      : BRANDS.map((b) => `<optgroup label="${b.name}">${MODELS.filter((m) => m.brand === b.id).map((m) => `<option value="${m.id}"${m.id === s.model ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</optgroup>`).join(''));
+      : BRANDS.map((b) => `<optgroup label="${attr(b.name)}">${MODELS.filter((m) => m.brand === b.id).map((m) => `<option value="${m.id}"${m.id === s.model ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</optgroup>`).join(''));
     return `<div class="filters-head">${icon('sliders')} Verfijn uw selectie</div>
-      <div class="field"><label for="f-merk">Merk</label><select class="select" id="f-merk" data-f="merk"><option value="">Alle merken</option>${BRANDS.map((b) => `<option value="${b.id}"${b.id === s.merk ? ' selected' : ''}>${b.name}</option>`).join('')}</select></div>
+      <div class="field"><label for="f-merk">Merk</label><select class="select" id="f-merk" data-f="merk"><option value="">Alle merken</option>${BRANDS.map((b) => `<option value="${b.id}"${b.id === s.merk ? ' selected' : ''}>${esc(b.name)}</option>`).join('')}</select></div>
       <div class="field"><label for="f-model">Model / generatie</label><select class="select" id="f-model" data-f="model"><option value="">Alle modellen</option>${modelOpts(s.merk)}</select></div>
-      <div class="field"><label for="f-cat">Upgrade</label><select class="select" id="f-cat" data-f="cat"><option value="">Alle upgrades</option>${CATEGORIES.map((c) => `<option value="${c.id}"${c.id === s.cat ? ' selected' : ''}>${c.name}</option>`).join('')}</select></div>
+      <div class="field"><label for="f-cat">Upgrade</label><select class="select" id="f-cat" data-f="cat"><option value="">Alle upgrades</option>${CATEGORIES.map((c) => `<option value="${c.id}"${c.id === s.cat ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
       <div class="field"><label for="f-q">Zoek een optie</label><div class="input-icon">${icon('search')}<input class="input" id="f-q" type="search" data-f="q" placeholder="Bijv. camera of CarPlay" value="${attr(s.q)}" autocomplete="off"></div></div>
       <button class="filter-reset" type="button" data-action="reset-filters">Filters wissen</button>
       <p class="filter-note">${tx('catalog.filterNote')}</p>`;
@@ -7079,7 +7188,7 @@ Pages.retrofit = {
         </div>
       </div>
       ${sections.map((x, i) => relatedSection({ ...x, v, follows: i > 0 })).join('')}
-      ${recent.length ? recentSection(recent) : ''}
+      ${recent.length && Content.section('recent') ? recentSection(recent) : ''}
       ${ctaBand()}`;
   },
   mount(root) { Behaviours.mount(root); },
@@ -9248,7 +9357,7 @@ Pages.adminProjectForm = adminPage({
         models: existing ? existing.models || [] : [], services: existing ? existing.services || [] : [],
       };
       const bad = ['image', 'before', 'after'].find((k) => data[k] && !Media.src(data[k]));
-      const err = !data.title ? 'Vul een titel in.' : (!data.vehicle ? 'Vul het voertuig in.' : (!data.tag ? 'Vul een label in.' : (!data.short ? 'Vul een korte omschrijving in.' : (!data.image ? 'Kies een hoofdfoto.' : (bad ? 'Een foto-adres is ongeldig (gebruik https://…).' : ((data.before && !data.after) || (!data.before && data.after) ? 'Voor een voor/na-vergelijking zijn beide foto’s nodig.' : (Repo.projects().some((x) => x.slug === data.slug && x.id !== data.id) ? 'Deze slug is al in gebruik.' : '')))))));
+      const err = !data.title ? 'Vul een titel in.' : (!data.vehicle ? 'Vul het voertuig in.' : (!data.tag ? 'Vul een label in.' : (!data.short ? 'Vul een korte omschrijving in.' : (!data.image ? 'Kies een hoofdfoto.' : (bad ? 'Een foto-adres is ongeldig (gebruik https://…).' : ((data.before && !data.after) || (!data.before && data.after) ? 'Voor een voor/na-vergelijking zijn beide foto’s nodig.' : (!Content.isSlug(data.slug) ? 'Vul een geldige slug in (kleine letters, cijfers en koppeltekens).' : (Repo.projects().some((x) => x.slug === data.slug && x.id !== data.id) ? 'Deze slug is al in gebruik.' : ''))))))));
       if (err) { errEl.textContent = err; Toast.show(err, { error: true }); return; }
       const list = Repo.projects().filter((x) => x.id !== data.id);
       Repo.saveProjects(isNew ? [...list, data] : Repo.projects().map((x) => (x.id === data.id ? data : x)));
@@ -9422,10 +9531,10 @@ function showErrors(form, errs) {
   }
   return !keys.length;
 }
+const DECIDE_FIRST = 'Kies eerst met welke versie u verder wilt werken (zie de melding bovenaan).';
 /** Applies a change to the website draft; false (with a message) while a decision on a newer publication is pending. */
 function saveContent(fn, message = 'Opgeslagen. De wijziging staat direct op de website in deze browser.') {
-  if (Content.parked) { Toast.show('Kies eerst met welke versie u verder wilt werken (zie de melding bovenaan).', { error: true }); return false; }
-  Content.update(fn);
+  if (Content.parked || !Content.update(fn)) { Toast.show(DECIDE_FIRST, { error: true }); return false; }
   if (message) Toast.show(message);
   return true;
 }
@@ -9497,9 +9606,14 @@ const SiteStatus = {
     const n = this.changes().length;
     return n ? `<a class="pill pill--warn" href="#/admin/website" title="Bekijk wat nog gepubliceerd moet worden">${icon('upload')} ${n} niet gepubliceerd</a>` : '';
   },
+  /** True while a newer publication waits for the editor's decision (content and/or webshop data). */
+  undecided() { return Content.parked || Repo.shopParked; },
   parkedNotice() {
-    if (!Content.parked && !Repo.shopParked) return '';
-    return UI.notice('<strong>Er staat een nieuwere gepubliceerde versie online.</strong> Uw concept in deze browser is gebaseerd op een oudere versie. Kies met welke versie u verder wilt werken. Tot u kiest, ziet u de gepubliceerde inhoud.',
+    if (!this.undecided()) return '';
+    const shown = Repo.shopParked
+      ? (Content.parked ? 'Tot u kiest, ziet u de gepubliceerde teksten en inhoud; producten, projecten en webshopinstellingen zijn nog uw eigen concept.' : 'Producten, projecten en webshopinstellingen in deze browser zijn nog uw eigen concept.')
+      : 'Tot u kiest, ziet u de gepubliceerde inhoud.';
+    return UI.notice(`<strong>Er staat een nieuwere gepubliceerde versie online.</strong> Uw concept in deze browser is gebaseerd op een oudere versie. Kies met welke versie u verder wilt werken; publiceren kan pas daarna. ${shown}`,
       { type: 'warn', ic: 'alert', actions: '<button class="btn btn--dark btn--xs" type="button" data-parked="published">Gepubliceerde versie gebruiken</button><button class="btn btn--light btn--xs" type="button" data-parked="keep">Mijn concept behouden</button>' });
   },
 };
@@ -9629,10 +9743,9 @@ const Publisher = {
       `<title>${esc(home.title)}</title>`,
       m('name', 'description', home.description),
       m('name', 'robots', s.noindex ? 'noindex, nofollow' : 'index, follow'),
-      site && !s.noindex ? `<link rel="canonical" href="${attr(site)}">` : '',
+      // No canonical or og:url here: this same file answers every address, so the page sets both per route.
       m('property', 'og:type', 'website'), m('property', 'og:locale', 'nl_NL'), m('property', 'og:site_name', COMPANY.name),
       m('property', 'og:title', homeOv.title || s.ogTitle), m('property', 'og:description', homeOv.description || s.ogDescription),
-      site ? m('property', 'og:url', site) : '',
       ogImage && site ? `${m('property', 'og:image', `${site}og-image.jpg`)}\n${m('property', 'og:image:width', '1200')}\n${m('property', 'og:image:height', '630')}` : '',
       m('name', 'twitter:card', 'summary_large_image'),
       m('name', 'google-site-verification', s.google), m('name', 'msvalidate.01', s.bing),
@@ -9646,10 +9759,18 @@ const Publisher = {
     const ORG = /<script type="application\/ld\+json" id="ctOrgLd">[\s\S]*?<\/script>/;
     const BASE = /<meta name="ct-base" content="[^"]*">/;
     [[SEO_BLOCK, 'SEO-blok'], [ORG, 'bedrijfsgegevens (JSON-LD)'], [BASE, 'ct-base']].forEach(([re, name]) => { if (!re.test(tpl)) throw new Error(`Het sjabloon mist: ${name}.`); });
+    const NOSCRIPT = /(<div class="noscript">\s*)[\s\S]*?(<br>)/;
+    if (!NOSCRIPT.test(tpl)) throw new Error('Het sjabloon mist: noscript-tekst.');
     const close = '<' + '/script>';
-    tpl = tpl.replace(SEO_BLOCK, () => `<!${'--'}ct:seo-->\n${this.head({ ogImage })}\n<!${'--'}/ct:seo-->`)
-      .replace(ORG, () => `<script type="application/ld+json" id="ctOrgLd">\n${JSON.stringify(Seo.organization(), null, 2).replace(/</g, '\\u003c')}\n${close}`)
-      .replace(BASE, () => `<meta name="ct-base" content="${attr(this.base())}">`);
+    // Editor text is inserted before the placeholders are filled, so a "*" in it is written as an
+    // equivalent escape: "/*__JS__*" can then never appear in it and be expanded.
+    const htmlSafe = (s) => s.replace(/\*/g, '&#42;');
+    const org = JSON.stringify(Seo.organization(), null, 2).replace(/</g, '\\u003c').replace(/\*/g, '\\u002a');
+    const c = COMPANY;
+    tpl = tpl.replace(SEO_BLOCK, () => `<!${'--'}ct:seo-->\n${htmlSafe(this.head({ ogImage }))}\n<!${'--'}/ct:seo-->`)
+      .replace(ORG, () => `<script type="application/ld+json" id="ctOrgLd">\n${org}\n${close}`)
+      .replace(BASE, () => `<meta name="ct-base" content="${htmlSafe(attr(this.base()))}">`)
+      .replace(NOSCRIPT, (mm, a, b) => `${a}${htmlSafe(`<strong>${esc(c.name)}</strong> — ${esc(c.street)}, ${esc(c.postal)} ${esc(c.city)} · ${esc(c.phoneDisplay)} · ${esc(c.email)}`)}${b}`);
     const json = JSON.stringify(bundle).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
     const map = { CSS: p.css, JS: p.js, IMAGES: p.images, CONTENT: json, TEMPLATE: p.tpl64 };
     const filled = new Set();
@@ -9662,7 +9783,9 @@ const Publisher = {
     if (!s.siteUrl || s.noindex) return null;
     const day = stamp.slice(0, 10);
     const urls = sitePages().filter((p) => !pageSeo(p.path).noindex).map((p) => Seo.url(p.path));
-    MODELS.forEach((m) => { if (RETROFITS.some((r) => r.models.includes(m.id))) urls.push(Seo.url(`/mogelijkheden?merk=${m.brand}&model=${m.id}`)); });
+    if (!pageSeo('/mogelijkheden').noindex) {
+      MODELS.forEach((m) => { if (RETROFITS.some((r) => r.models.includes(m.id))) urls.push(Seo.url(`/mogelijkheden?merk=${m.brand}&model=${m.id}`)); });
+    }
     const xmlEsc = (u) => u.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniq(urls).map((u) => `  <url><loc>${xmlEsc(u)}</loc><lastmod>${day}</lastmod></url>`).join('\n')}\n</urlset>\n`;
   },
@@ -9672,7 +9795,10 @@ const Publisher = {
     if (s.noindex) return 'User-agent: *\nDisallow: /\n';
     return `User-agent: *\nDisallow: ${base}admin\n${s.siteUrl ? `\nSitemap: ${s.siteUrl}/sitemap.xml\n` : ''}`;
   },
-  redirects() { const b = this.base(); return `# Netlify: elke pagina wordt door index.html getoond (nette URL's).\n${b}*    ${b}index.html    200\n`; },
+  redirects() {
+    const b = this.base();
+    return `# Netlify: elke pagina wordt door index.html getoond (nette URL's).\n${b === '/' ? '' : `/    ${b}    301\n`}${b}*    ${b}index.html    200\n`;
+  },
   readme(stamp) {
     return [
       'CarTronic — website', `Gepubliceerd: ${fmtDateTime(stamp)}`, '',
@@ -9681,6 +9807,7 @@ const Publisher = {
       '2. Ga naar app.netlify.com → uw site → Deploys.',
       '3. Sleep de HELE map "cartronic-website" naar het vak "Drag and drop your site output folder here".',
       '4. Wacht tot de deploy klaar is en controleer de website.', '',
+      ...(this.base() === '/' ? [] : [`De website staat in de submap "${this.base().slice(1, -1)}" (volgens het website-adres in Beheer → SEO). Laat de mappen en bestanden staan zoals ze in de zip zitten.`, '']),
       'Inhoud van de map:',
       '- index.html   de website (alle inhoud, teksten, foto’s en instellingen zitten erin)',
       '- 404.html     kopie van de website voor servers zonder _redirects',
@@ -9712,16 +9839,18 @@ const Publisher = {
     const bundle = this.bundle(stamp);
     const html = this.html(bundle, { ogImage: !!og });
     const dir = 'cartronic-website/';
+    // Host-level files sit at the root; the site itself in the sub-path of the website address (if any).
+    const sub = dir + this.base().slice(1);
     const files = [
-      { name: `${dir}index.html`, data: html },
+      { name: `${sub}index.html`, data: html },
       { name: `${dir}404.html`, data: html },
       { name: `${dir}_redirects`, data: this.redirects() },
       { name: `${dir}robots.txt`, data: this.robots() },
       { name: `${dir}LEESMIJ.txt`, data: this.readme(stamp) },
     ];
     const sm = this.sitemap(stamp);
-    if (sm) files.push({ name: `${dir}sitemap.xml`, data: sm });
-    if (og) files.push({ name: `${dir}og-image.jpg`, data: og });
+    if (sm) files.push({ name: `${sub}sitemap.xml`, data: sm });
+    if (og) files.push({ name: `${sub}og-image.jpg`, data: og });
     return { stamp, files, html, bytes: new Blob([html]).size };
   },
 };
@@ -9791,6 +9920,7 @@ Pages.adminWebsite = adminPage({
     const result = $('[data-publish-result]', root);
     const busy = (btn, on) => { btn.disabled = on; btn.setAttribute('aria-busy', String(on)); };
     $('[data-publish]', root).addEventListener('click', async (e) => {
+      if (SiteStatus.undecided()) { Toast.show(DECIDE_FIRST, { error: true }); return; }
       const btn = e.currentTarget; busy(btn, true);
       try {
         const { stamp, files, bytes } = await Publisher.files();
@@ -9803,6 +9933,7 @@ Pages.adminWebsite = adminPage({
       } finally { busy(btn, false); }
     });
     $('[data-publish-html]', root).addEventListener('click', async (e) => {
+      if (SiteStatus.undecided()) { Toast.show(DECIDE_FIRST, { error: true }); return; }
       const btn = e.currentTarget; busy(btn, true);
       try {
         const html = Publisher.html(Publisher.bundle(nowIso()), { ogImage: false });
@@ -9811,6 +9942,7 @@ Pages.adminWebsite = adminPage({
       } catch (er) { Toast.show(`Niet gelukt: ${er.message}`, { error: true }); } finally { busy(btn, false); }
     });
     $('[data-backup]', root).addEventListener('click', () => {
+      if (SiteStatus.undecided()) { Toast.show(DECIDE_FIRST, { error: true }); return; }
       const c = Content.working(); delete c.base;
       downloadJson(`cartronic-backup-${nowIso().slice(0, 10)}.json`, { format: 'cartronic-site', version: 1, exportedAt: nowIso(), content: c, shop: Repo.shopSnapshot() });
       Toast.show('Back-up gedownload.');
@@ -9840,9 +9972,9 @@ Pages.adminWebsite = adminPage({
       Toast.show('Het concept is weggegooid.'); Router.render();
     });
     $('[data-factory]', root).addEventListener('click', async () => {
-      if (!(await Overlay.confirm({ title: 'Standaardinhoud herstellen?', message: 'Alle teksten, bedrijfsgegevens, opties, diensten, berichten, beoordelingen, weergave- en SEO-instellingen én de webshopgegevens gaan terug naar de oorspronkelijke inhoud. Publiceer daarna om dit online te zetten.', confirmLabel: 'Herstellen', danger: true }))) return;
+      if (!(await Overlay.confirm({ title: 'Standaardinhoud herstellen?', message: 'Alle teksten, bedrijfsgegevens, opties, diensten, berichten, beoordelingen, weergave- en SEO-instellingen én de webshopgegevens gaan terug naar de oorspronkelijke inhoud. Bestellingen blijven bestaan. Publiceer daarna om dit online te zetten.', confirmLabel: 'Herstellen', danger: true }))) return;
       if (!saveContent((d) => { Object.keys(d).forEach((k) => delete d[k]); }, null)) return;
-      Repo.reset({ source: 'defaults' }); Cart.validate();
+      Repo.reset({ source: 'defaults', keepOrders: true }); Cart.validate();
       Toast.show('De standaardinhoud is hersteld.'); Router.render();
     });
   },
@@ -9897,8 +10029,9 @@ Pages.adminCompany = adminPage({
       const v = (k) => f.elements[k].value.trim();
       const errs = {};
       ['name', 'street', 'postal', 'city', 'phoneDisplay'].forEach((k) => { if (!v(k)) errs[k] = 'Dit veld is verplicht.'; });
-      const intl = v('phoneIntl').replace(/[\s().-]/g, '').replace(/^00/, '+');
+      const intl = v('phoneIntl').replace(/\(0\)/g, '').replace(/[\s().-]/g, '').replace(/^00/, '+');
       if (!/^\+[1-9][0-9]{5,15}$/.test(intl)) errs.phoneIntl = 'Vul het nummer met landcode in, bijvoorbeeld +31703839836.';
+      else if (/^\+310/.test(intl)) errs.phoneIntl = 'Laat de 0 na de landcode weg, bijvoorbeeld +31703839836.';
       if (!/^[0-9]{8,15}$/.test(v('whatsapp'))) errs.whatsapp = 'Alleen cijfers, met landcode: bijvoorbeeld 31703839836.';
       if (!/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]{2,}$/.test(v('email'))) errs.email = 'Vul een geldig e-mailadres in.';
       ['mapsUrl', 'website'].forEach((k) => { if (!Content.httpsUrl(v(k))) errs[k] = 'Gebruik een webadres dat met https:// begint.'; });
@@ -9933,6 +10066,7 @@ function bindRowEditor(host, makeRow, onChange) {
 }
 
 /* ---------- Teksten ---------- */
+const TEXT_MAX = 12000;
 const TEXT_PAGES = { home: '/', werkwijze: '/expertise', algemeen: '/', mogelijkheden: '/mogelijkheden', merken: '/merken', projecten: '/projecten', expertise: '/expertise', over: '/over', contact: '/contact', beoordelingen: '/beoordelingen', kennis: '/kennis', productinfo: '/productinformatie', webshop: '/webshop', overig: '/privacy' };
 Pages.adminTexts = adminPage({
   key: 'teksten', title: 'Teksten',
@@ -9946,8 +10080,8 @@ Pages.adminTexts = adminPage({
       const multi = d.multi || d.rich || value.includes('\n') || value.length > 90;
       return `<div class="field span-2 text-field" data-text-field="${attr(d.key)}" data-search="${attr(normText(`${d.label} ${value}`))}">
         <div class="text-field-head"><label for="${id}">${esc(d.label)}</label>${custom ? '<span class="pill pill--info">Aangepast</span>' : ''}${d.optional ? '<span class="pill">Mag leeg</span>' : ''}</div>
-        ${multi ? `<textarea class="textarea${d.rich ? '' : ' textarea--sm'}" id="${id}" name="${attr(d.key)}" rows="${d.rich ? 14 : 3}">${esc(value)}</textarea>` : `<input class="input" id="${id}" name="${attr(d.key)}" value="${attr(value)}">`}
-        <div class="text-field-foot">${d.vars ? `<span class="hint">Gebruik ${d.vars.map((x) => `<code class="code">{${x}}</code>`).join(' ')} voor de automatische waarde.</span>` : ''}${d.rich ? '<span class="hint"><code class="code">## Kop</code> voor een tussenkop, <code class="code">- </code> voor een opsomming, lege regel = nieuwe alinea.</span>' : ''}
+        ${multi ? `<textarea class="textarea${d.rich ? '' : ' textarea--sm'}" id="${id}" name="${attr(d.key)}" rows="${d.rich ? 14 : 3}" maxlength="${TEXT_MAX}">${esc(value)}</textarea>` : `<input class="input" id="${id}" name="${attr(d.key)}" value="${attr(value)}" maxlength="${TEXT_MAX}">`}
+        <div class="text-field-foot">${d.vars ? `<span class="hint">Gebruik ${d.vars.map((x) => `<code class="code">{${x}}</code>`).join(' ')} voor de automatische waarde.</span>` : ''}${d.control ? '<span class="hint">Tekst op een knop of link: alleen tekst, links werken hier niet.</span>' : ''}${d.rich ? '<span class="hint"><code class="code">## Kop</code> voor een tussenkop, <code class="code">- </code> voor een opsomming, lege regel = nieuwe alinea.</span>' : ''}
           ${custom ? `<button class="btn btn--ghost btn--xs" type="button" data-text-reset="${attr(d.key)}">${icon('refresh')} Standaardtekst terugzetten</button>` : ''}</div>
       </div>`;
     };
@@ -9970,6 +10104,10 @@ Pages.adminTexts = adminPage({
   mount(root, ctx) {
     const f = $('[data-texts]', root);
     const st = trackDirty(f);
+    // The values shown when the screen opened: only fields changed since then are saved, so edits saved
+    // meanwhile (for example in another tab) are kept.
+    const shown = {};
+    Object.keys(TEXT).forEach((k) => { if (f.elements[k]) shown[k] = f.elements[k].value; });
     const q = $('[data-text-q]', root);
     const g = TEXT_GROUPS.some(([id]) => id === ctx.query.groep) ? ctx.query.groep : 'home';
     const filter = () => {
@@ -9997,17 +10135,30 @@ Pages.adminTexts = adminPage({
     });
     f.addEventListener('submit', (e) => {
       e.preventDefault();
-      const next = {};
-      Object.keys(TEXT).forEach((k) => {
-        const el = f.elements[k]; if (!el) return;
-        const val = el.value.replace(/\r\n/g, '\n');
-        const d = TEXT[k];
-        if (val.length > 12000) return;
-        if (!val.trim()) { if (d.optional) next[k] = ''; return; }
-        if (val.trim() === d.def.trim()) return;
-        next[k] = val.trim();
-      });
-      if (saveContent((d) => { d.texts = next; }, 'Teksten opgeslagen.')) { st.set(false); Router.render(); }
+      const tooLong = Object.keys(TEXT).find((k) => f.elements[k] && f.elements[k].value.length > TEXT_MAX);
+      if (tooLong) {
+        // Show the field (it may sit in another group or be filtered out) and keep what was typed.
+        const el = f.elements[tooLong];
+        q.value = '';
+        $$('[data-text-group]', f).forEach((sec) => { sec.hidden = !sec.contains(el); });
+        $$('[data-text-field]', f).forEach((fl) => { fl.hidden = false; });
+        $('[data-text-empty]', f).hidden = true;
+        el.setAttribute('aria-invalid', 'true'); el.focus();
+        Toast.show(`“${TEXT[tooLong].label}” is te lang: maximaal ${TEXT_MAX.toLocaleString('nl-NL')} tekens. Er is niets opgeslagen.`, { error: true });
+        return;
+      }
+      const changed = Object.keys(TEXT).filter((k) => f.elements[k] && f.elements[k].value !== shown[k]);
+      if (saveContent((d) => {
+        const texts = { ...(d.texts && typeof d.texts === 'object' ? d.texts : {}) };
+        changed.forEach((k) => {
+          const val = f.elements[k].value.replace(/\r\n/g, '\n');
+          const def = TEXT[k];
+          delete texts[k];
+          if (!val.trim()) { if (def.optional) texts[k] = ''; return; }
+          if (val.trim() !== def.def.trim()) texts[k] = val.trim();
+        });
+        d.texts = texts;
+      }, 'Teksten opgeslagen.')) { st.set(false); Router.render(); }
     });
     return () => Router.setGuard(null);
   },
@@ -10493,7 +10644,7 @@ Pages.adminOptionForm = adminPage({
       if (isNew) {
         const slug = f.elements.slug.value.trim() || slugify(r.title);
         if (!Content.isSlug(slug)) e.slug = 'Gebruik kleine letters, cijfers en koppeltekens.';
-        else if (allOptionSlugs().has(slug)) e.slug = 'Dit webadres bestaat al. Kies een ander.';
+        else if (slug === 'nieuw' || allOptionSlugs().has(slug)) e.slug = 'Dit webadres bestaat al. Kies een ander.';
       }
       return e;
     };
@@ -10525,6 +10676,14 @@ Pages.adminOptionForm = adminPage({
         if (!Content.retrofitOk(merged)) { Toast.show('Deze combinatie van merk, modellen en categorie is ongeldig.', { error: true }); return; }
       } else {
         fields = { slug, ...r };
+        const src = entry.item || {};
+        if (fields.scope !== 'brand') {
+          if (!r.years && src.yearsByModel) {
+            const y = Object.entries(src.yearsByModel).filter(([m]) => r.models.includes(m));
+            if (y.length) fields.yearsByModel = Object.fromEntries(y);
+          }
+          if (src.body) fields.body = src.body;
+        }
         if (fields.scope === 'model') delete fields.scope;
         if (!Content.buildAdded(fields)) { Toast.show('Deze optie is onvolledig. Controleer titel, categorie en modellen.', { error: true }); return; }
       }
@@ -10577,14 +10736,13 @@ Pages.adminCatalog = adminPage({
       ${UI.notice('Deze teksten verschijnen op de homepage (categoriekaarten), in de filters van de catalogus en in het blok “Technische informatie” op elke optiepagina van de categorie.', { ic: 'info' })}
       ${CATEGORIES.map((c) => {
         const copy = CATEGORY_COPY[c.id] || {};
-        const pc = Content.P.categoryCopy[c.id] || {};
         return `<details class="panel cat-panel"><summary class="panel-head"><div><h2>${icon(c.icon).replace('<svg', '<svg style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"')}${esc(c.name)}</h2><p>${esc(c.tagline)}</p></div><span class="pill">${RETROFITS.filter((r) => r.cat === c.id).length} opties</span></summary>
           <div class="panel-body"><div class="form-grid">
             ${saField({ id: `${c.id}-name`, name: `${c.id}:name`, label: 'Naam', value: c.name, max: 80, half: true })}
             ${saField({ id: `${c.id}-tagline`, name: `${c.id}:tagline`, label: 'Slogan (homepage)', value: c.tagline, max: 120, half: true })}
             ${saField({ id: `${c.id}-text`, name: `${c.id}:text`, label: 'Korte omschrijving', value: c.text, max: 300 })}
             ${saField({ id: `${c.id}-install`, name: `${c.id}:install`, label: '“Wat wordt ingebouwd?”', value: copy.install || '', multi: true, rows: 3, max: 1500 })}
-            ${saField({ id: `${c.id}-program`, name: `${c.id}:program`, label: '“Wat wordt geprogrammeerd?”', value: copy.program || '', multi: true, rows: 3, max: 1500, opt: true, placeholder: pc.program ? '' : tt('retro.program'), hint: pc.program ? '' : 'Leeg = de algemene tekst (Beheer → Teksten → Mogelijkheden).' })}
+            ${saField({ id: `${c.id}-program`, name: `${c.id}:program`, label: '“Wat wordt geprogrammeerd?”', value: copy.program || '', multi: true, rows: 3, max: 1500, opt: true, placeholder: tt('retro.program'), hint: 'Leeg = de algemene tekst (Beheer → Teksten → Mogelijkheden).' })}
             ${saField({ id: `${c.id}-calibrate`, name: `${c.id}:calibrate`, label: '“Kalibratie nodig?”', value: copy.calibrate || '', multi: true, rows: 3, max: 1500, opt: true, hint: 'Alleen ingevuld verschijnt dit blok op de optiepagina’s.' })}
             ${saField({ id: `${c.id}-benefits`, name: `${c.id}:benefits`, label: 'Voordelen', value: (copy.benefits || []).join('\n'), multi: true, rows: 3, hint: 'Eén voordeel per regel (maximaal 8).' })}
           </div></div></details>`;
@@ -10611,7 +10769,7 @@ Pages.adminCatalog = adminPage({
         if (!benefits.length) errs[`${c.id}:benefits`] = 'Vul ten minste één voordeel in.';
         const o = {};
         ['name', 'tagline', 'text'].forEach((k) => { if (v(`${c.id}:${k}`) !== p[k]) o[k] = v(`${c.id}:${k}`); });
-        ['install', 'program', 'calibrate'].forEach((k) => { if (v(`${c.id}:${k}`) && v(`${c.id}:${k}`) !== (pc[k] || '')) o[k] = v(`${c.id}:${k}`); });
+        ['install', 'program', 'calibrate'].forEach((k) => { const val = v(`${c.id}:${k}`); if (val !== (pc[k] || '')) o[k] = val; });
         if (stableStringify(benefits) !== stableStringify(pc.benefits || [])) o.benefits = benefits;
         if (Object.keys(o).length) categories[c.id] = o;
       });
@@ -10746,7 +10904,7 @@ Pages.adminServiceForm = adminPage({
       const errs = {};
       if (!v('title')) errs.title = 'Vul een titel in.';
       if (isNew && !Content.isSlug(slug)) errs.slug = 'Gebruik kleine letters, cijfers en koppeltekens.';
-      else if (isNew && SERVICES.some((x) => x.slug === slug)) errs.slug = 'Dit webadres bestaat al.';
+      else if (isNew && (slug === 'nieuw' || SERVICES.some((x) => x.slug === slug))) errs.slug = 'Dit webadres bestaat al. Kies een ander.';
       if (!v('short')) errs.short = 'Vul een korte omschrijving in.';
       const body = String(f.elements.body.value).split(/\n\s*\n/).map((p) => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
       if (!body.length) errs.body = 'Vul een tekst in.';
@@ -10761,7 +10919,6 @@ Pages.adminServiceForm = adminPage({
         cats: $$('input[name="cats"]:checked', f).map((x) => x.value), image: f.elements.image.value.trim(), topic: f.elements.topic.value,
       };
       if (!next.image) delete next.image;
-      if (!next.topic) delete next.topic;
       const list = deepClone(SERVICES);
       const i = list.findIndex((x) => x.slug === slug);
       if (i > -1) list[i] = next; else list.push(next);
@@ -10798,7 +10955,7 @@ Pages.adminArticleForm = adminPage({
           ${iconSelect('icon', a.icon)}
           ${saField({ name: 'short', label: 'Samenvatting', value: a.short, multi: true, rows: 2, max: 400, hint: 'Op de overzichtspagina, onder de titel en in Google.' })}
           ${saField({ name: 'body', label: 'Tekst', value: richSource(a.body), multi: true, rows: 14, max: 20000, hint: '<code class="code">## Kop</code> voor een tussenkop, <code class="code">- </code> voor een opsomming, lege regel = nieuwe alinea.' })}
-          ${saField({ name: 'links', label: 'Links onder het bericht', value: linksText((a.links || []).map(([l, h]) => [l, h.replace(/^#/, '')])), multi: true, rows: 3, opt: true, hint: 'Eén per regel: <code class="code">Linktekst | /pagina</code> of <code class="code">Linktekst | https://…</code>' })}
+          ${saField({ name: 'links', label: 'Links onder het bericht', value: linksText((a.links || []).map(([l, h]) => [l, h.replace(/^#/, '')])), multi: true, rows: 3, opt: true, hint: 'Eén per regel (maximaal 6): <code class="code">Linktekst | /pagina</code> of <code class="code">Linktekst | https://…</code>' })}
           ${saField({ name: 'keywords', label: 'Zoekwoorden', value: a.keywords.join(', '), opt: true })}
         </div></div></section></div>
         <div class="form-col"><section class="panel"><div class="panel-head"><div><h2>Google</h2><p>Leeg = automatisch</p></div></div><div class="panel-body"><div class="form-grid">${seoFields(path)}</div></div></section></div>
@@ -10819,12 +10976,13 @@ Pages.adminArticleForm = adminPage({
       const errs = {};
       if (!v('title')) errs.title = 'Vul een titel in.';
       if (isNew && !Content.isSlug(slug)) errs.slug = 'Gebruik kleine letters, cijfers en koppeltekens.';
-      else if (isNew && ARTICLES.some((x) => x.slug === slug)) errs.slug = 'Dit webadres bestaat al.';
+      else if (isNew && (slug === 'nieuw' || ARTICLES.some((x) => x.slug === slug))) errs.slug = 'Dit webadres bestaat al. Kies een ander.';
       if (!v('short')) errs.short = 'Vul een samenvatting in.';
       const body = parseRich(f.elements.body.value);
       if (!body.length) errs.body = 'Vul een tekst in.';
       const links = parseLinks(f.elements.links.value);
       if (!links) errs.links = 'Schrijf elke link als “Linktekst | /pagina” of “Linktekst | https://…”.';
+      else if (links.length > 6) errs.links = 'Gebruik maximaal 6 links.';
       if (!showErrors(f, errs)) return;
       const next = { slug, tag: v('tag') || 'Kennis', icon: f.elements.icon.value, title: v('title'), keywords: csv(f.elements.keywords.value), short: v('short'), body, links };
       const list = deepClone(ARTICLES);
@@ -10901,7 +11059,7 @@ const workRow = (m = {}) => `<div class="row-edit row-edit--card">
   <div class="form-grid">
     <label class="field span-2"><span class="label">Titel</span><input class="input input--sm" data-w="title" value="${attr(m.title || '')}" maxlength="120"></label>
     <label class="field span-2"><span class="label">Tekst</span><textarea class="textarea textarea--sm" data-w="text" rows="2" maxlength="800">${esc(m.text || '')}</textarea></label>
-    <label class="field span-2"><span class="label">Links</span><textarea class="textarea textarea--sm" data-w="links" rows="2">${esc(linksText(m.links))}</textarea><span class="hint">Eén per regel: <code class="code">Linktekst | https://…</code></span></label>
+    <label class="field span-2"><span class="label">Links</span><textarea class="textarea textarea--sm" data-w="links" rows="2">${esc(linksText(m.links))}</textarea><span class="hint">Eén per regel (maximaal 4): <code class="code">Linktekst | https://…</code></span></label>
   </div>
   <div class="row-edit-actions"><button class="icon-btn icon-btn--sm" type="button" data-row-up aria-label="Omhoog">${icon('left').replace('<svg', '<svg style="transform:rotate(90deg)"')}</button><button class="icon-btn icon-btn--sm" type="button" data-row-down aria-label="Omlaag">${icon('right').replace('<svg', '<svg style="transform:rotate(90deg)"')}</button><button class="icon-btn icon-btn--sm" type="button" data-row-del aria-label="Verwijderen">${icon('trash')}</button></div>
 </div>`;
@@ -10929,6 +11087,7 @@ Pages.adminMoreWork = adminPage({
         const links = parseLinks(g('links'));
         if (!g('title')) bad = 'Elke kaart heeft een titel nodig.';
         if (!links) bad = 'Schrijf elke link als “Linktekst | https://…”.';
+        else if (links.length > 4) bad = 'Gebruik maximaal 4 links per kaart.';
         return { title: g('title'), text: g('text'), links: links || [] };
       });
       if (bad) { Toast.show(bad, { error: true }); return; }
@@ -11193,7 +11352,7 @@ function init() {
   Router.start();
   Motion.init();
   // Debug/QA handle (no secrets live in this prototype).
-  window.CT = { Repo, Cart, Router, VehicleStore, VehicleLookup, VehicleMatcher, Plate, Pricing, Money, Analytics, Search, Payments, OrderService, CheckoutService, Compat,
+  window.CT = { Repo, Cart, Router, VehicleStore, VehicleLookup, VehicleMatcher, Plate, Pricing, Money, Analytics, Search, Payments, OrderService, CheckoutService, Compat, Content, Seo, Publisher, SiteStatus, fmtText,
     catalog: { RETROFITS, RETROFIT_ALIAS, MODELS, FEATURES, CATEGORIES, ART: Object.keys(ART_SHAPES) } };
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
