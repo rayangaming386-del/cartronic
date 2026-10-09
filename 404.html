@@ -1174,6 +1174,8 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
   transform: translate(-50%, calc(-50% + 12px)); opacity: 0; transition: transform var(--t) var(--ease-out), opacity var(--t) var(--ease);
 }
 .modal.is-open { transform: translate(-50%, -50%); opacity: 1; }
+/* While opening or closing, a (transparent) dialog must not catch clicks meant for the page. */
+.overlay-backdrop:not(.is-open), .modal:not(.is-open) { pointer-events: none; }
 .modal--wide { width: min(880px, calc(100vw - 32px)); }
 .modal--sm { width: min(460px, calc(100vw - 32px)); }
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--line); }
@@ -2244,7 +2246,7 @@ const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ESC_MAP
 const attr = esc;
 const uid = (prefix = 'id') => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const slugify = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80).replace(/-+$/, '');
 const normText = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[^a-z0-9.+\s-]/g, ' ').replace(/[-.]/g, ' ').replace(/\s+/g, ' ').trim();
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -2584,7 +2586,11 @@ const Router = (() => {
   const redirects = [];
   const metaContent = (name) => { const m = document.querySelector(`meta[name="${name}"]`); return m ? m.getAttribute('content') || '' : ''; };
   const BASE = (() => { const b = metaContent('ct-base') || '/'; return (`/${b.replace(/^\/+|\/+$/g, '')}/`).replace(/\/+/g, '/'); })();
-  const pathMode = metaContent('ct-routing') === 'path' && /^https?:$/.test(location.protocol) && (`${location.pathname}/`).startsWith(BASE);
+  const inBase = () => (`${location.pathname}/`).startsWith(BASE);
+  // Clean URLs on a web server. An address outside the base (a mistyped URL that the host answers with
+  // 404.html) shows "page not found"; only the bare host root keeps the hash routes as a fallback.
+  const pathMode = metaContent('ct-routing') === 'path' && /^https?:$/.test(location.protocol) && (inBase() || !/^\/(index\.html)?$/.test(location.pathname));
+  const outside = () => pathMode && !inBase();
   const urlKey = () => (pathMode ? location.pathname + location.search : location.hash);
   let lastKey = urlKey();
 
@@ -2597,6 +2603,7 @@ const Router = (() => {
   /** The current route as "/path?query" (independent of the URL style). */
   function rawRoute() {
     if (!pathMode) return location.hash.replace(/^#/, '');
+    if (!inBase()) return location.pathname + location.search;
     let p = `/${location.pathname.slice(BASE.length)}`;
     if (/^\/(index|404)\.html$/.test(p)) p = '/';
     return p + location.search;
@@ -2627,7 +2634,8 @@ const Router = (() => {
   function buildHash(path, query = {}) { const qs = qsOf(query); return `#${path}${qs ? `?${qs}` : ''}`; }
   /** "#/x", "/x" or a full path under the base → "/x?…" */
   function toRoute(target) {
-    let t = String(target == null ? '/' : target);
+    // Browsers drop tabs and line breaks from addresses ("/\t/host" would become "//host"): remove them first.
+    let t = String(target == null ? '/' : target).replace(/[\u0000-\u001F\u007F]/g, '');
     if (t.startsWith('#')) t = t.slice(1);
     else if (pathMode && BASE !== '/' && (`${t}/`).startsWith(BASE)) t = `/${t.slice(BASE.length)}`;
     return `/${t.replace(/^[/\\]+/, '')}`; // "//host" would leave the site
@@ -2641,32 +2649,76 @@ const Router = (() => {
   function absUrl(path, query) {
     return pathMode ? location.origin + href(path, query) : `${location.href.split('#')[0]}${href(path, query)}`;
   }
+  /* Unsaved changes: the guard returns a message while a form has changes that are not saved. */
+  const onUnload = (e) => { if (guard && guard()) { e.preventDefault(); e.returnValue = ''; } };
+  function setGuard(fn) {
+    guard = fn || null;
+    // Reloading, closing the tab or typing another address also asks (the browser's own question).
+    if (guard) window.addEventListener('beforeunload', onUnload); else window.removeEventListener('beforeunload', onUnload);
+  }
   async function passGuard() {
     if (!guard) return true;
     const msg = guard();
     if (!msg) return true;
     const ok = await Overlay.confirm({ title: 'Wijzigingen niet opgeslagen', message: esc(msg), confirmLabel: 'Pagina verlaten', cancelLabel: 'Blijven', danger: true });
-    if (ok) guard = null;
+    if (ok) setGuard(null);
     return ok;
   }
   /* History bookkeeping: every entry the app creates carries its position (ctIdx). When Back/Forward is
      pressed while a form has unsaved changes, the app can then return to the form entry without
      rewriting any history entry, and continue the traversal if the user decides to leave. */
   let idx = 0;
-  let deciding = false;
+  let deciding = false; // the unsaved-changes question is open
+  let landed = null; // called when a history step back to the form entry has arrived
   const stamp = (i) => ({ ctIdx: i });
-  function pushUrl(url) { idx += 1; history.pushState(stamp(idx), '', url); lastKey = urlKey(); }
+  /* Scroll positions per history entry, kept by the app: Back/Forward return to where the visitor was and
+     new pages start at the top. The browser's own restoration is off, because it would also restore a
+     position after the app steps back to a form entry with unsaved changes. */
+  const scrollAt = new Map();
+  function pushUrl(url) {
+    try { history.replaceState({ ...stamp(idx), ctY: window.scrollY }, ''); } catch (e) { /* ignore */ }
+    scrollAt.set(idx, window.scrollY);
+    idx += 1;
+    [...scrollAt.keys()].forEach((k) => { if (k >= idx) scrollAt.delete(k); });
+    history.pushState(stamp(idx), '', url); lastKey = urlKey();
+  }
   function replaceUrl(url) { history.replaceState(stamp(idx), '', url); lastKey = urlKey(); }
   const keyUrl = (key) => key || location.pathname + location.search;
+  /** The remembered scroll position of the current history entry, if any. */
+  function rememberedY() {
+    if (scrollAt.has(idx)) return scrollAt.get(idx);
+    const st = history.state;
+    return st && Number.isFinite(st.ctY) ? st.ctY : undefined;
+  }
+  /** Steps through history (back to the form entry) and waits until the step has arrived. */
+  function stepTo(delta) {
+    return new Promise((resolve) => {
+      const t = setTimeout(() => { landed = null; resolve(); }, 600);
+      landed = () => { clearTimeout(t); landed = null; resolve(); };
+      history.go(delta);
+    });
+  }
+  /** Asks about unsaved changes; `step` first returns to the form entry, so the address matches the page. */
+  async function ask(step) {
+    deciding = true;
+    try {
+      if (step) await stepTo(step);
+      return await passGuard();
+    } finally { deciding = false; }
+  }
   function go(path, query) {
+    if (deciding) return; // the unsaved-changes question is open: it decides first
     const url = pathMode ? href(path, query) : (query && typeof query === 'object' ? buildHash(path, query) : `#${toRoute(path)}`);
     const same = url === urlKey();
     // Unsaved changes are checked before anything changes, also when the open page is simply re-rendered.
+    const asking = !!(guard && guard());
+    if (asking) deciding = true;
     passGuard().then((ok) => {
+      if (asking) deciding = false;
       if (!ok) return;
       if (!same) pushUrl(url);
       render({ force: same });
-    });
+    }, (er) => { if (asking) deciding = false; console.error(er); });
   }
   /** True when an href points at the page that is currently open. */
   function isCurrent(target) {
@@ -2689,36 +2741,55 @@ const Router = (() => {
   /** Back/Forward, typed addresses and hash changes (popstate in path mode, hashchange in hash mode). */
   async function onTraverse() {
     const key = urlKey();
-    if (key === lastKey) return; // also the return to the form entry below
-    if (!pathMode && location.hash && !location.hash.startsWith('#/')) {
+    const st = history.state;
+    const known = !!st && Number.isInteger(st.ctIdx);
+    if (key === lastKey) { // nothing to render (this is also the step back to the form entry while asking)
+      if (landed) landed(); else if (known && !deciding) idx = st.ctIdx;
+      return;
+    }
+    const to = known ? st.ctIdx : idx + 1; // an unknown entry is a typed address: a new entry
+    const back = known && to !== idx;
+    if (deciding) { // the question is open: undo this step, the answer decides
+      if (back) history.go(idx - to);
+      else if (!known) history.back();
+      else history.replaceState(stamp(idx), '', keyUrl(lastKey));
+      return;
+    }
+    if (!pathMode && !known && location.hash && !location.hash.startsWith('#/')) {
       // A typed in-page anchor (e.g. "#main") is not a route: keep the route address and focus the target.
       idx += 1; history.replaceState(stamp(idx), '', keyUrl(lastKey));
       focusAnchor(anchorId(location.hash));
       return;
     }
-    const st = history.state;
-    const known = !!st && Number.isInteger(st.ctIdx);
-    const to = known ? st.ctIdx : idx + 1; // an unknown entry is a typed address: a new entry
-    const back = known && to !== idx;
-    if (deciding) { if (back) history.go(idx - to); return; }
     if (guard && guard()) {
-      deciding = true;
       const target = pathMode ? key : location.hash;
-      if (back) history.go(idx - to); // return to the form entry; history stays as it was
-      else history.replaceState(stamp(idx), '', keyUrl(lastKey));
-      let ok = false;
-      try { ok = await passGuard(); } finally { deciding = false; }
+      let ok;
+      if (back) ok = await ask(idx - to); // return to the form entry; history stays as it was
+      else if (!known) ok = await ask(-1); // a typed address: return to the form entry; it stays as a Forward entry
+      else { history.replaceState(stamp(idx), '', keyUrl(lastKey)); ok = await ask(0); }
       if (!ok) return;
       if (back) { history.go(to - idx); return; } // continue the traversal; its event renders the page
       pushUrl(target); render(); return;
     }
     if (!known) history.replaceState(stamp(to), '');
     idx = to; lastKey = key;
-    render();
+    render({ scrollY: known ? rememberedY() : undefined });
   }
-  /** Path mode: old "#/…" links become clean addresses; other fragments are in-page anchors. */
-  function onPathHash() {
-    if (location.hash.startsWith('#/')) { idx += 1; replaceUrl(href(location.hash.slice(1))); render(); return; }
+  /** Path mode: an old "#/…" address becomes the clean one; other fragments are in-page anchors. */
+  async function onPathHash() {
+    const st = history.state;
+    if (st && Number.isInteger(st.ctIdx)) { // Back/Forward between entries of the same page
+      if (location.hash.length > 1 && !location.hash.startsWith('#/')) focusAnchor(anchorId(location.hash));
+      return;
+    }
+    // A typed fragment: the browser made a new history entry.
+    if (deciding) { history.back(); return; }
+    if (location.hash.startsWith('#/')) {
+      const target = href(location.hash.slice(1));
+      if (guard && guard()) { if (await ask(-1)) { pushUrl(target); render(); } return; }
+      idx += 1; replaceUrl(target); render(); return;
+    }
+    idx += 1; history.replaceState(stamp(idx), '');
     if (location.hash.length > 1) focusAnchor(anchorId(location.hash));
   }
   /** fn(path) → new path or null. Old URLs are replaced in history, so Back skips them. */
@@ -2747,18 +2818,22 @@ const Router = (() => {
     e.preventDefault();
     go(u.pathname + u.search);
   }
-  async function render({ force = false } = {}) {
+  /** scrollY: the position to return to (Back/Forward, reload); otherwise a new page starts at the top. */
+  async function render({ force = false, scrollY } = {}) {
     const { path, query } = parse();
-    for (const fn of redirects) {
-      const to = fn(path);
-      if (to && to !== path) { replaceUrl(pathMode ? href(to, query) : buildHash(to, query)); return render({ force }); }
+    const out = outside();
+    if (!out) {
+      for (const fn of redirects) {
+        const to = fn(path);
+        if (to && to !== path) { replaceUrl(pathMode ? href(to, query) : buildHash(to, query)); return render({ force, scrollY }); }
+      }
     }
-    const m = match(path) || { route: routes.find((r) => r.pattern === '*'), params: {} };
+    const m = (!out && match(path)) || { route: routes.find((r) => r.pattern === '*'), params: {} };
     const page = m.route.page;
     const ctx = { path, query, params: m.params, url: urlKey() };
     RouteProgress.start();
     if (cleanup) { try { cleanup(); } catch (e) { console.error(e); } cleanup = null; }
-    guard = null;
+    setGuard(null);
     Overlay.closeAll();
     Motion.cleanup();
     // Fresh root per render: listeners that pages attach in mount() never accumulate across navigations.
@@ -2783,7 +2858,8 @@ const Router = (() => {
     const prevPath = current ? current.path : null;
     current = ctx;
     if (prevPath !== path) { const mc = document.getElementById('miniCart'); if (mc) mc.classList.remove('is-open'); }
-    if (!ctx.query.section && (prevPath !== path || force)) window.scrollTo(0, 0);
+    const restore = scrollY !== undefined && !ctx.query.section;
+    if (!ctx.query.section && !restore && (prevPath !== path || force)) window.scrollTo(0, 0);
     try { cleanup = page.mount ? page.mount(app, ctx) || null : null; } catch (e) { console.error(e); }
     if (ctx.query.section) {
       const target = document.getElementById(ctx.query.section);
@@ -2794,11 +2870,17 @@ const Router = (() => {
       if (h1) { h1.setAttribute('tabindex', '-1'); h1.focus({ preventScroll: true }); }
     }
     Motion.page(app, { late: prevPath === path }); // same-page refresh: do not re-animate visible content
+    if (restore) { // after mount: the page has its full height now
+      window.scrollTo(0, scrollY);
+      if (Math.abs(window.scrollY - scrollY) > 2) requestAnimationFrame(() => window.scrollTo(0, scrollY));
+    }
     RouteProgress.done();
   }
   function start() {
     const st = history.state;
     idx = st && Number.isInteger(st.ctIdx) ? st.ctIdx : 0;
+    const y0 = st && Number.isFinite(st.ctY) ? st.ctY : undefined; // a reload or a return from another site
+    try { history.scrollRestoration = 'manual'; } catch (e) { /* older browsers restore by themselves */ }
     if (pathMode) {
       // An old-style URL (/#/mogelijkheden) becomes the clean one.
       if (location.hash.startsWith('#/')) history.replaceState(stamp(idx), '', href(location.hash.slice(1)));
@@ -2812,8 +2894,11 @@ const Router = (() => {
       window.addEventListener('hashchange', onTraverse);
     }
     window.addEventListener('click', onLinkClick);
+    window.addEventListener('scroll', () => { if (!deciding) scrollAt.set(idx, window.scrollY); }, { passive: true });
+    // Keep the position for a reload or a later return to this entry from another page.
+    window.addEventListener('pagehide', () => { try { history.replaceState({ ...(history.state || {}), ctY: window.scrollY }, ''); } catch (e) { /* ignore */ } });
     lastKey = urlKey();
-    render();
+    render({ scrollY: y0 });
   }
   /** The page and params that a path would render (used by Beheer → SEO and the sitemap). */
   function resolve(path) {
@@ -2825,7 +2910,11 @@ const Router = (() => {
     get current() { return current; },
     get pathMode() { return pathMode; },
     get base() { return BASE; },
-    setGuard(fn) { guard = fn; },
+    /** True while the open form reports unsaved changes. */
+    hasUnsaved() { return !!(guard && guard()); },
+    /** Asks about unsaved changes (if any) before the page is rebuilt; false when the user stays. */
+    confirmLeave() { return deciding ? Promise.resolve(false) : passGuard(); },
+    setGuard,
   };
 })();
 
@@ -2833,6 +2922,7 @@ const Router = (() => {
 const DAY_NAMES = {
   maandag: 'Monday', dinsdag: 'Tuesday', woensdag: 'Wednesday', donderdag: 'Thursday', vrijdag: 'Friday', zaterdag: 'Saturday', zondag: 'Sunday',
   ma: 'Monday', di: 'Tuesday', wo: 'Wednesday', do: 'Thursday', vr: 'Friday', za: 'Saturday', zo: 'Sunday',
+  maa: 'Monday', din: 'Tuesday', woe: 'Wednesday', don: 'Thursday', vri: 'Friday', vrij: 'Friday', zat: 'Saturday', zon: 'Sunday',
 };
 const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const Seo = {
@@ -2908,19 +2998,39 @@ const Seo = {
     this.applyOrganization();
     document.documentElement.dataset.route = path;
   },
-  /** Opening hours rows ("Dinsdag – vrijdag", "09:30 – 17:00") → schema.org; rows that cannot be read are left out. */
+  /** The days of an opening-hours row ("Dinsdag – vrijdag", "Ma t/m vr, za", "Maandag en woensdag")
+      in week order, or null when the text cannot be read with certainty. Remarks in brackets are ignored. */
+  openingDays(text) {
+    const s = String(text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/\([^)]*\)/g, ' ')
+      .replace(/\btot\s+en\s+met\b|\bt\s*\/\s*m\b|\bt\.\s*m\b\.?|\btm\b|\btot\b|[–—-]/g, ' ~ ')
+      .replace(/\ben\b|[,/&+;]/g, ' , ')
+      .replace(/\./g, ' ');
+    const groups = s.split(',').map((g) => g.trim().split(/\s+/).filter(Boolean)).filter((g) => g.length);
+    if (!groups.length) return null;
+    const days = new Set();
+    for (const g of groups) {
+      const known = (w) => Object.prototype.hasOwnProperty.call(DAY_NAMES, w);
+      if (g.length === 1 && known(g[0])) { days.add(DAY_NAMES[g[0]]); continue; }
+      if (g.length !== 3 || g[1] !== '~' || !known(g[0]) || !known(g[2])) return null; // not "dag" or "dag – dag"
+      const a = DAY_ORDER.indexOf(DAY_NAMES[g[0]]); const b = DAY_ORDER.indexOf(DAY_NAMES[g[2]]);
+      for (let i = a, n = 0; n < 7; i = (i + 1) % 7, n += 1) { days.add(DAY_ORDER[i]); if (i === b) break; } // "za – ma" wraps round the week
+    }
+    return DAY_ORDER.filter((d) => days.has(d));
+  },
+  /** Opening hours rows ("Dinsdag – vrijdag", "09:30 – 17:00") → schema.org; rows that cannot be read are left out.
+      Split hours ("09:00 – 12:00, 13:00 – 17:00") become one entry per period. */
   openingHours(rows) {
     const out = [];
     (rows || []).forEach(([days, time]) => {
-      const t = String(time).trim().match(/^(\d{1,2})[:.](\d{2})\s*(?:[–—-]|tot)\s*(\d{1,2})[:.](\d{2})(?:\s*uur)?$/i);
-      if (!t) return;
-      const names = normText(String(days).replace(/t\/m/gi, ' tm ')).split(/\s+/).filter((d) => DAY_NAMES[d]);
-      const range = /[–—-]|t\/m|\btot\b/i.test(String(days)) && names.length === 2;
-      let list = names.map((d) => DAY_NAMES[d]);
-      if (range) { const a = DAY_ORDER.indexOf(list[0]); const b = DAY_ORDER.indexOf(list[1]); list = a <= b ? DAY_ORDER.slice(a, b + 1) : []; }
-      if (!list.length) return;
+      const list = this.openingDays(days);
+      if (!list || !list.length) return;
+      const parts = String(time || '').split(/,|\ben\b|&/i).map((x) => x.trim()).filter(Boolean);
+      const periods = parts.map((p) => p.match(/^(\d{1,2})[:.](\d{2})\s*(?:[–—-]|tot)\s*(\d{1,2})[:.](\d{2})(?:\s*uur)?$/i));
+      const okTime = (h, m) => Number(h) <= 24 && Number(m) <= 59 && !(Number(h) === 24 && Number(m) > 0);
+      if (!periods.length || periods.some((t) => !t || !okTime(t[1], t[2]) || !okTime(t[3], t[4]))) return;
       const pad = (h, m) => `${String(h).padStart(2, '0')}:${m}`;
-      out.push({ '@type': 'OpeningHoursSpecification', dayOfWeek: list, opens: pad(t[1], t[2]), closes: pad(t[3], t[4]) });
+      periods.forEach((t) => out.push({ '@type': 'OpeningHoursSpecification', dayOfWeek: list, opens: pad(t[1], t[2]), closes: pad(t[3], t[4]) }));
     });
     return out;
   },
@@ -4146,6 +4256,8 @@ TEXT_GROUPS.forEach(([gid, , rows]) => rows.forEach(([key, label, def, opts = {}
 
 /* ---------- Text formatting ---------- */
 const SAFE_HREF = /^(#\/(?![/\\])|\/(?![/\\])|https:\/\/|http:\/\/|mailto:|tel:)/i;
+/* Browsers drop tabs and line breaks inside an address, so "/<tab>/host" would lead off-site: refused. */
+const CONTROL_CHARS = /[\u0000-\u001F\u007F]/;
 /** Plain text → safe HTML: escapes, then **bold**, [label](address) and line breaks.
     noLinks: for texts inside a button or link (a link cannot contain another link). */
 function fmtText(s, noLinks = false) {
@@ -4153,7 +4265,7 @@ function fmtText(s, noLinks = false) {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, (m, label, url) => {
       const raw = url.replace(/&amp;/g, '&');
-      if (noLinks || !SAFE_HREF.test(raw)) return label;
+      if (noLinks || !SAFE_HREF.test(raw) || CONTROL_CHARS.test(raw)) return label;
       const href = raw.startsWith('/') ? `#${raw}` : raw;
       const ext = /^https?:/i.test(href);
       return `<a class="text-link" href="${attr(href)}"${ext ? ' target="_blank" rel="noopener"' : ''}>${label}</a>`;
@@ -4183,7 +4295,8 @@ function parseRich(src) {
 function richSource(blocks) {
   return (blocks || []).map(([k, c]) => (k === 'h' ? `## ${c}` : k === 'ul' ? c.map((li) => `- ${li}`).join('\n') : c)).join('\n\n');
 }
-const richBlockHtml = ([t, c]) => (t === 'h' ? `<h2>${esc(c)}</h2>` : t === 'ul' ? `<ul>${c.map((li) => `<li>${esc(li)}</li>`).join('')}</ul>` : `<p>${esc(c)}</p>`);
+// Paragraphs and list items take **bold** and [links](/pagina) too; headings are plain text.
+const richBlockHtml = ([t, c]) => (t === 'h' ? `<h2>${esc(c)}</h2>` : t === 'ul' ? `<ul>${c.map((li) => `<li>${fmtText(li)}</li>`).join('')}</ul>` : `<p>${fmtText(c)}</p>`);
 
 /* ---------- Content store ---------- */
 const Content = (() => {
@@ -4191,9 +4304,45 @@ const Content = (() => {
   const strList = (v, max = 60, len = 600) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()).slice(0, max).map((x) => x.trim().slice(0, len)) : []);
   const isSlug = (s) => typeof s === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s) && s.length <= 120;
   const isImageRef = (s) => typeof s === 'string' && (/^[a-z0-9_]+$/i.test(s) || /^(img:[a-z0-9_]+|https:\/\/[^\s"'<>]+|data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+)$/i.test(s));
-  const safeHref = (s) => (typeof s === 'string' && SAFE_HREF.test(s.trim()) ? (s.trim().startsWith('/') ? `#${s.trim()}` : s.trim()) : '');
+  const safeHref = (s) => {
+    if (typeof s !== 'string') return '';
+    const v = s.trim();
+    if (!SAFE_HREF.test(v) || CONTROL_CHARS.test(v)) return '';
+    return v.startsWith('/') ? `#${v}` : v;
+  };
   const httpsUrl = (s) => (typeof s === 'string' && /^https:\/\/[^\s"'<>]+$/i.test(s.trim()) ? s.trim() : '');
   const plainObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o);
+  /** The website address as "https://host" or "https://host/sub/map" (lower-case host, no slash at the end),
+      or '' when it cannot be used: no ?, # or login, and a sub-path of plain letters, digits, - and _ only
+      (it also becomes a folder name in the published zip). */
+  function siteAddress(v) {
+    if (typeof v !== 'string' || !v.trim() || /[\s"'<>\\]/.test(v.trim())) return '';
+    let u;
+    try { u = new URL(v.trim()); } catch (e) { return ''; }
+    if (!/^https?:$/.test(u.protocol) || !u.hostname || u.username || u.password || u.search || u.hash || /[?#]/.test(v)) return '';
+    const path = u.pathname.replace(/\/+$/, '');
+    // Folder names only (no file names such as index.html), and not "admin", which is the address of Beheer.
+    if (path && (!/^(\/[A-Za-z0-9_-]+)+$/.test(path) || /(^|\/)admin(\/|$)/i.test(path))) return '';
+    return `${u.origin}${path}`;
+  }
+  const ownKey = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+  /** An image of a product or project: a known illustration or embedded photo, a web address or an
+      uploaded photo. (Only called after start-up: ART_SHAPES is defined further on.) */
+  function isMediaRef(s) {
+    if (typeof s !== 'string' || s.length > 3000000) return false;
+    let m = s.match(/^art:([a-z]{1,30}):[0-9]$/i);
+    if (m) return ownKey(ART_SHAPES, m[1]);
+    m = s.match(/^img:([a-z0-9_]{1,60})$/i);
+    if (m) return ownKey(window.CT_IMAGES, m[1]);
+    return /^https?:\/\/[^\s"'<>]+$/i.test(s) || /^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(s);
+  }
+  /* Webshop limits, shared by the forms in Beheer and the cleaning of published data, so whatever
+     a form accepts is published unchanged. */
+  const LIMITS = {
+    productName: 160, productShort: 600, productDescription: 12000, productNote: 600, productImages: 12,
+    projectTitle: 160, projectVehicle: 120, projectTag: 60, projectShort: 400, projectBody: 6000, projectImages: 12,
+    shipLabel: 80, shipDescription: 200,
+  };
 
   /* Defaults, captured before anything is applied. */
   const P = {
@@ -4217,6 +4366,7 @@ const Content = (() => {
   const PR = byKey(P.retrofits, 'slug');
 
   const OPTIONAL_COMPANY = ['facebook', 'kvk', 'vat', 'whatsappDisplay'];
+  const URL_COMPANY = ['mapsUrl', 'website', 'facebook'];
   const COMPANY_FIELDS = ['name', 'street', 'postal', 'city', 'phoneDisplay', 'phoneHref', 'whatsapp', 'whatsappDisplay', 'email', 'mapsUrl', 'website', 'facebook', 'kvk', 'vat'];
   const DISPLAY_DEFAULTS = {
     sections: { 'home.brands': true, 'home.finder': true, 'home.categories': true, 'home.services': true, 'home.tech': true, 'home.projects': true, 'home.reviews': true, 'home.shop': true, cta: true, recent: true },
@@ -4239,7 +4389,7 @@ const Content = (() => {
     const out = {};
     COMPANY_FIELDS.forEach((k) => {
       if (typeof c[k] !== 'string') return;
-      if (c[k].trim()) out[k] = c[k].trim().slice(0, 300);
+      if (c[k].trim()) out[k] = c[k].trim().slice(0, URL_COMPANY.includes(k) ? 2000 : 300); // route links can be long
       else if (OPTIONAL_COMPANY.includes(k)) out[k] = ''; // optional fields may be cleared
     });
     if (out.phoneHref && !/^tel:\+?[0-9]{6,16}$/.test(out.phoneHref)) delete out.phoneHref;
@@ -4366,7 +4516,7 @@ const Content = (() => {
     if (!plainObj(s)) return d;
     if (Array.isArray(s.shipping)) {
       const ship = s.shipping.filter((m) => plainObj(m) && typeof m.id === 'string' && str(m.label).trim() && Number.isInteger(m.price) && m.price >= 0)
-        .map((m) => ({ id: m.id, label: m.label.slice(0, 80), description: str(m.description, 200), price: m.price, enabled: m.enabled !== false, requiresAddress: m.requiresAddress === true }));
+        .map((m) => ({ id: m.id, label: m.label.slice(0, LIMITS.shipLabel), description: str(m.description, LIMITS.shipDescription), price: m.price, enabled: m.enabled !== false, requiresAddress: m.requiresAddress === true }));
       if (ship.some((m) => m.enabled)) d.shipping = ship;
     }
     if (plainObj(s.vat)) {
@@ -4384,8 +4534,8 @@ const Content = (() => {
   function cleanProduct(p) {
     const c = plainObj(p.compatibility) ? p.compatibility : {};
     return {
-      ...PRODUCT_BASE, id: p.id, slug: p.slug, name: p.name.trim().slice(0, 160),
-      sku: str(p.sku, 40), shortDescription: str(p.shortDescription, 600), description: str(p.description, 12000),
+      ...PRODUCT_BASE, id: p.id, slug: p.slug, name: p.name.trim().slice(0, LIMITS.productName),
+      sku: str(p.sku, 40), shortDescription: str(p.shortDescription, LIMITS.productShort), description: str(p.description, LIMITS.productDescription),
       category: str(p.category, 80), brand: BRAND[p.brand] ? p.brand : '', model: MODEL[p.model] ? p.model : '',
       regularPrice: p.regularPrice,
       discountType: ['none', 'sale', 'percent', 'fixed'].includes(p.discountType) ? p.discountType : 'none',
@@ -4394,20 +4544,20 @@ const Content = (() => {
       trackStock: bool(p.trackStock, true), stock: intOr(p.stock, 0),
       active: bool(p.active, true), featured: bool(p.featured, false), archived: bool(p.archived, false), isDemo: bool(p.isDemo, false),
       type: PRODUCT_TYPES[p.type] ? p.type : 'PHYSICAL_PRODUCT', installationIncluded: bool(p.installationIncluded, false),
-      images: strList(p.images, 12, 3000000),
-      compatibility: { brands: strList(c.brands, 8, 40).filter((b) => BRAND[b]), models: strList(c.models, 80, 40).filter((m) => MODEL[m]), note: str(c.note, 600) },
+      images: (Array.isArray(p.images) ? p.images : []).filter(isMediaRef).slice(0, LIMITS.productImages),
+      compatibility: { brands: strList(c.brands, 8, 40).filter((b) => BRAND[b]), models: strList(c.models, 80, 40).filter((m) => MODEL[m]), note: str(c.note, LIMITS.productNote) },
       createdAt: str(p.createdAt, 40) || null, updatedAt: str(p.updatedAt, 40) || null,
     };
   }
   /** A portfolio project in the shape the project pages use. */
   function cleanProject(p) {
     return {
-      id: p.id, slug: p.slug, title: p.title.trim().slice(0, 160), vehicle: str(p.vehicle, 120), tag: str(p.tag, 60),
-      short: str(p.short, 400), body: str(p.body, 6000), type: str(p.type, 60), active: p.active !== false,
-      image: str(p.image, 3000000), before: str(p.before, 3000000), after: str(p.after, 3000000),
+      id: p.id, slug: p.slug, title: p.title.trim().slice(0, LIMITS.projectTitle), vehicle: str(p.vehicle, LIMITS.projectVehicle), tag: str(p.tag, LIMITS.projectTag),
+      short: str(p.short, LIMITS.projectShort), body: str(p.body, LIMITS.projectBody), type: str(p.type, 60), active: p.active !== false,
+      image: isMediaRef(p.image) ? p.image : '', before: isMediaRef(p.before) ? p.before : '', after: isMediaRef(p.after) ? p.after : '',
       brands: strList(p.brands, 8, 40).filter((b) => BRAND[b]), models: strList(p.models, 40, 40).filter((m) => MODEL[m]),
       related: strList(p.related, 10, 120), services: strList(p.services, 10, 120),
-      ...(Array.isArray(p.gallery) ? { gallery: strList(p.gallery, 12, 3000000) } : {}),
+      ...(Array.isArray(p.gallery) ? { gallery: p.gallery.filter(isMediaRef).slice(0, LIMITS.projectImages) } : {}),
     };
   }
   function cleanShop(sh) {
@@ -4431,8 +4581,18 @@ const Content = (() => {
   }
   const published = readPublished();
   const pubStamp = typeof published.stamp === 'string' ? published.stamp : '';
-  let pubShop;
-  try { pubShop = cleanShop(published.shop); } catch (e) { pubShop = null; console.error(e); }
+  /* Which publication was opened last in this browser. When another tab opens a different one (for
+     example the new version right after uploading it), this tab is outdated: it keeps its own view,
+     and saving and publishing stop until it is reloaded. Written before the draft is read below, so
+     other tabs hear about it before any change to the draft. */
+  let stale = false;
+  Storage.set('openStamp', pubStamp);
+  // Cleaned on first use (Repo.init), when every part of the page script is ready.
+  let pubShop; let pubShopRead = false;
+  function readPubShop() {
+    if (!pubShopRead) { pubShopRead = true; try { pubShop = cleanShop(published.shop); } catch (e) { pubShop = null; console.error(e); } }
+    return pubShop;
+  }
   /** The content of a bundle, normalised so that saving a screen without changes never counts as a change:
       empty containers, values equal to the defaults and lists equal to the built-in lists are left out. */
   function contentOf(b) {
@@ -4450,7 +4610,12 @@ const Content = (() => {
     };
     try {
       ['texts', 'company', 'categories', 'brands'].forEach((k) => { if (isEmpty(o[k])) delete o[k]; });
-      if (plainObj(o.retrofits)) o.retrofits = prune(o.retrofits);
+      if (plainObj(o.retrofits)) {
+        // Hidden options are a set: the order in which they were hidden is no change.
+        const r = { ...o.retrofits };
+        if (Array.isArray(r.hide)) r.hide = uniq(r.hide.filter((x) => typeof x === 'string')).sort();
+        o.retrofits = prune(r);
+      }
       if (plainObj(o.seo)) o.seo = prune(o.seo, SEO_DEFAULTS);
       if (plainObj(o.display)) o.display = prune(o.display, DISPLAY_DEFAULTS);
       const services = (list) => list.map(cleanService).filter(Boolean).map((s) => ({ ...s, topic: 'topic' in s ? s.topic : (P.serviceTopic[s.slug] || '') }));
@@ -4488,7 +4653,7 @@ const Content = (() => {
   function section(name, fn) { try { fn(); } catch (e) { issues.push(name); console.error(`Inhoud "${name}" overgeslagen`, e); } }
   function resetMap(map, entries) { Object.keys(map).forEach((k) => delete map[k]); entries.forEach(([k, v]) => { map[k] = v; }); }
 
-  function apply({ initial = false } = {}) {
+  function apply({ initial = false, external = false } = {}) {
     const b = active();
     issues.length = 0;
     section('texts', () => {
@@ -4585,7 +4750,7 @@ const Content = (() => {
     section('seo', () => {
       const s = plainObj(b.seo) ? b.seo : {};
       seo = deepClone(SEO_DEFAULTS);
-      if (typeof s.siteUrl === 'string') seo.siteUrl = /^https?:\/\/[^\s/"'<>]+(\/[^\s"'<>]*)?$/i.test(s.siteUrl.trim()) ? s.siteUrl.trim().replace(/\/+$/, '') : '';
+      if (typeof s.siteUrl === 'string') seo.siteUrl = siteAddress(s.siteUrl);
       if (typeof s.suffix === 'string') seo.suffix = s.suffix.slice(0, 60);
       ['homeTitle', 'description', 'ogTitle', 'ogDescription'].forEach((k) => { if (str(s[k]).trim()) seo[k] = s[k].trim().slice(0, 400); });
       seo.noindex = s.noindex === true;
@@ -4602,7 +4767,7 @@ const Content = (() => {
     });
     if (!initial) {
       Search.invalidate();
-      Bus.emit('content:changed');
+      Bus.emit('content:changed', { external });
     }
   }
 
@@ -4619,6 +4784,7 @@ const Content = (() => {
   /** Changes the editor's working copy: fn receives a mutable copy of the active bundle.
       Returns false (and changes nothing) while a draft from an older publication awaits a decision. */
   function update(fn) {
+    if (stale) return false;
     syncDraft(); // another tab may have saved meanwhile: build on the latest stored draft
     if (parked) { apply(); return false; }
     const d = working();
@@ -4635,8 +4801,13 @@ const Content = (() => {
   function resumeParked() { syncDraft(); if (!draft) { apply(); return; } draft.base = pubStamp; parked = false; Storage.set('siteDraft', draft); apply(); }
   // A draft saved in another tab: use it here too, so open screens and the site show the latest version.
   window.addEventListener('storage', (e) => {
+    if (e.key === `${Storage.PREFIX}openStamp`) {
+      if (!stale && Storage.get('openStamp', pubStamp) !== pubStamp) { stale = true; Bus.emit('content:stale'); }
+      return;
+    }
     if (e.key !== null && e.key !== `${Storage.PREFIX}siteDraft` && e.key !== `${Storage.PREFIX}editor`) return;
-    syncDraft(); apply();
+    if (stale) return; // an outdated tab keeps showing what it has until it is reloaded
+    syncDraft(); apply({ external: true });
   });
   function hasDraftChanges() { return !!draft && !parked && stableStringify(contentOf(draft)) !== stableStringify(contentOf(published)); }
 
@@ -4652,11 +4823,14 @@ const Content = (() => {
 
   return {
     TEXT, P, PR, DISPLAY_DEFAULTS, SEO_DEFAULTS, COMPANY_FIELDS, buildAdded,
-    apply, update, working, discardDraft, resumeParked, hasDraftChanges, changes, rawText, retrofitOk, cleanRetrofitFields, isSlug, isImageRef, safeHref, httpsUrl,
+    apply, update, working, discardDraft, resumeParked, hasDraftChanges, changes, rawText, retrofitOk, cleanRetrofitFields, isSlug, isImageRef, isMediaRef, safeHref, httpsUrl,
+    LIMITS, cleanProduct, siteAddress,
     get issues() { return issues.slice(); },
     get published() { return published; },
     get pubStamp() { return pubStamp; },
     get parked() { return parked; },
+    /** True when another tab opened a different publication: this tab must be reloaded before saving. */
+    get stale() { return stale; },
     get draft() { return draft; },
     isEditor,
     texts() { return texts; },
@@ -4666,7 +4840,7 @@ const Content = (() => {
     shopOn() { return display.shop !== false; },
     emptyBundle,
     /** Published webshop data (validated), or null when nothing was published. */
-    publishedShop() { return pubShop ? deepClone(pubShop) : null; },
+    publishedShop() { const sh = readPubShop(); return sh ? deepClone(sh) : null; },
     cleanShop,
   };
 })();
@@ -4703,7 +4877,24 @@ const Repo = (() => {
     return cache[key];
   };
   const SHOP_KEYS = ['products', 'shopCategories', 'projects', 'settings'];
+  let ver = 0; // changes whenever stored data may have changed
+  let dirtyMemo = null;
+  /* Unpublished webshop changes are found by comparing the data with its state when it was last loaded
+     (the publication, or the demo data when nothing is published): saving without changes, or changing
+     something back, is no change. Kept as a short fingerprint, not as a second copy of the data. */
+  function fingerprint(sh) {
+    const clean = Content.cleanShop(sh);
+    if (!clean) return 'x';
+    clean.products = clean.products.map((p) => { const q = { ...p }; delete q.createdAt; delete q.updatedAt; return q; });
+    const str = stableStringify(clean);
+    let h1 = 0xdeadbeef; let h2 = 0x41c6ce57;
+    for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return `${str.length}:${(h2 >>> 0).toString(36)}${(h1 >>> 0).toString(36)}`;
+  }
   const write = (key, value) => {
+    ver += 1;
     cache[key] = value; Storage.set(key, value);
     // Webshop changes made in Beheer stay unpublished until the next "Publiceren".
     if (SHOP_KEYS.includes(key) && document.body.classList.contains('is-admin')) Storage.set('shopDirty', true);
@@ -4718,8 +4909,9 @@ const Repo = (() => {
       else if (Storage.get('pubStamp', '') !== Content.pubStamp) {
         // A new publication: visitors get it straight away; an editor's unpublished changes are kept until they choose.
         const pub = Content.publishedShop();
+        // Compared in the published shape, so data that only differs in form (not in content) is not a conflict.
         const keep = Content.isEditor() && Storage.get('shopDirty', false) === true
-          && (!pub || stableStringify(this.shopSnapshot()) !== stableStringify(pub));
+          && (!pub || stableStringify(Content.cleanShop(this.shopSnapshot())) !== stableStringify(pub));
         if (keep) this.shopParked = true; else this.loadPublishedShop({ silent: true });
       }
       window.addEventListener('storage', (e) => {
@@ -4728,7 +4920,9 @@ const Repo = (() => {
         Bus.emit('data:changed', { external: true });
       });
     },
-    invalidate() { Object.keys(cache).forEach((k) => delete cache[k]); Search.invalidate(); },
+    invalidate() { ver += 1; Object.keys(cache).forEach((k) => delete cache[k]); Search.invalidate(); },
+    /** Remembers `sh` (default: the current webshop data) as the state without unpublished changes. */
+    markShopBase(sh = this.shopSnapshot()) { if (sh) Storage.set('shopBase', fingerprint(sh)); else Storage.remove('shopBase'); ver += 1; },
     /** Seeds all webshop data: from the published version, or from the built-in demo data (source 'defaults').
         keepOrders: leave the orders and the order counter as they are. */
     reset({ silent = false, source = 'published', keepOrders = false } = {}) {
@@ -4744,6 +4938,8 @@ const Repo = (() => {
       Storage.set('schema', SCHEMA);
       Storage.set('pubStamp', Content.pubStamp);
       Storage.set('shopDirty', source === 'defaults' && !!Content.publishedShop());
+      // The demo data replacing a publication is an unpublished change; otherwise this is the clean state.
+      this.markShopBase(source === 'defaults' && Content.publishedShop() ? Content.publishedShop() : this.shopSnapshot());
       this.shopParked = false;
       Search.invalidate();
       if (!silent) Bus.emit('data:changed', {});
@@ -4758,6 +4954,7 @@ const Repo = (() => {
       write('settings', { ...(pub ? pub.settings : deepClone(DEFAULT_SETTINGS)), orderSeq: seq });
       Storage.set('pubStamp', Content.pubStamp);
       Storage.set('shopDirty', false);
+      this.markShopBase();
       this.shopParked = false;
       Search.invalidate();
       if (!silent) Bus.emit('data:changed', {});
@@ -4767,7 +4964,13 @@ const Repo = (() => {
       const s = { ...this.settings() }; delete s.orderSeq;
       return { products: this.products(), shopCategories: this.shopCategories(), projects: this.projects(), settings: s };
     },
-    shopDirty() { return Storage.get('shopDirty', false) === true; },
+    shopDirty() {
+      if (Storage.get('shopDirty', false) !== true) return false;
+      const base = Storage.get('shopBase', null);
+      if (typeof base !== 'string') return true; // stored by an older version: trust the flag
+      if (!dirtyMemo || dirtyMemo.ver !== ver || dirtyMemo.base !== base) dirtyMemo = { ver, base, value: fingerprint(this.shopSnapshot()) !== base };
+      return dirtyMemo.value;
+    },
     // Products
     products() { return read('products', []); },
     product(id) { return this.products().find((p) => p.id === id) || null; },
@@ -5690,7 +5893,8 @@ const ART_SHAPES = {
 };
 const Art = {
   svg(kind = 'box', variant = 0) {
-    const shape = ART_SHAPES[kind] || ART_SHAPES.box;
+    // Own keys only: a reference such as "art:constructor:0" must fall back, not reach Object.prototype.
+    const shape = Object.prototype.hasOwnProperty.call(ART_SHAPES, kind) ? ART_SHAPES[kind] : ART_SHAPES.box;
     const v = Number(variant) || 0;
     const dark = v === 1;
     const bg = dark ? '#1C2025' : (v === 2 ? '#EDF0F3' : '#F3F5F7');
@@ -5733,7 +5937,10 @@ const Art = {
 const Media = {
   src(ref) {
     if (!ref || typeof ref !== 'string') return null;
-    if (ref.startsWith('img:')) return (window.CT_IMAGES || {})[ref.slice(4)] || null;
+    if (ref.startsWith('img:')) {
+      const imgs = window.CT_IMAGES || {}; const k = ref.slice(4);
+      return Object.prototype.hasOwnProperty.call(imgs, k) && typeof imgs[k] === 'string' ? imgs[k] : null;
+    }
     if (/^(https?:|data:image\/)/i.test(ref)) return ref;
     return null;
   },
@@ -6556,7 +6763,7 @@ const SearchOverlay = {
           const o = e.target.closest('[role="option"]'); if (!o) return;
           const idx = $$('[role="option"]', list).indexOf(o); if (idx !== active) setActive(idx);
         });
-        all.addEventListener('click', () => close());
+        all.addEventListener('click', (e) => { if (plainClick(e)) close(); }); // a new-tab click keeps the search open
         run();
       },
     });
@@ -6643,7 +6850,7 @@ const CartUI = {
     requestAnimationFrame(() => el.classList.add('is-open'));
     const hide = () => el.classList.remove('is-open');
     $('[data-mc-close]', el).onclick = hide;
-    $$('a', el).forEach((a) => { a.onclick = hide; });
+    $$('a', el).forEach((a) => { a.onclick = (e) => { if (plainClick(e)) hide(); }; });
     clearTimeout(this.miniTimer);
     this.miniTimer = setTimeout(hide, 5000);
     el.onmouseenter = () => clearTimeout(this.miniTimer);
@@ -7913,7 +8120,7 @@ Pages.shop = {
             <h2 class="sr-only">Alle producten</h2>
             <div class="shop-grid" data-results></div>
           </div>
-          ${(() => { const r = Recent.list().filter((e) => e.type === 'product'); return r.length ? `<div class="shop-section"><div class="shop-section-head"><h2>Recent bekeken</h2></div><div class="mini-list">${r.slice(0, 4).map((e) => UI.miniItem(e)).join('')}</div></div>` : ''; })()}
+          ${(() => { const r = Content.section('recent') ? Recent.list().filter((e) => e.type === 'product') : []; return r.length ? `<div class="shop-section"><div class="shop-section-head"><h2>Recent bekeken</h2></div><div class="mini-list">${r.slice(0, 4).map((e) => UI.miniItem(e)).join('')}</div></div>` : ''; })()}
         </div>
       </div></section>`;
   },
@@ -8435,7 +8642,7 @@ function adminShell(active, title, content, { actions = '' } = {}) {
         <h1>${title}</h1>
         <div class="at-right">${actions}<span class="hide-sm">${SiteStatus.topPill()}</span><span class="pill pill--warn hide-sm">Demo · lokaal</span><a class="btn btn--light btn--sm hide-sm" href="#/">${icon('external')} Website</a><button class="btn btn--ghost btn--sm" type="button" data-admin-logout aria-label="Uitloggen">${icon('logout')}<span class="hide-sm">Uitloggen</span></button></div>
       </header>
-      <div class="admin-content">${SiteStatus.parkedNotice()}${content}</div>
+      <div class="admin-content"><div data-site-notice>${SiteStatus.parkedNotice()}</div>${content}</div>
     </div>
   </div>`;
 }
@@ -8498,14 +8705,28 @@ function mountLogin(root) {
 /* ---------- Validation ---------- */
 function validateProduct(p, list = Repo.products()) {
   const e = {};
-  if (!String(p.name || '').trim()) e.name = 'Vul een productnaam in.';
+  const L = Content.LIMITS;
+  const txt = (v) => typeof v === 'string';
+  if (typeof p.id !== 'string' || !p.id || p.id.length > 80) e.id = 'Dit product heeft geen geldige id.';
+  if (!txt(p.name) || !p.name.trim()) e.name = 'Vul een productnaam in.';
   else if (p.name.length > 120) e.name = 'Gebruik maximaal 120 tekens.';
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p.slug || '')) e.slug = 'Gebruik alleen kleine letters, cijfers en koppeltekens.';
+  if (!txt(p.slug) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p.slug)) e.slug = 'Gebruik alleen kleine letters, cijfers en koppeltekens.';
+  else if (!Content.isSlug(p.slug)) e.slug = 'Gebruik maximaal 120 tekens.';
   else if (list.some((x) => x.slug === p.slug && x.id !== p.id)) e.slug = 'Deze slug is al in gebruik.';
-  if (!String(p.sku || '').trim()) e.sku = 'Vul een artikelnummer (SKU) in.';
+  if (!txt(p.sku) || !p.sku.trim()) e.sku = 'Vul een artikelnummer (SKU) in.';
   else if (!/^[A-Za-z0-9._-]{2,40}$/.test(p.sku)) e.sku = 'Gebruik 2–40 letters, cijfers, punten of koppeltekens.';
-  else if (list.some((x) => x.sku.toLowerCase() === p.sku.toLowerCase() && x.id !== p.id)) e.sku = 'Dit artikelnummer is al in gebruik.';
-  if (!String(p.shortDescription || '').trim()) e.shortDescription = 'Vul een korte omschrijving in.';
+  else if (list.some((x) => typeof x.sku === 'string' && x.sku.toLowerCase() === p.sku.toLowerCase() && x.id !== p.id)) e.sku = 'Dit artikelnummer is al in gebruik.';
+  if (!txt(p.shortDescription) || !p.shortDescription.trim()) e.shortDescription = 'Vul een korte omschrijving in.';
+  else if (p.shortDescription.length > 200) e.shortDescription = 'Gebruik maximaal 200 tekens.';
+  if (!txt(p.description)) e.description = 'Ongeldige omschrijving.';
+  else if (p.description.length > L.productDescription) e.description = `Gebruik maximaal ${L.productDescription.toLocaleString('nl-NL')} tekens (nu ${p.description.length.toLocaleString('nl-NL')}).`;
+  const c = p.compatibility;
+  if (!c || typeof c !== 'object' || !Array.isArray(c.brands) || !Array.isArray(c.models) || !txt(c.note)
+    || c.brands.some((b) => !BRAND[b]) || c.models.some((m) => !MODEL[m])) e.compatibility = 'Ongeldige compatibiliteit (merken, modellen of informatie).';
+  else if (c.note.length > L.productNote) e.cnote = `Gebruik maximaal ${L.productNote} tekens (nu ${c.note.length}).`;
+  if (p.brand && !BRAND[p.brand]) e.brand = 'Onbekend merk.';
+  if (p.model && !MODEL[p.model]) e.model = 'Onbekend model.';
+  ['active', 'featured', 'archived', 'trackStock', 'isDemo', 'installationIncluded'].forEach((k) => { if (typeof p[k] !== 'boolean') e[k] = 'Ongeldige waarde (ja/nee verwacht).'; });
   if (!isInt(p.regularPrice) || p.regularPrice < 1) e.regularPrice = 'Vul een geldige prijs in, bijvoorbeeld 249,00.';
   else if (p.regularPrice > 9999999) e.regularPrice = 'Deze prijs is te hoog.';
   if (p.discountType === 'sale') {
@@ -8523,11 +8744,14 @@ function validateProduct(p, list = Repo.products()) {
   if (p.startDate && p.endDate && p.endDate < p.startDate) e.endDate = 'De einddatum ligt vóór de startdatum.';
   if (p.trackStock && (!isInt(p.stock) || p.stock < 0 || p.stock > 99999)) e.stock = 'Vul een geldige voorraad in (0 of meer).';
   if (!Repo.shopCategory(p.category)) e.category = 'Kies een categorie.';
-  if ((p.images || []).some((i) => !/^(art:|img:|https?:\/\/|data:image\/(png|jpeg|webp);base64,)/i.test(i))) e.images = 'Een afbeelding heeft een ongeldig adres.';
+  if (!Array.isArray(p.images) || p.images.some((i) => !Content.isMediaRef(i))) e.images = 'Een afbeelding heeft een ongeldig adres.';
+  else if (p.images.length > L.productImages) e.images = `Gebruik maximaal ${L.productImages} afbeeldingen.`;
   if (!Object.keys(PRODUCT_TYPES).includes(p.type)) e.type = 'Ongeldig producttype.';
   return e;
 }
-const ADMIN_FIELD_LABELS = { name: 'Productnaam', slug: 'Slug', sku: 'SKU', shortDescription: 'Korte omschrijving', regularPrice: 'Normale prijs', salePrice: 'Actieprijs', discountValue: 'Korting', startDate: 'Startdatum', endDate: 'Einddatum', stock: 'Voorraad', category: 'Categorie', images: 'Afbeeldingen', type: 'Soort', discountType: 'Kortingstype' };
+const ADMIN_FIELD_LABELS = { name: 'Productnaam', slug: 'Slug', sku: 'SKU', shortDescription: 'Korte omschrijving', description: 'Volledige omschrijving', regularPrice: 'Normale prijs', salePrice: 'Actieprijs', discountValue: 'Korting', startDate: 'Startdatum', endDate: 'Einddatum', stock: 'Voorraad', category: 'Categorie', images: 'Afbeeldingen', type: 'Soort', discountType: 'Kortingstype', compatibility: 'Compatibiliteit', cnote: 'Compatibiliteitsinformatie', brand: 'Merk', model: 'Model', id: 'Id', active: 'Actief', featured: 'Uitgelicht', archived: 'Gearchiveerd', trackStock: 'Voorraad bijhouden', isDemo: 'Demoproduct', installationIncluded: 'Inbouw inbegrepen' };
+/** "Label: message" of the first problem (for messages outside the full product form). */
+const firstProductError = (e) => { const k = Object.keys(e)[0]; return k ? `${ADMIN_FIELD_LABELS[k] || k}: ${e[k]}` : ''; };
 
 /* Demo image handling. NOT a secure upload: production uploads go to protected storage with
    server-side validation of file type (magic bytes), size, safe file names and permissions.
@@ -8668,7 +8892,7 @@ Pages.adminProducts = adminPage({
     const bindQuickEdit = (form) => {
       const id = form.dataset.qe;
       const read = () => {
-        const p = deepClone(Repo.product(id));
+        const p = withProductDefaults(deepClone(Repo.product(id)));
         p.regularPrice = Money.parse(form.regular.value);
         p.discountType = form.type.value;
         const val = form.value.value.trim();
@@ -8701,7 +8925,7 @@ Pages.adminProducts = adminPage({
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         const errs = preview();
-        if (Object.keys(errs).length) { Toast.show('Controleer de invoer.', { error: true }); return; }
+        if (Object.keys(errs).length) { Toast.show(['regularPrice', 'salePrice', 'discountValue', 'stock'].some((k) => errs[k]) ? 'Controleer de invoer.' : `${firstProductError(errs)} Pas dit aan in het productformulier.`, { error: true }); return; }
         Repo.saveProduct(read());
         st.open = null; draw();
         Toast.show('Product bijgewerkt.');
@@ -8750,6 +8974,22 @@ function blankProduct() {
     createdAt: null, updatedAt: null,
   };
 }
+/** Products saved by an older version may miss a field: fill in the defaults a publication would use
+    (nothing is shortened), so the forms can always show and save them. */
+function withProductDefaults(p) {
+  const q = { ...p };
+  const DEF = { active: true, featured: false, archived: false, trackStock: true, isDemo: false, installationIncluded: false };
+  Object.keys(DEF).forEach((k) => { if (typeof q[k] !== 'boolean') q[k] = DEF[k]; });
+  const c = q.compatibility && typeof q.compatibility === 'object' && !Array.isArray(q.compatibility) ? q.compatibility : {};
+  q.compatibility = {
+    brands: Array.isArray(c.brands) ? c.brands.filter((b) => typeof b === 'string' && BRAND[b]) : [],
+    models: Array.isArray(c.models) ? c.models.filter((m) => typeof m === 'string' && MODEL[m]) : [],
+    note: typeof c.note === 'string' ? c.note : '',
+  };
+  if (!Array.isArray(q.images)) q.images = [];
+  ['sku', 'shortDescription', 'description', 'brand', 'model', 'startDate', 'endDate'].forEach((k) => { if (typeof q[k] !== 'string') q[k] = ''; });
+  return q;
+}
 Pages.adminProductForm = adminPage({
   key: 'producten', title: 'Product',
   heading: (ctx) => (ctx.params.id ? 'Product bewerken' : 'Nieuw product'),
@@ -8763,7 +9003,7 @@ Pages.adminProductForm = adminPage({
     const isNew = !ctx.params.id;
     const original = isNew ? blankProduct() : Repo.product(ctx.params.id);
     if (!original) return null;
-    const p = deepClone(original);
+    const p = withProductDefaults(deepClone(original));
     if (!Number.isFinite(p.regularPrice)) p.regularPrice = NaN;
     const raw = {
       regularPrice: Number.isFinite(p.regularPrice) ? Money.toInput(p.regularPrice) : '',
@@ -8790,7 +9030,7 @@ Pages.adminProductForm = adminPage({
               <div class="field"><label for="pf-slug">Slug</label><div class="input-affix"><span class="affix">/webshop/</span><input class="input" id="pf-slug" data-k="slug" value="${attr(p.slug)}"${inv('slug')}></div>${err('slug')}</div>
               <div class="field"><label for="pf-sku">SKU</label><input class="input" id="pf-sku" data-k="sku" value="${attr(p.sku)}"${inv('sku')}>${err('sku')}</div>
               <div class="field span-2"><label for="pf-shortDescription">Korte omschrijving</label><input class="input" id="pf-shortDescription" data-k="shortDescription" value="${attr(p.shortDescription)}" maxlength="200"${inv('shortDescription')}>${err('shortDescription')}</div>
-              <div class="field span-2"><label for="pf-description">Volledige omschrijving</label><textarea class="textarea" id="pf-description" data-k="description" style="min-height:160px">${esc(p.description)}</textarea><span class="hint">Lege regel = nieuwe alinea. Vermeld of inbouw inbegrepen is.</span></div>
+              <div class="field span-2"><label for="pf-description">Volledige omschrijving</label><textarea class="textarea" id="pf-description" data-k="description" style="min-height:160px"${inv('description')}>${esc(p.description)}</textarea><span class="hint">Lege regel = nieuwe alinea. Vermeld of inbouw inbegrepen is. Maximaal ${Content.LIMITS.productDescription.toLocaleString('nl-NL')} tekens.</span>${err('description')}</div>
             </div></div></section>
 
             <section class="panel"><div class="panel-head"><div><h2>Afbeeldingen</h2><p>De eerste afbeelding is de hoofdafbeelding.</p></div></div><div class="panel-body">
@@ -8811,7 +9051,7 @@ Pages.adminProductForm = adminPage({
               <div class="flex wrap gap-16 mt-8">${BRANDS.map((b) => `<label class="check"><input type="checkbox" data-cb="${b.id}"${p.compatibility.brands.includes(b.id) ? ' checked' : ''}><span class="box">${icon('check')}</span>${b.name}</label>`).join('')}</div>
               <span class="label mt-24" style="display:block">Modellen <span class="opt">(optioneel)</span></span>
               <div class="model-checks mt-8">${BRANDS.filter((b) => !p.compatibility.brands.length || p.compatibility.brands.includes(b.id)).map((b) => `<span class="mc-brand">${b.name}</span>${MODELS.filter((m) => m.brand === b.id).map((m) => `<label class="check"><input type="checkbox" data-cm="${m.id}"${p.compatibility.models.includes(m.id) ? ' checked' : ''}><span class="box">${icon('check')}</span>${esc(m.name)}</label>`).join('')}`).join('')}</div>
-              <div class="field mt-24"><label for="pf-cnote">Compatibiliteitsinformatie</label><input class="input" id="pf-cnote" data-cnote value="${attr(p.compatibility.note)}" placeholder="Bijv. vereist een geschikt multimediasysteem"></div>
+              <div class="field mt-24"><label for="pf-cnote">Compatibiliteitsinformatie</label><input class="input" id="pf-cnote" data-cnote value="${attr(p.compatibility.note)}" placeholder="Bijv. vereist een geschikt multimediasysteem"${inv('cnote')}>${err('cnote')}</div>
             </div></section>
           </div>
 
@@ -8911,8 +9151,10 @@ Pages.adminProductForm = adminPage({
       if (t.matches('[data-cm]')) { const m = t.dataset.cm; p.compatibility.models = t.checked ? uniq([...p.compatibility.models, m]) : p.compatibility.models.filter((x) => x !== m); markDirty(); return; }
       if (t.dataset.k === 'brand') { p.brand = t.value; if (p.model && MODEL[p.model].brand !== p.brand) p.model = ''; markDirty(); redraw('#pf-brand'); return; }
       if (t.dataset.k === 'category' || t.dataset.k === 'model' || t.dataset.k === 'type' || t.dataset.k === 'startDate' || t.dataset.k === 'endDate') { p[t.dataset.k] = t.value; markDirty(); if (t.dataset.k.endsWith('Date')) redraw(`#${t.id}`); return; }
-      if (t.matches('[data-img-art]') && t.value) { p.images.push(`art:${t.value}:${p.images.length % 3}`); markDirty(); redraw('[data-img-art]'); return; }
+      const full = () => { if (p.images.length < Content.LIMITS.productImages) return false; Toast.show(`Een product heeft maximaal ${Content.LIMITS.productImages} afbeeldingen. Verwijder er eerst een.`, { error: true }); return true; };
+      if (t.matches('[data-img-art]') && t.value) { if (full()) { t.value = ''; return; } p.images.push(`art:${t.value}:${p.images.length % 3}`); markDirty(); redraw('[data-img-art]'); return; }
       if (t.matches('[data-img-file]') && t.files && t.files[0]) {
+        if (full()) { t.value = ''; return; }
         try {
           const dataUrl = await readImageFile(t.files[0]);
           p.images.push(dataUrl); markDirty(); redraw('[data-img-file]');
@@ -8925,6 +9167,7 @@ Pages.adminProductForm = adminPage({
       if (e.target.closest('[data-img-add]')) {
         const inp = $('[data-img-url]', host); const url = inp.value.trim();
         if (!/^https:\/\/[^\s"'<>]+$/i.test(url)) { Toast.show('Gebruik een volledige https-URL naar een afbeelding.', { error: true }); inp.focus(); return; }
+        if (p.images.length >= Content.LIMITS.productImages) { Toast.show(`Een product heeft maximaal ${Content.LIMITS.productImages} afbeeldingen. Verwijder er eerst een.`, { error: true }); return; }
         p.images.push(url); markDirty(); redraw('[data-img-url]'); return;
       }
       const pr = e.target.closest('[data-img-primary]');
@@ -9356,8 +9599,11 @@ Pages.adminProjectForm = adminPage({
         image: img('image'), before: img('before'), after: img('after'), active: f.active.checked,
         models: existing ? existing.models || [] : [], services: existing ? existing.services || [] : [],
       };
-      const bad = ['image', 'before', 'after'].find((k) => data[k] && !Media.src(data[k]));
-      const err = !data.title ? 'Vul een titel in.' : (!data.vehicle ? 'Vul het voertuig in.' : (!data.tag ? 'Vul een label in.' : (!data.short ? 'Vul een korte omschrijving in.' : (!data.image ? 'Kies een hoofdfoto.' : (bad ? 'Een foto-adres is ongeldig (gebruik https://…).' : ((data.before && !data.after) || (!data.before && data.after) ? 'Voor een voor/na-vergelijking zijn beide foto’s nodig.' : (!Content.isSlug(data.slug) ? 'Vul een geldige slug in (kleine letters, cijfers en koppeltekens).' : (Repo.projects().some((x) => x.slug === data.slug && x.id !== data.id) ? 'Deze slug is al in gebruik.' : ''))))))));
+      const bad = ['image', 'before', 'after'].find((k) => data[k] && (!Media.src(data[k]) || !Content.isMediaRef(data[k])));
+      const L = Content.LIMITS;
+      const tooLong = [['title', 'De titel', L.projectTitle], ['vehicle', 'Het voertuig', L.projectVehicle], ['tag', 'Het label', L.projectTag], ['short', 'De korte omschrijving', L.projectShort], ['body', 'De tekst', L.projectBody]]
+        .find(([k, , max]) => data[k].length > max);
+      const err = !data.title ? 'Vul een titel in.' : (!data.vehicle ? 'Vul het voertuig in.' : (!data.tag ? 'Vul een label in.' : (!data.short ? 'Vul een korte omschrijving in.' : (!data.image ? 'Kies een hoofdfoto.' : (bad ? 'Een foto-adres is ongeldig (gebruik https://…).' : ((data.before && !data.after) || (!data.before && data.after) ? 'Voor een voor/na-vergelijking zijn beide foto’s nodig.' : (!Content.isSlug(data.slug) ? 'Vul een geldige slug in (kleine letters, cijfers en koppeltekens).' : (Repo.projects().some((x) => x.slug === data.slug && x.id !== data.id) ? 'Deze slug is al in gebruik.' : (tooLong ? `${tooLong[1]} is te lang: maximaal ${tooLong[2].toLocaleString('nl-NL')} tekens (nu ${data[tooLong[0]].length.toLocaleString('nl-NL')}).` : '')))))))));
       if (err) { errEl.textContent = err; Toast.show(err, { error: true }); return; }
       const list = Repo.projects().filter((x) => x.id !== data.id);
       Repo.saveProjects(isNew ? [...list, data] : Repo.projects().map((x) => (x.id === data.id ? data : x)));
@@ -9428,6 +9674,8 @@ Pages.adminSettings = adminPage({
       const f = e.target; const errEl = $('[data-ship-err]', root);
       const next = s.shipping.map((m, i) => ({ ...m, label: f[`label-${i}`].value.trim(), description: f[`desc-${i}`].value.trim(), price: Money.parse(f[`price-${i}`].value || '0'), requiresAddress: f[`addr-${i}`].checked, enabled: f[`on-${i}`].checked }));
       if (next.some((m) => !m.label)) { errEl.textContent = 'Elke methode heeft een naam nodig.'; return; }
+      if (next.some((m) => m.label.length > Content.LIMITS.shipLabel)) { errEl.textContent = `Een naam mag maximaal ${Content.LIMITS.shipLabel} tekens hebben.`; return; }
+      if (next.some((m) => m.description.length > Content.LIMITS.shipDescription)) { errEl.textContent = `Een omschrijving mag maximaal ${Content.LIMITS.shipDescription} tekens hebben.`; return; }
       if (next.some((m) => !Number.isInteger(m.price) || m.price < 0)) { errEl.textContent = 'Vul geldige prijzen in (0 of meer).'; return; }
       if (!next.some((m) => m.enabled)) { errEl.textContent = 'Zet minimaal één leveringsmethode aan.'; return; }
       errEl.textContent = '';
@@ -9458,18 +9706,25 @@ Pages.adminSettings = adminPage({
       const prevCats = Repo.shopCategories();
       Repo.saveShopCategories(cats); // temporary, to validate category references
       const problems = [];
-      const products = data.products.map((p) => ({ ...blankProduct(), ...p, compatibility: { brands: [], models: [], note: '', ...(p.compatibility || {}) }, images: Array.isArray(p.images) ? p.images : [] }));
-      products.forEach((p, i) => { const er = validateProduct(p, products); if (Object.keys(er).length) problems.push(`${p.name || `Product ${i + 1}`}: ${Object.values(er)[0]}`); });
+      const products = data.products.map((x) => (x && typeof x === 'object' && !Array.isArray(x) ? x : {}))
+        .map((p) => ({ ...blankProduct(), ...p, compatibility: { brands: [], models: [], note: '', ...(p.compatibility && typeof p.compatibility === 'object' ? p.compatibility : {}) }, images: Array.isArray(p.images) ? p.images : [] }));
+      products.forEach((p, i) => {
+        const er = validateProduct(p, products);
+        if (!er.id && products.some((x, j) => j !== i && x.id === p.id)) er.id = 'Deze id komt twee keer voor.';
+        if (Object.keys(er).length) problems.push(`${typeof p.name === 'string' && p.name ? p.name : `Product ${i + 1}`}: ${firstProductError(er)}`);
+      });
       Repo.saveShopCategories(prevCats);
       if (problems.length) {
         Overlay.open({ title: 'Import afgebroken', size: 'sm', body: `<p class="text-small" style="margin-bottom:12px">${problems.length} product(en) zijn ongeldig. Er is niets gewijzigd.</p><ul class="text-small" style="padding-left:18px;display:grid;gap:6px">${problems.slice(0, 8).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`, foot: '<button class="btn btn--dark btn--sm" type="button" data-close>Sluiten</button>' });
         return;
       }
       if (await Overlay.confirm({ title: 'Producten importeren?', message: `${products.length} producten en ${cats.length} categorieën vervangen de huidige catalogus. Bestellingen blijven ongewijzigd.`, confirmLabel: 'Importeren' })) {
-        Repo.saveShopCategories(cats); Repo.replaceProducts(products); Toast.show('Import voltooid.');
+        // Stored in exactly the shape a publication uses (validated above, so nothing is shortened).
+        Repo.saveShopCategories(cats); Repo.replaceProducts(products.map((p) => Content.cleanProduct(p))); Toast.show('Import voltooid.');
       }
     });
     $('[data-reset]', root).addEventListener('click', async () => {
+      if (Content.stale) { Toast.show(RELOAD_FIRST, { error: true }); return; }
       if (await Overlay.confirm({ title: 'Demodata herstellen?', message: 'Producten, categorieën, bestellingen, projecten en instellingen worden teruggezet naar de gepubliceerde versie (of de oorspronkelijke demodata als er nog niets is gepubliceerd). Dit kan niet ongedaan worden gemaakt.', confirmLabel: 'Reset demodata', danger: true })) {
         Repo.reset(); Cart.clear(); Toast.show('Demodata hersteld.'); Router.render();
       }
@@ -9496,7 +9751,8 @@ const UNSAVED_MSG = 'U heeft wijzigingen die nog niet zijn opgeslagen.';
 /** Form field markup. o: { name, label, value, hint, multi, rows, max, placeholder, type, half, opt, attrs, id } */
 function saField(o) {
   const id = `sa-${String(o.id || o.name).replace(/[^a-z0-9_-]/gi, '-')}`;
-  const common = `id="${id}" name="${attr(o.name)}"${o.max ? ` maxlength="${o.max}"` : ''}${o.placeholder ? ` placeholder="${attr(o.placeholder)}"` : ''}${o.attrs || ''}`;
+  // A multi-line field gets no maxlength (a pasted text would be cut off unseen): showErrors checks data-max.
+  const common = `id="${id}" name="${attr(o.name)}"${o.max ? (o.multi ? ` data-max="${o.max}"` : ` maxlength="${o.max}"`) : ''}${o.placeholder ? ` placeholder="${attr(o.placeholder)}"` : ''}${o.attrs || ''}`;
   const control = o.multi
     ? `<textarea class="textarea${(o.rows || 3) <= 3 ? ' textarea--sm' : ''}" rows="${o.rows || 3}" ${common}>${esc(o.value == null ? '' : o.value)}</textarea>`
     : `<input class="input" type="${o.type || 'text'}" ${common} value="${attr(o.value == null ? '' : o.value)}">`;
@@ -9513,31 +9769,55 @@ function trackDirty(form) {
     st.dirty = v;
     if (sb) { sb.textContent = v ? 'Niet-opgeslagen wijzigingen' : 'Alle wijzigingen opgeslagen'; sb.classList.toggle('is-dirty', v); }
   };
-  form.addEventListener('input', () => st.set(true));
+  form.addEventListener('input', (e) => { st.set(true); if (e.target.dataset && e.target.dataset.max) overMax(form, e.target); });
   form.addEventListener('change', (e) => { if (!e.target.matches('[type="file"]')) st.set(true); });
   Router.setGuard(() => (st.dirty ? UNSAVED_MSG : null));
   return st;
 }
-/** Shows field errors ({name: message}); focuses the first. Returns true when there are none. */
+const maxMsg = (el) => `Maximaal ${Number(el.dataset.max).toLocaleString('nl-NL')} tekens (nu ${el.value.length.toLocaleString('nl-NL')}). Maak de tekst korter.`;
+/** Live message on a multi-line field that is longer than its maximum (nothing is cut off). */
+function overMax(form, el) {
+  const box = form.querySelector(`[data-err="${CSS.escape(el.name)}"]`);
+  const over = el.value.length > Number(el.dataset.max);
+  if (box && (over || box.dataset.maxShown)) { box.textContent = over ? maxMsg(el) : ''; box.dataset.maxShown = over ? '1' : ''; }
+  if (over) el.setAttribute('aria-invalid', 'true'); else if (box && !box.textContent) el.removeAttribute('aria-invalid');
+}
+/** Shows field errors ({name: message}); focuses the first. Returns true when there are none.
+    Multi-line fields longer than their maximum (data-max) are reported here too. */
 function showErrors(form, errs) {
-  $$('[data-err]', form).forEach((el) => { el.textContent = errs[el.dataset.err] || ''; });
+  $$('[data-max]', form).forEach((el) => { if (el.name && el.value.length > Number(el.dataset.max) && !errs[el.name]) errs[el.name] = maxMsg(el); });
+  $$('[data-err]', form).forEach((el) => { el.textContent = errs[el.dataset.err] || ''; el.dataset.maxShown = ''; });
   $$('[aria-invalid]', form).forEach((el) => el.removeAttribute('aria-invalid'));
   const keys = Object.keys(errs);
   keys.forEach((k) => { const el = form.elements[k]; if (el && el.setAttribute) el.setAttribute('aria-invalid', 'true'); });
   if (keys.length) {
     const first = form.elements[keys[0]];
+    const det = first && first.closest && first.closest('details'); if (det) det.open = true; // a closed panel (Categorieën)
     if (first && first.focus) first.focus();
     Toast.show(Object.values(errs)[0], { error: true });
   }
   return !keys.length;
 }
 const DECIDE_FIRST = 'Kies eerst met welke versie u verder wilt werken (zie de melding bovenaan).';
+const RELOAD_FIRST = 'In een ander tabblad is een andere versie van de website geopend. Laad deze pagina opnieuw; er is niets opgeslagen.';
 /** Applies a change to the website draft; false (with a message) while a decision on a newer publication is pending. */
 function saveContent(fn, message = 'Opgeslagen. De wijziging staat direct op de website in deze browser.') {
-  if (Content.parked || !Content.update(fn)) { Toast.show(DECIDE_FIRST, { error: true }); return false; }
+  if (Content.stale) { Toast.show(RELOAD_FIRST, { error: true }); return false; }
+  if (Content.parked || !Content.update(fn)) { Toast.show(Content.stale ? RELOAD_FIRST : DECIDE_FIRST, { error: true }); return false; }
   if (message) Toast.show(message);
   return true;
 }
+/** The fields of a form whose value differs from when it was shown. Saving only those keeps
+    changes that were saved meanwhile (for example in another tab) in the other fields. */
+const changedKeys = (shown, next) => Object.keys(next).filter((k) => stableStringify(next[k]) !== stableStringify(shown[k]));
+const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o);
+/** First message for a list that is too long or has too long items, or ''. */
+function listLimit(list, max, maxLen, what) {
+  if (list.length > max) return `Gebruik maximaal ${max} ${what}.`;
+  const long = list.find((x) => String(x).length > maxLen);
+  return long ? `Maximaal ${maxLen} tekens per regel; deze is te lang: “${String(long).slice(0, 40)}…”.` : '';
+}
+const linkLabelError = (links) => ((links || []).some(([l]) => l.length > 80) ? 'Een linktekst mag maximaal 80 tekens hebben.' : '');
 const lines = (s) => String(s || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
 const csv = (s) => uniq(String(s || '').split(',').map((x) => x.trim()).filter(Boolean));
 /** "Label | adres" per line → [[label, href]]; returns null when a line is invalid. */
@@ -9606,9 +9886,15 @@ const SiteStatus = {
     const n = this.changes().length;
     return n ? `<a class="pill pill--warn" href="#/admin/website" title="Bekijk wat nog gepubliceerd moet worden">${icon('upload')} ${n} niet gepubliceerd</a>` : '';
   },
-  /** True while a newer publication waits for the editor's decision (content and/or webshop data). */
-  undecided() { return Content.parked || Repo.shopParked; },
+  /** True while publishing must wait: a newer publication awaits the editor's decision, or this tab is outdated. */
+  undecided() { return Content.stale || Content.parked || Repo.shopParked; },
+  /** Why publishing (or a backup) cannot happen now, or ''. */
+  blocked() { return Content.stale ? RELOAD_FIRST : (this.undecided() ? DECIDE_FIRST : ''); },
   parkedNotice() {
+    if (Content.stale) {
+      return UI.notice('<strong>Deze pagina is verouderd.</strong> In een ander tabblad is een andere versie van de website geopend (bijvoorbeeld de nieuwe versie na het uploaden). Laad deze pagina opnieuw om verder te werken; wat u eerder heeft opgeslagen, blijft bewaard.',
+        { type: 'warn', ic: 'alert', actions: '<button class="btn btn--dark btn--xs" type="button" data-reload>Pagina opnieuw laden</button>' });
+    }
     if (!this.undecided()) return '';
     const shown = Repo.shopParked
       ? (Content.parked ? 'Tot u kiest, ziet u de gepubliceerde teksten en inhoud; producten, projecten en webshopinstellingen zijn nog uw eigen concept.' : 'Producten, projecten en webshopinstellingen in deze browser zijn nog uw eigen concept.')
@@ -9618,17 +9904,36 @@ const SiteStatus = {
   },
 };
 document.addEventListener('click', async (e) => {
+  if (e.target.closest('[data-reload]')) { location.reload(); return; }
   const b = e.target.closest('[data-parked]');
   if (!b) return;
+  if (Content.stale) { Toast.show(RELOAD_FIRST, { error: true }); return; }
+  // The page is rebuilt with the chosen version: text typed in the open form would be lost, so ask first.
+  if (!(await Router.confirmLeave())) return;
   if (b.dataset.parked === 'published') {
-    if (!(await Overlay.confirm({ title: 'Gepubliceerde versie gebruiken?', message: 'Uw concept in deze browser wordt weggegooid. Dit kan niet ongedaan worden gemaakt.', confirmLabel: 'Concept weggooien', danger: true }))) return;
-    Content.discardDraft(); Repo.loadPublishedShop(); Toast.show('U werkt nu met de gepubliceerde versie.');
+    // Only the part that waits for a decision is thrown away; later changes to the other part stay.
+    const content = Content.parked; const shop = Repo.shopParked;
+    if (!content && !shop) { Router.render(); return; }
+    const what = content && shop ? 'Uw concept in deze browser (website-inhoud én webshopgegevens) wordt weggegooid.'
+      : (content ? 'Uw concept van de website-inhoud in deze browser wordt weggegooid. Wijzigingen in producten, projecten en webshopinstellingen blijven staan.'
+        : 'Uw concept van producten, projecten en webshopinstellingen in deze browser wordt weggegooid. Wijzigingen in de website-inhoud blijven staan.');
+    if (!(await Overlay.confirm({ title: 'Gepubliceerde versie gebruiken?', message: `${what} Dit kan niet ongedaan worden gemaakt.`, confirmLabel: 'Concept weggooien', danger: true }))) return;
+    if (Content.stale) { Toast.show(RELOAD_FIRST, { error: true }); return; }
+    if (content && Content.parked) Content.discardDraft();
+    if (shop && Repo.shopParked) { Repo.loadPublishedShop(); Cart.validate(); }
+    Toast.show('U werkt nu met de gepubliceerde versie.');
   } else {
-    Content.resumeParked();
-    if (Repo.shopParked) { Storage.set('pubStamp', Content.pubStamp); Repo.shopParked = false; }
+    if (Content.parked) Content.resumeParked();
+    if (Repo.shopParked) { Storage.set('pubStamp', Content.pubStamp); Repo.shopParked = false; Repo.markShopBase(Content.publishedShop()); }
     Toast.show('Uw concept is weer actief.');
   }
   Router.render();
+});
+// Another tab opened a different publication: show it at once in Beheer.
+Bus.on('content:stale', () => {
+  const el = document.querySelector('[data-site-notice]');
+  if (el) el.innerHTML = SiteStatus.parkedNotice();
+  if (document.body.classList.contains('is-admin')) Toast.show(RELOAD_FIRST, { error: true });
 });
 
 /* ---------- Publisher: rebuilds this page as a complete website ---------- */
@@ -9920,7 +10225,7 @@ Pages.adminWebsite = adminPage({
     const result = $('[data-publish-result]', root);
     const busy = (btn, on) => { btn.disabled = on; btn.setAttribute('aria-busy', String(on)); };
     $('[data-publish]', root).addEventListener('click', async (e) => {
-      if (SiteStatus.undecided()) { Toast.show(DECIDE_FIRST, { error: true }); return; }
+      const why = SiteStatus.blocked(); if (why) { Toast.show(why, { error: true }); return; }
       const btn = e.currentTarget; busy(btn, true);
       try {
         const { stamp, files, bytes } = await Publisher.files();
@@ -9933,7 +10238,7 @@ Pages.adminWebsite = adminPage({
       } finally { busy(btn, false); }
     });
     $('[data-publish-html]', root).addEventListener('click', async (e) => {
-      if (SiteStatus.undecided()) { Toast.show(DECIDE_FIRST, { error: true }); return; }
+      const why = SiteStatus.blocked(); if (why) { Toast.show(why, { error: true }); return; }
       const btn = e.currentTarget; busy(btn, true);
       try {
         const html = Publisher.html(Publisher.bundle(nowIso()), { ogImage: false });
@@ -9942,7 +10247,7 @@ Pages.adminWebsite = adminPage({
       } catch (er) { Toast.show(`Niet gelukt: ${er.message}`, { error: true }); } finally { busy(btn, false); }
     });
     $('[data-backup]', root).addEventListener('click', () => {
-      if (SiteStatus.undecided()) { Toast.show(DECIDE_FIRST, { error: true }); return; }
+      const why = SiteStatus.blocked(); if (why) { Toast.show(why, { error: true }); return; }
       const c = Content.working(); delete c.base;
       downloadJson(`cartronic-backup-${nowIso().slice(0, 10)}.json`, { format: 'cartronic-site', version: 1, exportedAt: nowIso(), content: c, shop: Repo.shopSnapshot() });
       Toast.show('Back-up gedownload.');
@@ -9967,7 +10272,9 @@ Pages.adminWebsite = adminPage({
       Router.render();
     });
     $('[data-discard]', root).addEventListener('click', async () => {
+      if (Content.stale) { Toast.show(RELOAD_FIRST, { error: true }); return; }
       if (!(await Overlay.confirm({ title: 'Concept weggooien?', message: 'Alle wijzigingen sinds de laatste publicatie (website-inhoud en webshopgegevens) worden ongedaan gemaakt. Bestellingen blijven bestaan.', confirmLabel: 'Concept weggooien', danger: true }))) return;
+      if (Content.stale) { Toast.show(RELOAD_FIRST, { error: true }); return; }
       Content.discardDraft(); Repo.loadPublishedShop(); Cart.validate();
       Toast.show('Het concept is weggegooid.'); Router.render();
     });
@@ -10024,33 +10331,44 @@ Pages.adminCompany = adminPage({
     const rowsEl = $('[data-hours]', f);
     bindRowEditor(rowsEl, () => this.hourRow(), () => st.set(true));
     $('[data-hours-add]', root).addEventListener('click', () => { rowsEl.insertAdjacentHTML('beforeend', this.hourRow()); st.set(true); $$('.row-edit', rowsEl).pop().querySelector('input').focus(); });
+    const v = (k) => f.elements[k].value.trim();
+    const hoursOf = () => $$('.row-edit', rowsEl).map((r) => [$('[data-h="day"]', r).value.trim(), $('[data-h="time"]', r).value.trim()]).filter(([d, t]) => d || t);
+    const intlOf = () => v('phoneIntl').replace(/\(0\)/g, '').replace(/[\s().-]/g, '').replace(/^00/, '+');
+    const values = () => ({
+      name: v('name'), street: v('street'), postal: v('postal'), city: v('city'), mapsUrl: v('mapsUrl'),
+      phoneDisplay: v('phoneDisplay'), phoneHref: `tel:${intlOf()}`, whatsapp: v('whatsapp'), whatsappDisplay: v('whatsappDisplay'),
+      email: v('email'), website: v('website'), facebook: v('facebook'), kvk: v('kvk'), vat: v('vat'), social: lines(v('social')), hours: hoursOf(),
+    });
+    let shown = values();
     f.addEventListener('submit', (e) => {
       e.preventDefault();
-      const v = (k) => f.elements[k].value.trim();
       const errs = {};
       ['name', 'street', 'postal', 'city', 'phoneDisplay'].forEach((k) => { if (!v(k)) errs[k] = 'Dit veld is verplicht.'; });
-      const intl = v('phoneIntl').replace(/\(0\)/g, '').replace(/[\s().-]/g, '').replace(/^00/, '+');
+      const intl = intlOf();
       if (!/^\+[1-9][0-9]{5,15}$/.test(intl)) errs.phoneIntl = 'Vul het nummer met landcode in, bijvoorbeeld +31703839836.';
       else if (/^\+310/.test(intl)) errs.phoneIntl = 'Laat de 0 na de landcode weg, bijvoorbeeld +31703839836.';
       if (!/^[0-9]{8,15}$/.test(v('whatsapp'))) errs.whatsapp = 'Alleen cijfers, met landcode: bijvoorbeeld 31703839836.';
       if (!/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]{2,}$/.test(v('email'))) errs.email = 'Vul een geldig e-mailadres in.';
       ['mapsUrl', 'website'].forEach((k) => { if (!Content.httpsUrl(v(k))) errs[k] = 'Gebruik een webadres dat met https:// begint.'; });
       if (v('facebook') && !Content.httpsUrl(v('facebook'))) errs.facebook = 'Gebruik een webadres dat met https:// begint.';
+      ['mapsUrl', 'website', 'facebook'].forEach((k) => { if (!errs[k] && v(k).length > 2000) errs[k] = 'Dit webadres is te lang (maximaal 2.000 tekens).'; });
       const social = lines(v('social'));
       if (social.some((u) => !Content.httpsUrl(u))) errs.social = 'Elke regel moet een webadres zijn dat met https:// begint.';
+      else if (social.length > 8) errs.social = 'Gebruik maximaal 8 profielen.';
       if (v('kvk') && !/^[0-9]{8}$/.test(v('kvk'))) errs.kvk = 'Een KvK-nummer heeft 8 cijfers.';
-      const hours = $$('.row-edit', rowsEl).map((r) => [$('[data-h="day"]', r).value.trim(), $('[data-h="time"]', r).value.trim()]).filter(([d, t]) => d || t);
+      const hours = hoursOf();
       if (!hours.length || hours.some(([d, t]) => !d || !t)) { Toast.show('Vul bij elke regel van de openingstijden zowel de dag als de tijd in.', { error: true }); return; }
+      if (hours.length > 10) { Toast.show('Gebruik maximaal 10 regels voor de openingstijden.', { error: true }); return; }
       if (!showErrors(f, errs)) return;
-      const next = {
-        name: v('name'), street: v('street'), postal: v('postal'), city: v('city'), mapsUrl: v('mapsUrl'),
-        phoneDisplay: v('phoneDisplay'), phoneHref: `tel:${intl}`, whatsapp: v('whatsapp'), whatsappDisplay: v('whatsappDisplay'),
-        email: v('email'), website: v('website'), facebook: v('facebook'), kvk: v('kvk'), vat: v('vat'), social, hours,
-      };
-      // Store only what differs from the built-in defaults.
-      const diff = {};
-      Object.keys(next).forEach((k) => { if (stableStringify(next[k]) !== stableStringify(Content.P.company[k] === undefined ? '' : Content.P.company[k])) diff[k] = next[k]; });
-      if (saveContent((d) => { d.company = diff; })) st.set(false);
+      const next = values();
+      const changed = changedKeys(shown, next);
+      const def = (k) => (Content.P.company[k] === undefined ? '' : Content.P.company[k]);
+      if (saveContent((d) => {
+        // Only the fields changed in this form; a value equal to the built-in default is not stored.
+        const c = { ...(isObj(d.company) ? d.company : {}) };
+        changed.forEach((k) => { if (stableStringify(next[k]) === stableStringify(def(k))) delete c[k]; else c[k] = next[k]; });
+        d.company = c;
+      })) { st.set(false); shown = next; }
     });
     return () => Router.setGuard(null);
   },
@@ -10080,7 +10398,8 @@ Pages.adminTexts = adminPage({
       const multi = d.multi || d.rich || value.includes('\n') || value.length > 90;
       return `<div class="field span-2 text-field" data-text-field="${attr(d.key)}" data-search="${attr(normText(`${d.label} ${value}`))}">
         <div class="text-field-head"><label for="${id}">${esc(d.label)}</label>${custom ? '<span class="pill pill--info">Aangepast</span>' : ''}${d.optional ? '<span class="pill">Mag leeg</span>' : ''}</div>
-        ${multi ? `<textarea class="textarea${d.rich ? '' : ' textarea--sm'}" id="${id}" name="${attr(d.key)}" rows="${d.rich ? 14 : 3}" maxlength="${TEXT_MAX}">${esc(value)}</textarea>` : `<input class="input" id="${id}" name="${attr(d.key)}" value="${attr(value)}" maxlength="${TEXT_MAX}">`}
+        ${multi ? `<textarea class="textarea${d.rich ? '' : ' textarea--sm'}" id="${id}" name="${attr(d.key)}" rows="${d.rich ? 14 : 3}">${esc(value)}</textarea>` : `<input class="input" id="${id}" name="${attr(d.key)}" value="${attr(value)}">`}
+        <span class="field-error" data-text-err></span>
         <div class="text-field-foot">${d.vars ? `<span class="hint">Gebruik ${d.vars.map((x) => `<code class="code">{${x}}</code>`).join(' ')} voor de automatische waarde.</span>` : ''}${d.control ? '<span class="hint">Tekst op een knop of link: alleen tekst, links werken hier niet.</span>' : ''}${d.rich ? '<span class="hint"><code class="code">## Kop</code> voor een tussenkop, <code class="code">- </code> voor een opsomming, lege regel = nieuwe alinea.</span>' : ''}
           ${custom ? `<button class="btn btn--ghost btn--xs" type="button" data-text-reset="${attr(d.key)}">${icon('refresh')} Standaardtekst terugzetten</button>` : ''}</div>
       </div>`;
@@ -10127,6 +10446,14 @@ Pages.adminTexts = adminPage({
       $('[data-text-groups]', root).hidden = !!term;
     };
     q.addEventListener('input', debounce(filter, 150));
+    // Too long: say so right away (nothing is cut off; saving is refused until the text is shorter).
+    const checkLength = (el) => {
+      const box = el.closest('[data-text-field]'); const msg = box && $('[data-text-err]', box);
+      const over = el.value.length > TEXT_MAX;
+      if (msg) msg.textContent = over ? `${el.value.length.toLocaleString('nl-NL')} tekens — maximaal ${TEXT_MAX.toLocaleString('nl-NL')}. Maak de tekst korter.` : '';
+      if (over) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
+    };
+    f.addEventListener('input', (e) => { if (e.target.matches('[data-text-field] input, [data-text-field] textarea')) checkLength(e.target); });
     f.addEventListener('click', (e) => {
       const b = e.target.closest('[data-text-reset]'); if (!b) return;
       const el = f.elements[b.dataset.textReset];
@@ -10143,7 +10470,7 @@ Pages.adminTexts = adminPage({
         $$('[data-text-group]', f).forEach((sec) => { sec.hidden = !sec.contains(el); });
         $$('[data-text-field]', f).forEach((fl) => { fl.hidden = false; });
         $('[data-text-empty]', f).hidden = true;
-        el.setAttribute('aria-invalid', 'true'); el.focus();
+        checkLength(el); el.focus();
         Toast.show(`“${TEXT[tooLong].label}” is te lang: maximaal ${TEXT_MAX.toLocaleString('nl-NL')} tekens. Er is niets opgeslagen.`, { error: true });
         return;
       }
@@ -10181,7 +10508,7 @@ Pages.adminDisplay = adminPage({
       </div></div></section>
       <section class="panel"><div class="panel-head"><div><h2>Overal op de website</h2></div></div><div class="panel-body"><div class="form-grid">
         ${saSwitch('s:cta', 'Afsluitende balk “Wat mist er nog aan uw auto?” onder aan de pagina’s', d.sections.cta !== false)}
-        ${saSwitch('s:recent', 'Blok “Recent bekeken”', d.sections.recent !== false)}
+        ${saSwitch('s:recent', 'Blok “Recent bekeken”', d.sections.recent !== false, 'Op de homepage, de optiepagina’s en de webshop. Op de pagina “Mijn auto” blijft de geschiedenis van de bezoeker altijd zichtbaar.')}
         ${saSwitch('footerAdmin', 'Link “Beheer” in de footer', d.footerAdmin !== false, 'Beheer blijft bereikbaar via /admin.')}
       </div></div></section>
       <section class="panel"><div class="panel-head"><div><h2>Webshop</h2></div></div><div class="panel-body"><div class="form-grid">
@@ -10211,6 +10538,15 @@ Pages.adminDisplay = adminPage({
       prev.innerHTML = a.text ? `<div class="announce announce--${a.tone}"><div class="announce-inner"><p>${fmtText(a.text).replace(/<a\b[^>]*>/g, '<u>').replace(/<\/a>/g, '</u>')}${a.linkLabel && a.link ? ` <u class="announce-link">${esc(a.linkLabel)}</u>` : ''}</p></div></div>` : '<p class="hint">Vul een tekst in om een voorbeeld te zien.</p>';
     };
     f.addEventListener('input', draw); f.addEventListener('change', draw); draw();
+    // Every switch and the announcement count as separate fields (see changedKeys).
+    const values = () => {
+      const a = read(); const out = {};
+      Object.keys(Content.DISPLAY_DEFAULTS.sections).forEach((k) => { const el = f.elements[`s:${k}`]; out[`s:${k}`] = el ? el.checked : true; });
+      out.shop = f.elements.shop.checked; out.footerAdmin = f.elements.footerAdmin.checked;
+      out.announcement = { on: f.elements['a:on'].checked, text: a.text, linkLabel: a.linkLabel, link: a.link ? Content.safeHref(a.link) : '', tone: a.tone };
+      return out;
+    };
+    let shown = values();
     f.addEventListener('submit', (e) => {
       e.preventDefault();
       const a = read();
@@ -10219,13 +10555,14 @@ Pages.adminDisplay = adminPage({
       if (a.link && !Content.safeHref(a.link)) errs['a:link'] = 'Gebruik een pagina van deze site (bijv. /contact) of een webadres met https://.';
       if (a.link && !a.linkLabel) errs['a:linkLabel'] = 'Vul ook een linktekst in.';
       if (!showErrors(f, errs)) return;
-      const sections = {};
-      Object.keys(Content.DISPLAY_DEFAULTS.sections).forEach((k) => { const el = f.elements[`s:${k}`]; sections[k] = el ? el.checked : true; });
-      const next = {
-        sections, shop: f.elements.shop.checked, footerAdmin: f.elements.footerAdmin.checked,
-        announcement: { on: f.elements['a:on'].checked, text: a.text, linkLabel: a.linkLabel, link: a.link ? Content.safeHref(a.link) : '', tone: a.tone },
-      };
-      if (saveContent((d) => { d.display = next; }, 'Weergave opgeslagen.')) st.set(false);
+      const next = values();
+      const changed = changedKeys(shown, next);
+      if (saveContent((d) => {
+        const disp = { ...(isObj(d.display) ? d.display : {}) };
+        disp.sections = { ...(isObj(disp.sections) ? disp.sections : {}) };
+        changed.forEach((k) => { if (k.startsWith('s:')) disp.sections[k.slice(2)] = next[k]; else disp[k] = next[k]; });
+        d.display = disp;
+      }, 'Weergave opgeslagen.')) { st.set(false); shown = next; }
     });
     return () => Router.setGuard(null);
   },
@@ -10284,18 +10621,30 @@ Pages.adminSeo = adminPage({
     const serp = () => { $('[data-serp-home]', f).innerHTML = seoPreview({ title: f.elements.homeTitle.value, description: f.elements.description.value, url: f.elements.siteUrl.value.replace(/^https?:\/\//, '') }); };
     f.addEventListener('input', () => { counts(); serp(); });
     counts(); serp();
+    const v = (k) => f.elements[k].value.trim();
+    const values = () => ({ siteUrl: Content.siteAddress(v('siteUrl')) || v('siteUrl').replace(/\/+$/, ''), suffix: f.elements.suffix.value.slice(0, 40), homeTitle: v('homeTitle'), description: v('description'), ogTitle: v('ogTitle'), ogDescription: v('ogDescription'), noindex: f.elements.noindex.checked, google: v('google'), bing: v('bing') });
+    let shown = values();
     f.addEventListener('submit', (e) => {
       e.preventDefault();
-      const v = (k) => f.elements[k].value.trim();
       const errs = {};
-      const site = v('siteUrl').replace(/\/+$/, '');
-      if (site && !/^https?:\/\/[^\s/"'<>]+(\/[^\s"'<>]*)?$/i.test(site)) errs.siteUrl = 'Vul een volledig adres in, zoals https://www.cartronic.nl.';
+      const typed = v('siteUrl');
+      if (typed && !Content.siteAddress(typed)) errs.siteUrl = 'Vul een volledig adres in, zoals https://www.cartronic.nl of https://www.cartronic.nl/site. Gebruik in een submap alleen letters, cijfers, - en _; zonder ? of #.';
       if (!v('homeTitle')) errs.homeTitle = 'Vul een titel in.';
       if (!v('description')) errs.description = 'Vul een omschrijving in.';
       ['google', 'bing'].forEach((k) => { if (v(k) && !/^[A-Za-z0-9_-]{8,120}$/.test(v(k))) errs[k] = 'Vul alleen de code in (letters, cijfers, - en _).'; });
       if (!showErrors(f, errs)) return;
-      const next = { siteUrl: site, suffix: f.elements.suffix.value.slice(0, 40), homeTitle: v('homeTitle'), description: v('description'), ogTitle: v('ogTitle'), ogDescription: v('ogDescription'), noindex: f.elements.noindex.checked, google: v('google'), bing: v('bing') };
-      if (saveContent((d) => { d.seo = { ...(d.seo || {}), ...next, pages: (d.seo && d.seo.pages) || {} }; }, 'SEO-instellingen opgeslagen.')) { st.set(false); draw(); }
+      const next = values();
+      const changed = changedKeys(shown, next);
+      if (saveContent((d) => {
+        const seo = { ...(isObj(d.seo) ? d.seo : {}) };
+        changed.forEach((k) => { seo[k] = next[k]; });
+        seo.pages = isObj(seo.pages) ? seo.pages : {};
+        d.seo = seo;
+      }, 'SEO-instellingen opgeslagen.')) {
+        st.set(false); shown = next;
+        if (f.elements.siteUrl.value.trim() !== next.siteUrl) f.elements.siteUrl.value = next.siteUrl; // the normalised address
+        draw();
+      }
     });
     // Per-page list
     const list = $('[data-seo-list]', root);
@@ -10379,6 +10728,7 @@ function openSeoEditor(path, onSaved) {
         close(); if (onSaved) onSaved();
       };
       $('[data-seo-save]', panel).addEventListener('click', () => {
+        if (!showErrors(f, {})) return;
         const entry = { title: f.elements.title.value.trim(), description: f.elements.description.value.trim(), noindex: f.elements.noindex.checked };
         save(entry.title || entry.description || entry.noindex ? entry : null);
       });
@@ -10394,6 +10744,8 @@ function openSeoEditor(path, onSaved) {
    ===================================================================== */
 
 /* ---------- Options (retrofit catalog) ---------- */
+/* "nieuw" is the address of the form for a new item (…/nieuw), so it cannot be used as a slug. */
+const RESERVED_SLUG = 'Het webadres “nieuw” is gereserveerd voor het formulier “nieuw”. Kies een ander.';
 const RETROFIT_FIELDS = ['title', 'name', 'cat', 'brand', 'models', 'scope', 'brands', 'years', 'short', 'variantNote', 'specs', 'warranty', 'price', 'offer', 'keywords', 'image', 'imageNote'];
 /** Compares option field values, treating "", null, [] and a missing value as the same. */
 const fieldValue = (k, v) => {
@@ -10563,6 +10915,8 @@ Pages.adminOptionForm = adminPage({
             ${saField({ name: 'yearFrom', label: 'Bouwjaar vanaf', value: r.years ? r.years[0] : '', type: 'number', half: true, opt: true, attrs: ' min="1950" max="2100" inputmode="numeric"' })}
             ${saField({ name: 'yearTo', label: 'Bouwjaar tot en met', value: r.years ? r.years[1] : '', type: 'number', half: true, opt: true, attrs: ' min="1950" max="2100" inputmode="numeric"' })}
             ${r.yearsByModel ? '<p class="hint span-2">Deze optie heeft bouwjaren per model. Als u hier bouwjaren invult, gelden die voor alle modellen.</p>' : ''}
+            ${r.body && (isNew || entry.added) ? `<div class="span-2" data-scope-model>${saSwitch('keepBody', `Alleen voor carrosserie: ${r.body}`, true, 'Uit = de optie geldt voor elke carrosserie van de gekozen modellen.')}</div>` : ''}
+            ${r.body && !isNew && !entry.added ? `<p class="hint span-2">Deze optie geldt alleen voor carrosserie: ${esc(r.body)}.</p>` : ''}
           </div></div></section>
           <section class="panel"><div class="panel-head"><div><h2>Garantie en prijs</h2><p>Vul alleen prijzen en aanbiedingen in die CarTronic zelf publiceert</p></div></div><div class="panel-body"><div class="form-grid">
             ${saField({ name: 'warranty', label: 'Garantie', value: r.warranty || '', max: 60, half: true, opt: true, placeholder: '3 jaar' })}
@@ -10640,11 +10994,15 @@ Pages.adminOptionForm = adminPage({
         else if (a > b) e.yearTo = 'Het eindjaar ligt vóór het beginjaar.';
       }
       if (r.specs.some(([k, val]) => !k || !val)) e.specs = 'Schrijf elke specificatie als “Naam: waarde”.';
+      else if (r.specs.length > 20) e.specs = 'Gebruik maximaal 20 specificaties.';
+      else if (r.specs.some(([k, val]) => k.length > 60 || val.length > 300)) e.specs = 'Per specificatie maximaal 60 tekens voor de naam en 300 voor de waarde.';
+      const kw = listLimit(r.keywords, 40, 60, 'zoekwoorden'); if (kw) e.keywords = kw;
       if (r.image && !Content.isImageRef(r.image)) e.image = 'De foto is ongeldig.';
       if (isNew) {
         const slug = f.elements.slug.value.trim() || slugify(r.title);
         if (!Content.isSlug(slug)) e.slug = 'Gebruik kleine letters, cijfers en koppeltekens.';
-        else if (slug === 'nieuw' || allOptionSlugs().has(slug)) e.slug = 'Dit webadres bestaat al. Kies een ander.';
+        else if (slug === 'nieuw') e.slug = RESERVED_SLUG;
+        else if (allOptionSlugs().has(slug)) e.slug = 'Dit webadres bestaat al. Kies een ander.';
       }
       return e;
     };
@@ -10682,7 +11040,7 @@ Pages.adminOptionForm = adminPage({
             const y = Object.entries(src.yearsByModel).filter(([m]) => r.models.includes(m));
             if (y.length) fields.yearsByModel = Object.fromEntries(y);
           }
-          if (src.body) fields.body = src.body;
+          if (src.body && f.elements.keepBody && f.elements.keepBody.checked) fields.body = src.body; // shown as a switch
         }
         if (fields.scope === 'model') delete fields.scope;
         if (!Content.buildAdded(fields)) { Toast.show('Deze optie is onvolledig. Controleer titel, categorie en modellen.', { error: true }); return; }
@@ -10756,31 +11114,54 @@ Pages.adminCatalog = adminPage({
   mount(root) {
     const f = $('[data-catalog]', root);
     const st = trackDirty(f);
+    const v = (k) => (f.elements[k] ? f.elements[k].value.trim() : '');
+    const CAT_FIELDS = ['name', 'tagline', 'text', 'install', 'program', 'calibrate'];
+    const values = () => {
+      const out = {};
+      CATEGORIES.forEach((c) => {
+        CAT_FIELDS.forEach((k) => { out[`${c.id}:${k}`] = v(`${c.id}:${k}`); });
+        out[`${c.id}:benefits`] = lines(f.elements[`${c.id}:benefits`].value);
+      });
+      BRANDS.forEach((b) => { out[`brand:${b.id}`] = v(`brand:${b.id}`); });
+      return out;
+    };
+    let shown = values();
+    const defaultOf = (id, k) => {
+      const pc = Content.P.categoryCopy[id] || {};
+      if (['name', 'tagline', 'text'].includes(k)) return Content.P.categories[id][k];
+      return k === 'benefits' ? (pc.benefits || []) : (pc[k] || '');
+    };
     f.addEventListener('submit', (e) => {
       e.preventDefault();
-      const v = (k) => (f.elements[k] ? f.elements[k].value.trim() : '');
       const errs = {};
-      const categories = {};
       CATEGORIES.forEach((c) => {
-        const p = Content.P.categories[c.id]; const pc = Content.P.categoryCopy[c.id] || {};
         ['name', 'tagline', 'text'].forEach((k) => { if (!v(`${c.id}:${k}`)) errs[`${c.id}:${k}`] = 'Dit veld is verplicht.'; });
         if (!v(`${c.id}:install`)) errs[`${c.id}:install`] = 'Dit veld is verplicht.';
-        const benefits = lines(f.elements[`${c.id}:benefits`].value).slice(0, 8);
+        const benefits = lines(f.elements[`${c.id}:benefits`].value);
         if (!benefits.length) errs[`${c.id}:benefits`] = 'Vul ten minste één voordeel in.';
-        const o = {};
-        ['name', 'tagline', 'text'].forEach((k) => { if (v(`${c.id}:${k}`) !== p[k]) o[k] = v(`${c.id}:${k}`); });
-        ['install', 'program', 'calibrate'].forEach((k) => { const val = v(`${c.id}:${k}`); if (val !== (pc[k] || '')) o[k] = val; });
-        if (stableStringify(benefits) !== stableStringify(pc.benefits || [])) o.benefits = benefits;
-        if (Object.keys(o).length) categories[c.id] = o;
+        else { const lim = listLimit(benefits, 8, 200, 'voordelen'); if (lim) errs[`${c.id}:benefits`] = lim; }
       });
-      if (Object.keys(errs).length) {
-        const first = Object.keys(errs)[0];
-        const det = f.elements[first] && f.elements[first].closest('details'); if (det) det.open = true;
-      }
       if (!showErrors(f, errs)) return;
-      const brands = {};
-      BRANDS.forEach((b) => { const val = v(`brand:${b.id}`); if (val && val !== Content.P.brands[b.id].intro) brands[b.id] = { intro: val }; });
-      if (saveContent((d) => { d.categories = categories; d.brands = brands; }, 'Categorieën en merken opgeslagen.')) st.set(false);
+      const next = values();
+      const changed = changedKeys(shown, next);
+      if (saveContent((d) => {
+        // Only the fields changed in this form; a value equal to the built-in text is not stored.
+        const cats = { ...(isObj(d.categories) ? d.categories : {}) };
+        const brands = { ...(isObj(d.brands) ? d.brands : {}) };
+        changed.forEach((key) => {
+          const val = next[key];
+          if (key.startsWith('brand:')) {
+            const id = key.slice(6);
+            if (val && val !== Content.P.brands[id].intro) brands[id] = { intro: val }; else delete brands[id];
+            return;
+          }
+          const [id, k] = key.split(':');
+          const o = { ...(isObj(cats[id]) ? cats[id] : {}) };
+          if (stableStringify(val) === stableStringify(defaultOf(id, k))) delete o[k]; else o[k] = val;
+          if (Object.keys(o).length) cats[id] = o; else delete cats[id];
+        });
+        d.categories = cats; d.brands = brands;
+      }, 'Categorieën en merken opgeslagen.')) { st.set(false); shown = next; }
     });
     return () => Router.setGuard(null);
   },
@@ -10904,12 +11285,15 @@ Pages.adminServiceForm = adminPage({
       const errs = {};
       if (!v('title')) errs.title = 'Vul een titel in.';
       if (isNew && !Content.isSlug(slug)) errs.slug = 'Gebruik kleine letters, cijfers en koppeltekens.';
-      else if (isNew && (slug === 'nieuw' || SERVICES.some((x) => x.slug === slug))) errs.slug = 'Dit webadres bestaat al. Kies een ander.';
+      else if (isNew && slug === 'nieuw') errs.slug = RESERVED_SLUG;
+      else if (isNew && SERVICES.some((x) => x.slug === slug)) errs.slug = 'Dit webadres bestaat al. Kies een ander.';
       if (!v('short')) errs.short = 'Vul een korte omschrijving in.';
       const body = String(f.elements.body.value).split(/\n\s*\n/).map((p) => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
       if (!body.length) errs.body = 'Vul een tekst in.';
+      if (!errs.body) { const lim = listLimit(body, 20, 3000, 'alinea’s'); if (lim) errs.body = lim; }
       const points = lines(f.elements.points.value);
-      if (points.length > 6) errs.points = 'Gebruik maximaal 6 punten.';
+      const pl = listLimit(points, 6, 160, 'punten'); if (pl) errs.points = pl;
+      const kw = listLimit(csv(f.elements.keywords.value), 30, 60, 'zoekwoorden'); if (kw) errs.keywords = kw;
       const href = v('ctaHref') ? Content.safeHref(v('ctaHref')) : `#/diensten/${slug}`;
       if (!href) errs.ctaHref = 'Gebruik een pagina van deze site (bijv. /contact) of een webadres met https://.';
       if (!showErrors(f, errs)) return;
@@ -10954,7 +11338,7 @@ Pages.adminArticleForm = adminPage({
           ${saField({ name: 'tag', label: 'Label', value: a.tag, max: 40, half: true, placeholder: 'Techniek' })}
           ${iconSelect('icon', a.icon)}
           ${saField({ name: 'short', label: 'Samenvatting', value: a.short, multi: true, rows: 2, max: 400, hint: 'Op de overzichtspagina, onder de titel en in Google.' })}
-          ${saField({ name: 'body', label: 'Tekst', value: richSource(a.body), multi: true, rows: 14, max: 20000, hint: '<code class="code">## Kop</code> voor een tussenkop, <code class="code">- </code> voor een opsomming, lege regel = nieuwe alinea.' })}
+          ${saField({ name: 'body', label: 'Tekst', value: richSource(a.body), multi: true, rows: 14, max: 20000, hint: '<code class="code">## Kop</code> voor een tussenkop, <code class="code">- </code> voor een opsomming, lege regel = nieuwe alinea, <code class="code">**tekst**</code> = vet, <code class="code">[linktekst](/contact)</code> = link.' })}
           ${saField({ name: 'links', label: 'Links onder het bericht', value: linksText((a.links || []).map(([l, h]) => [l, h.replace(/^#/, '')])), multi: true, rows: 3, opt: true, hint: 'Eén per regel (maximaal 6): <code class="code">Linktekst | /pagina</code> of <code class="code">Linktekst | https://…</code>' })}
           ${saField({ name: 'keywords', label: 'Zoekwoorden', value: a.keywords.join(', '), opt: true })}
         </div></div></section></div>
@@ -10976,13 +11360,18 @@ Pages.adminArticleForm = adminPage({
       const errs = {};
       if (!v('title')) errs.title = 'Vul een titel in.';
       if (isNew && !Content.isSlug(slug)) errs.slug = 'Gebruik kleine letters, cijfers en koppeltekens.';
-      else if (isNew && (slug === 'nieuw' || ARTICLES.some((x) => x.slug === slug))) errs.slug = 'Dit webadres bestaat al. Kies een ander.';
+      else if (isNew && slug === 'nieuw') errs.slug = RESERVED_SLUG;
+      else if (isNew && ARTICLES.some((x) => x.slug === slug)) errs.slug = 'Dit webadres bestaat al. Kies een ander.';
       if (!v('short')) errs.short = 'Vul een samenvatting in.';
       const body = parseRich(f.elements.body.value);
       if (!body.length) errs.body = 'Vul een tekst in.';
+      else if (body.length > 80) errs.body = 'Gebruik maximaal 80 alinea’s, kopjes en opsommingen.';
+      else if (body.some(([k, c]) => (k === 'ul' ? c.length > 40 || c.some((li) => li.length > 600) : c.length > 3000))) errs.body = 'Maximaal 3.000 tekens per alinea en 40 punten van elk 600 tekens per opsomming.';
       const links = parseLinks(f.elements.links.value);
       if (!links) errs.links = 'Schrijf elke link als “Linktekst | /pagina” of “Linktekst | https://…”.';
       else if (links.length > 6) errs.links = 'Gebruik maximaal 6 links.';
+      else if (linkLabelError(links)) errs.links = linkLabelError(links);
+      const kw = listLimit(csv(f.elements.keywords.value), 30, 60, 'zoekwoorden'); if (kw) errs.keywords = kw;
       if (!showErrors(f, errs)) return;
       const next = { slug, tag: v('tag') || 'Kennis', icon: f.elements.icon.value, title: v('title'), keywords: csv(f.elements.keywords.value), short: v('short'), body, links };
       const list = deepClone(ARTICLES);
@@ -11004,7 +11393,7 @@ const reviewRow = (r = {}) => `<div class="row-edit row-edit--card">
     <label class="field"><span class="label">Naam</span><input class="input input--sm" data-r="name" value="${attr(r.name || '')}" maxlength="60"></label>
     <label class="field"><span class="label">Plaats</span><input class="input input--sm" data-r="place" value="${attr(r.place || '')}" maxlength="60"></label>
     <label class="field"><span class="label">Datum</span><input class="input input--sm" type="date" data-r="date" value="${attr(r.date || '')}"></label>
-    <label class="field span-2"><span class="label">Citaat (letterlijk)</span><textarea class="textarea textarea--sm" data-r="text" rows="3" maxlength="1500">${esc(r.text || '')}</textarea></label>
+    <label class="field span-2"><span class="label">Citaat (letterlijk)</span><textarea class="textarea textarea--sm" data-r="text" rows="3">${esc(r.text || '')}</textarea></label>
   </div>
   <div class="row-edit-actions"><button class="icon-btn icon-btn--sm" type="button" data-row-up aria-label="Omhoog">${icon('left').replace('<svg', '<svg style="transform:rotate(90deg)"')}</button><button class="icon-btn icon-btn--sm" type="button" data-row-down aria-label="Omlaag">${icon('right').replace('<svg', '<svg style="transform:rotate(90deg)"')}</button><button class="icon-btn icon-btn--sm" type="button" data-row-del aria-label="Verwijderen">${icon('trash')}</button></div>
 </div>`;
@@ -11033,22 +11422,32 @@ Pages.adminReviews = adminPage({
     const rows = $('[data-rv-rows]', f);
     bindRowEditor(rows, reviewRow, () => st.set(true));
     $('[data-rv-add]', f).addEventListener('click', () => { rows.insertAdjacentHTML('beforeend', reviewRow({ score: 10 })); st.set(true); $$('.row-edit', rows).pop().querySelector('input').focus(); });
+    const v = (k) => f.elements[k].value.trim();
+    const itemsOf = () => $$('.row-edit', rows).map((row) => { const g = (k) => $(`[data-r="${k}"]`, row).value.trim(); return { title: g('title'), name: g('name'), place: g('place'), date: g('date'), score: Number(g('score')), text: g('text') }; });
+    const values = () => ({ score: v('score').replace('.', ','), scale: Number(v('scale')), count: Number(v('count')), source: v('source'), url: v('url'), writeUrl: v('writeUrl'), items: itemsOf() });
+    let shown = values();
     f.addEventListener('submit', (e) => {
       e.preventDefault();
-      const v = (k) => f.elements[k].value.trim();
       const errs = {};
       if (!/^\d{1,2}([.,]\d)?$/.test(v('score'))) errs.score = 'Vul een score in, bijvoorbeeld 9,4.';
       const scale = Number(v('scale')); const count = Number(v('count'));
       if (!Number.isInteger(scale) || scale < 5 || scale > 10) errs.scale = 'Kies een schaal van 5 tot 10.';
       else if (Number(v('score').replace(',', '.')) > scale) errs.score = 'De score is hoger dan de schaal.';
-      if (!Number.isInteger(count) || count < 0) errs.count = 'Vul een geldig aantal in.';
+      if (!Number.isInteger(count) || count < 0 || count >= 1000000) errs.count = 'Vul een geldig aantal in.';
       if (!v('source')) errs.source = 'Vul de bron in.';
       ['url', 'writeUrl'].forEach((k) => { if (!Content.httpsUrl(v(k))) errs[k] = 'Gebruik een webadres dat met https:// begint.'; });
-      const items = $$('.row-edit', rows).map((row) => { const g = (k) => $(`[data-r="${k}"]`, row).value.trim(); return { title: g('title'), name: g('name'), place: g('place'), date: g('date'), score: Number(g('score')), text: g('text') }; });
+      const items = itemsOf();
       if (items.some((it) => !it.name || !it.text)) { Toast.show('Vul bij elk citaat ten minste de naam en het citaat in.', { error: true }); return; }
+      if (items.length > 40) { Toast.show('Gebruik maximaal 40 citaten.', { error: true }); return; }
+      if (items.some((it) => it.text.length > 1500)) { Toast.show('Een citaat mag maximaal 1.500 tekens hebben.', { error: true }); return; }
       if (!showErrors(f, errs)) return;
-      const next = { score: v('score').replace('.', ','), scale, count, source: v('source'), url: v('url'), writeUrl: v('writeUrl'), items };
-      if (saveContent((d) => { d.reviews = next; }, 'Beoordelingen opgeslagen.')) st.set(false);
+      const next = values();
+      const changed = changedKeys(shown, next);
+      if (saveContent((d) => {
+        const rv = { ...(isObj(d.reviews) ? d.reviews : {}) };
+        changed.forEach((k) => { rv[k] = next[k]; });
+        d.reviews = rv;
+      }, 'Beoordelingen opgeslagen.')) { st.set(false); shown = next; }
     });
     return () => Router.setGuard(null);
   },
@@ -11058,7 +11457,7 @@ Pages.adminReviews = adminPage({
 const workRow = (m = {}) => `<div class="row-edit row-edit--card">
   <div class="form-grid">
     <label class="field span-2"><span class="label">Titel</span><input class="input input--sm" data-w="title" value="${attr(m.title || '')}" maxlength="120"></label>
-    <label class="field span-2"><span class="label">Tekst</span><textarea class="textarea textarea--sm" data-w="text" rows="2" maxlength="800">${esc(m.text || '')}</textarea></label>
+    <label class="field span-2"><span class="label">Tekst</span><textarea class="textarea textarea--sm" data-w="text" rows="2">${esc(m.text || '')}</textarea></label>
     <label class="field span-2"><span class="label">Links</span><textarea class="textarea textarea--sm" data-w="links" rows="2">${esc(linksText(m.links))}</textarea><span class="hint">Eén per regel (maximaal 4): <code class="code">Linktekst | https://…</code></span></label>
   </div>
   <div class="row-edit-actions"><button class="icon-btn icon-btn--sm" type="button" data-row-up aria-label="Omhoog">${icon('left').replace('<svg', '<svg style="transform:rotate(90deg)"')}</button><button class="icon-btn icon-btn--sm" type="button" data-row-down aria-label="Omlaag">${icon('right').replace('<svg', '<svg style="transform:rotate(90deg)"')}</button><button class="icon-btn icon-btn--sm" type="button" data-row-del aria-label="Verwijderen">${icon('trash')}</button></div>
@@ -11079,6 +11478,8 @@ Pages.adminMoreWork = adminPage({
     const rows = $('[data-w-rows]', f);
     bindRowEditor(rows, workRow, () => st.set(true));
     $('[data-w-add]', f).addEventListener('click', () => { rows.insertAdjacentHTML('beforeend', workRow()); st.set(true); $$('.row-edit', rows).pop().querySelector('input').focus(); });
+    const raw = () => $$('.row-edit', rows).map((row) => ['title', 'text', 'links'].map((k) => $(`[data-w="${k}"]`, row).value.trim()));
+    let shown = raw();
     f.addEventListener('submit', (e) => {
       e.preventDefault();
       let bad = '';
@@ -11086,12 +11487,17 @@ Pages.adminMoreWork = adminPage({
         const g = (k) => $(`[data-w="${k}"]`, row).value.trim();
         const links = parseLinks(g('links'));
         if (!g('title')) bad = 'Elke kaart heeft een titel nodig.';
+        if (g('text').length > 800) bad = 'De tekst van een kaart mag maximaal 800 tekens hebben.';
         if (!links) bad = 'Schrijf elke link als “Linktekst | https://…”.';
         else if (links.length > 4) bad = 'Gebruik maximaal 4 links per kaart.';
+        else if (linkLabelError(links)) bad = linkLabelError(links);
         return { title: g('title'), text: g('text'), links: links || [] };
       });
+      if (items.length > 24) bad = 'Gebruik maximaal 24 kaarten.';
       if (bad) { Toast.show(bad, { error: true }); return; }
-      if (saveContent((d) => { d.moreWork = items; }, 'Opgeslagen.')) st.set(false);
+      const next = raw();
+      // The cards are one list: saved when it changed in this form, so a change saved meanwhile in another tab stays otherwise.
+      if (saveContent((d) => { if (stableStringify(next) !== stableStringify(shown)) d.moreWork = items; }, 'Opgeslagen.')) { st.set(false); shown = next; }
     });
     return () => Router.setGuard(null);
   },
@@ -11259,7 +11665,7 @@ function bindGlobal() {
     }
     // Any link in the mobile menu closes it, also the link to the page that is already open.
     const navLink = e.target.closest('#mobileNav a[href]');
-    if (navLink) {
+    if (navLink && plainClick(e)) { // a new-tab click (Ctrl, Shift, middle button) leaves the menu open
       Layout.closeMenu();
       if (Router.isCurrent(navLink.getAttribute('href'))) window.scrollTo(0, 0);
     }

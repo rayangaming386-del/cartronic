@@ -187,6 +187,15 @@ rewriting history, placeholders in editor text expanding in the published file, 
 parsing. All 31 are fixed and covered by `qa/review-fixes.cjs` (41 checks), and a second, independent round
 re-verified the fixes and hunted for regressions introduced by them.
 
+Second review round: that re-verification confirmed 35 further problems (each reproduced by its own verifier), all
+fixed and covered by `qa/round2-fixes.cjs` (69 checks). Among them: a Beheer tab left open on an older version
+could undo a fresh publication (an outdated tab now stops saving and asks for a reload); unsaved edits are now also
+protected on reload/close (browser prompt) and for typed addresses; Back/Forward return to the previous scroll
+position in both URL styles; two tabs on the same Beheer screen save only the fields they changed; every form
+limit now matches what a publication keeps (clear messages instead of silent cutting); the website address is
+normalised; "Webshop & projecten" is only listed as unpublished when the data really differs; rich texts support
+**vet** and links; opening hours such as "Ma t/m vr, za" become the right days for Google.
+
 Beheer & SEO round: a snapshot of all 372 public routes (header, page, footer, mobile menu, title, description) was
 compared before and after the content layer — identical except the intentionally shortened search descriptions.
 New suites: every Beheer screen at 1440 and 390 px (no errors, no overflow), 58 checks that each screen saves,
