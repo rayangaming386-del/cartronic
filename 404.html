@@ -2888,16 +2888,28 @@ const Router = (() => {
       // An old-style URL (/#/mogelijkheden) becomes the clean one.
       if (location.hash.startsWith('#/')) history.replaceState(stamp(idx), '', href(location.hash.slice(1)));
       else if (/\/(index|404)\.html$/.test(location.pathname)) history.replaceState(stamp(idx), '', BASE + location.search + location.hash);
-      else history.replaceState(stamp(idx), '');
+      else history.replaceState({ ...(st || {}), ...stamp(idx) }, '');
       watchLinks();
       window.addEventListener('popstate', onTraverse);
       window.addEventListener('hashchange', onPathHash);
     } else {
-      history.replaceState(stamp(idx), '');
+      history.replaceState({ ...(st || {}), ...stamp(idx) }, '');
       window.addEventListener('hashchange', onTraverse);
     }
     window.addEventListener('click', onLinkClick);
-    window.addEventListener('scroll', () => { if (!deciding) scrollAt.set(idx, window.scrollY); }, { passive: true });
+    // The current entry also keeps its position in history.state (written shortly after scrolling stops), so
+    // Back/Forward after a reload, or to an entry left by Back/Forward, return to the right place.
+    let yTimer = 0;
+    window.addEventListener('scroll', () => {
+      if (deciding) return;
+      scrollAt.set(idx, window.scrollY);
+      const at = idx; clearTimeout(yTimer);
+      yTimer = setTimeout(() => {
+        const s = history.state;
+        if (deciding || at !== idx || !s || s.ctIdx !== at) return;
+        try { history.replaceState({ ...s, ctY: window.scrollY }, ''); } catch (e) { /* ignore */ }
+      }, 300);
+    }, { passive: true });
     // Keep the position for a reload or a later return to this entry from another page.
     // (beforeunload too: Chromium keeps a history write made there across a reload, not one made in pagehide.)
     const keepY = () => { if (deciding) return; try { history.replaceState({ ...(history.state || {}), ctY: window.scrollY }, ''); } catch (e) { /* ignore */ } };
@@ -2919,6 +2931,12 @@ const Router = (() => {
     /** True while the open form reports unsaved changes. */
     hasUnsaved() { return !!(guard && guard()); },
     /** Asks about unsaved changes (if any) before the page is rebuilt; false when the user stays. */
+    /** Runs a question (fn returns a promise) as an open question: Back or a typed address meanwhile is undone. */
+    async whileAsking(fn) {
+      if (deciding) return false;
+      deciding = true;
+      try { return await fn(); } finally { deciding = false; }
+    },
     async confirmLeave() {
       if (deciding) return false;
       if (!(guard && guard())) return true;
@@ -4598,7 +4616,8 @@ const Content = (() => {
      version (or explicitly chooses this one, see adoptVersion). Written before the draft is read below, so
      other tabs hear about it before anything else. */
   const newest = Storage.get('newestStamp', null);
-  let stale = typeof newest === 'string' && newest > pubStamp;
+  // Only for an editor: a visitor always gets the publication of the page they open (also after a rollback).
+  let stale = Storage.get('editor', false) === true && typeof newest === 'string' && newest > pubStamp;
   if (!stale) Storage.set('newestStamp', pubStamp);
   // Cleaned on first use (Repo.init), when every part of the page script is ready.
   let pubShop; let pubShopRead = false;
@@ -4651,9 +4670,12 @@ const Content = (() => {
     draft = plainObj(s) ? s : null;
     parked = false;
     if (draft && (draft.base || '') !== pubStamp) {
-      // Equal to this publication: nothing to decide. Ignored here, but kept in storage: another file of the
-      // site (for example the working copy next to a downloaded preview) may still be based on it.
-      if (stableStringify(contentOf(draft)) === stableStringify(contentOf(published))) draft = null;
+      // Equal to this publication: nothing to decide. It now counts as based on this publication (kept, not
+      // deleted), so after a later rollback it is not silently taken for unpublished changes.
+      if (stableStringify(contentOf(draft)) === stableStringify(contentOf(published))) {
+        if (!stale && isEditor()) { draft.base = pubStamp; Storage.set('siteDraft', draft); }
+        draft = null;
+      }
       else parked = true;
     }
   }
@@ -4818,7 +4840,7 @@ const Content = (() => {
   window.addEventListener('storage', (e) => {
     if (e.key === `${Storage.PREFIX}newestStamp`) {
       const v = Storage.get('newestStamp', null);
-      if (!stale && typeof v === 'string' && v !== pubStamp) { stale = true; Bus.emit('content:stale'); }
+      if (!stale && isEditor() && typeof v === 'string' && v !== pubStamp) { stale = true; Bus.emit('content:stale'); }
       return;
     }
     if (e.key !== null && e.key !== `${Storage.PREFIX}siteDraft` && e.key !== `${Storage.PREFIX}editor`) return;
@@ -4848,7 +4870,7 @@ const Content = (() => {
     /** True when another tab opened a different publication: this tab must be reloaded before saving. */
     get stale() { return stale; },
     /** Makes this page's publication the current one in this browser (other open tabs become outdated). */
-    adoptVersion() { Storage.set('newestStamp', pubStamp); stale = false; },
+    adoptVersion() { Storage.set('newestStamp', pubStamp); }, // takes effect after the reload that follows
     get draft() { return draft; },
     isEditor,
     texts() { return texts; },
@@ -4935,9 +4957,17 @@ const Repo = (() => {
         // choose. Data that already equals the publication is left as it is (nothing to load, nothing lost).
         // An outdated page (Content.stale) never replaces the data of a newer version.
         const pub = Content.publishedShop();
-        const same = !!pub && fingerprint(this.shopSnapshot()) === fingerprint(pub);
-        if (Content.isEditor() && this.shopDirty()) this.shopParked = true;
-        else if (!same) this.loadPublishedShop({ silent: true });
+        const fp = fingerprint(this.shopSnapshot());
+        const base = Storage.get('shopBase', null);
+        // Edits made in Beheer since the data was last loaded (data stored by an older version: trust the flag).
+        const local = Storage.get('shopDirty', false) === true && (typeof base !== 'string' || fp !== base);
+        if (pub && fp === fingerprint(pub)) { // already exactly this publication (e.g. the editor's own, just deployed)
+          Storage.set('pubStamp', Content.pubStamp); Storage.set('shopDirty', false); this.markShopBase(pub);
+        } else if (Content.isEditor() && !pub) {
+          Storage.set('pubStamp', Content.pubStamp); // a page without webshop data (the unpublished file): the editor's data stays
+        } else if (Content.isEditor() && local) {
+          this.shopParked = true; // unpublished edits and a different publication: the editor chooses
+        } else this.loadPublishedShop({ silent: true });
       }
       window.addEventListener('storage', (e) => {
         if (!e.key || !e.key.startsWith(Storage.PREFIX)) return;
@@ -9938,7 +9968,10 @@ const SiteStatus = {
 document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-reload]')) { location.reload(); return; }
   if (e.target.closest('[data-adopt]')) {
-    if (!(await Overlay.confirm({ title: 'Met deze versie verder?', message: 'Deze versie wordt in deze browser de actuele. Andere tabbladen met een andere versie stoppen dan met opslaan. Publiceert u hierna, dan vervangt deze versie de nieuwere op de website.', confirmLabel: 'Met deze versie verder' }))) return;
+    // One question (also about unsaved text in the open form), asked as an open question: no second dialog.
+    const msg = `Deze versie wordt in deze browser de actuele en de pagina wordt opnieuw geladen. Andere tabbladen met een andere versie stoppen dan met opslaan. Publiceert u hierna, dan vervangt deze versie de nieuwere op de website.${Router.hasUnsaved() ? ' Wijzigingen in het formulier die nog niet zijn opgeslagen, gaan verloren.' : ''}`;
+    if (!(await Router.whileAsking(() => Overlay.confirm({ title: 'Met deze versie verder?', message: msg, confirmLabel: 'Met deze versie verder' })))) return;
+    Router.setGuard(null); // the reload must not be stopped half-way
     Content.adoptVersion(); location.reload(); return;
   }
   const b = e.target.closest('[data-parked]');
@@ -9953,9 +9986,11 @@ document.addEventListener('click', async (e) => {
     const what = content && shop ? 'Uw concept in deze browser (website-inhoud én webshopgegevens) wordt weggegooid.'
       : (content ? 'Uw concept van de website-inhoud in deze browser wordt weggegooid. Wijzigingen in producten, projecten en webshopinstellingen blijven staan.'
         : 'Uw concept van producten, projecten en webshopinstellingen in deze browser wordt weggegooid. Wijzigingen in de website-inhoud blijven staan.');
-    if (!(await Overlay.confirm({ title: 'Gepubliceerde versie gebruiken?', message: `${what} Dit kan niet ongedaan worden gemaakt.`, confirmLabel: 'Concept weggooien', danger: true }))) return;
-    if (!(await Router.confirmLeave())) return;
+    // One question, also about unsaved text in the open form (the page is rebuilt), asked as an open question.
+    const unsaved = Router.hasUnsaved() ? ' Wijzigingen in het formulier die nog niet zijn opgeslagen, gaan ook verloren.' : '';
+    if (!(await Router.whileAsking(() => Overlay.confirm({ title: 'Gepubliceerde versie gebruiken?', message: `${what}${unsaved} Dit kan niet ongedaan worden gemaakt.`, confirmLabel: 'Concept weggooien', danger: true })))) return;
     if (Content.stale) { Toast.show(RELOAD_FIRST, { error: true }); return; }
+    Router.setGuard(null);
     if (content && Content.parked) Content.discardDraft();
     if (shop && Repo.shopParked) { Repo.loadPublishedShop(); Cart.validate(); }
     Toast.show('U werkt nu met de gepubliceerde versie.');
