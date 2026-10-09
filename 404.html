@@ -2671,7 +2671,12 @@ const Router = (() => {
   let idx = 0;
   let deciding = false; // the unsaved-changes question is open
   let landed = null; // called when a history step back to the form entry has arrived
-  const stamp = (i) => ({ ctIdx: i });
+  // Each entry also gets a key; its scroll position is kept under that key in this tab's session storage,
+  // written at once while scrolling (history.state is only updated after scrolling stops).
+  let curKey = '';
+  const newKey = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const ssY = (k) => { try { const v = k ? sessionStorage.getItem(`ct.y.${k}`) : null; return v == null || v === '' || !Number.isFinite(Number(v)) ? undefined : Number(v); } catch (e) { return undefined; } };
+  const stamp = (i) => ({ ctIdx: i, ctKey: curKey });
   /* Scroll positions per history entry, kept by the app: Back/Forward return to where the visitor was and
      new pages start at the top. The browser's own restoration is off, because it would also restore a
      position after the app steps back to a form entry with unsaved changes. */
@@ -2681,7 +2686,7 @@ const Router = (() => {
   function pushUrl(url) {
     try { history.replaceState({ ...stamp(idx), ctY: window.scrollY }, ''); } catch (e) { /* ignore */ }
     scrollAt.set(idx, window.scrollY);
-    idx += 1; forget(idx);
+    idx += 1; forget(idx); curKey = newKey();
     history.pushState(stamp(idx), '', url); lastKey = urlKey();
   }
   function replaceUrl(url) { history.replaceState(stamp(idx), '', url); lastKey = urlKey(); }
@@ -2690,6 +2695,8 @@ const Router = (() => {
   function rememberedY() {
     if (scrollAt.has(idx)) return scrollAt.get(idx);
     const st = history.state;
+    const y = ssY(st && st.ctKey);
+    if (y !== undefined) return y;
     return st && Number.isFinite(st.ctY) ? st.ctY : undefined;
   }
   /** Steps through history (back to the form entry) and waits until the step has arrived. */
@@ -2746,7 +2753,7 @@ const Router = (() => {
     const st = history.state;
     const known = !!st && Number.isInteger(st.ctIdx);
     if (key === lastKey) { // nothing to render (this is also the step back to the form entry while asking)
-      if (landed) landed(); else if (known && !deciding) idx = st.ctIdx;
+      if (landed) landed(); else if (known && !deciding) { idx = st.ctIdx; curKey = st.ctKey || curKey; }
       return;
     }
     const to = known ? st.ctIdx : idx + 1; // an unknown entry is a typed address: a new entry
@@ -2759,7 +2766,7 @@ const Router = (() => {
     }
     if (!pathMode && !known && location.hash && !location.hash.startsWith('#/')) {
       // A typed in-page anchor (e.g. "#main") is not a route: keep the route address and focus the target.
-      idx += 1; forget(idx); history.replaceState(stamp(idx), '', keyUrl(lastKey));
+      idx += 1; forget(idx); curKey = newKey(); history.replaceState(stamp(idx), '', keyUrl(lastKey));
       focusAnchor(anchorId(location.hash));
       return;
     }
@@ -2773,6 +2780,7 @@ const Router = (() => {
       if (back) { history.go(to - idx); return; } // continue the traversal; its event renders the page
       pushUrl(target); render(); return;
     }
+    curKey = (known && st.ctKey) || newKey();
     if (!known) { history.replaceState(stamp(to), ''); forget(to); }
     idx = to; lastKey = key;
     render({ scrollY: known ? rememberedY() : undefined });
@@ -2789,9 +2797,9 @@ const Router = (() => {
     if (location.hash.startsWith('#/')) {
       const target = href(location.hash.slice(1));
       if (guard && guard()) { if (await ask(-1)) { pushUrl(target); render(); } return; }
-      idx += 1; forget(idx); replaceUrl(target); render(); return;
+      idx += 1; forget(idx); curKey = newKey(); replaceUrl(target); render(); return;
     }
-    idx += 1; forget(idx); history.replaceState(stamp(idx), '');
+    idx += 1; forget(idx); curKey = newKey(); history.replaceState(stamp(idx), '');
     if (location.hash.length > 1) focusAnchor(anchorId(location.hash));
   }
   /** fn(path) → new path or null. Old URLs are replaced in history, so Back skips them. */
@@ -2882,7 +2890,9 @@ const Router = (() => {
   function start() {
     const st = history.state;
     idx = st && Number.isInteger(st.ctIdx) ? st.ctIdx : 0;
-    const y0 = st && Number.isFinite(st.ctY) ? st.ctY : undefined; // a reload or a return from another site
+    curKey = (st && typeof st.ctKey === 'string' && st.ctKey) || newKey();
+    const ys = ssY(curKey);
+    const y0 = ys !== undefined ? ys : (st && Number.isFinite(st.ctY) ? st.ctY : undefined); // a reload or a return from another site
     try { history.scrollRestoration = 'manual'; } catch (e) { /* older browsers restore by themselves */ }
     if (pathMode) {
       // An old-style URL (/#/mogelijkheden) becomes the clean one.
@@ -2903,6 +2913,7 @@ const Router = (() => {
     window.addEventListener('scroll', () => {
       if (deciding) return;
       scrollAt.set(idx, window.scrollY);
+      try { sessionStorage.setItem(`ct.y.${curKey}`, String(window.scrollY)); } catch (e) { /* ignore */ }
       const at = idx; clearTimeout(yTimer);
       yTimer = setTimeout(() => {
         const s = history.state;
@@ -4629,7 +4640,7 @@ const Content = (() => {
       empty containers, values equal to the defaults and lists equal to the built-in lists are left out. */
   function contentOf(b) {
     const o = { ...(plainObj(b) ? b : {}) };
-    ['stamp', 'base', 'updatedAt', 'shop', 'v'].forEach((k) => delete o[k]);
+    ['stamp', 'base', 'baseFp', 'updatedAt', 'shop', 'v'].forEach((k) => delete o[k]);
     const same = (a, c) => stableStringify(a) === stableStringify(c);
     const isEmpty = (v) => (Array.isArray(v) ? !v.length : plainObj(v) && !Object.keys(v).length);
     const prune = (obj, defaults) => {
@@ -4665,6 +4676,15 @@ const Content = (() => {
   /* A draft based on an older publication is parked: it is only used once the editor chooses so. */
   let parked = false;
   /** Reads the editor's draft from storage (also when another tab changed it). */
+  /** Short fingerprint of a bundle's content (what contentOf keeps). */
+  function contentFp(b) {
+    const str = stableStringify(contentOf(b));
+    let h1 = 0xdeadbeef; let h2 = 0x41c6ce57;
+    for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return `${str.length}:${(h2 >>> 0).toString(36)}${(h1 >>> 0).toString(36)}`;
+  }
   function syncDraft() {
     const s = isEditor() ? Storage.get('siteDraft', null) : null;
     draft = plainObj(s) ? s : null;
@@ -4674,10 +4694,14 @@ const Content = (() => {
       // Equal to this publication: nothing to decide. It now counts as based on this publication (kept, not
       // deleted), so after a later rollback it is not silently taken for unpublished changes.
       if (stableStringify(contentOf(draft)) === stableStringify(contentOf(published))) {
-        if (!stale && isEditor()) { draft.base = pubStamp; Storage.set('siteDraft', draft); }
+        if (!stale && isEditor()) { draft.base = pubStamp; draft.baseFp = contentFp(published); Storage.set('siteDraft', draft); }
         draft = null;
-      }
-      else parked = true;
+      } else if (typeof draft.baseFp === 'string' && draft.baseFp === contentFp(draft)) {
+        // No edits since the publication it was based on (e.g. after a rollback, or a save without changes):
+        // nothing of the editor's to keep, so this publication simply applies.
+        if (!stale && isEditor()) Storage.remove('siteDraft');
+        draft = null;
+      } else parked = true;
     }
   }
   syncDraft();
@@ -4827,7 +4851,7 @@ const Content = (() => {
     if (parked) { apply(); return false; }
     const d = working();
     fn(d);
-    d.v = 1; d.base = pubStamp; d.updatedAt = nowIso();
+    d.v = 1; d.base = pubStamp; d.baseFp = contentFp(published); d.updatedAt = nowIso();
     delete d.stamp; delete d.shop;
     draft = d; parked = false;
     Storage.set('editor', true);
@@ -4836,7 +4860,7 @@ const Content = (() => {
     return true;
   }
   function discardDraft() { draft = null; parked = false; Storage.remove('siteDraft'); apply(); }
-  function resumeParked() { syncDraft(); if (!draft) { apply(); return; } draft.base = pubStamp; parked = false; Storage.set('siteDraft', draft); apply(); }
+  function resumeParked() { syncDraft(); if (!draft) { apply(); return; } draft.base = pubStamp; draft.baseFp = contentFp(published); parked = false; Storage.set('siteDraft', draft); apply(); }
   // A draft saved in another tab: use it here too, so open screens and the site show the latest version.
   window.addEventListener('storage', (e) => {
     if (e.key === `${Storage.PREFIX}newestStamp`) {
@@ -4876,6 +4900,8 @@ const Content = (() => {
     get parked() { return parked; },
     /** True when another tab opened a different publication: this tab must be reloaded before saving. */
     get stale() { return stale; },
+    /** The publication stamp a parked draft is based on. */
+    get draftBase() { return draft ? draft.base || '' : ''; },
     /** Makes this page's publication the current one in this browser (other open tabs become outdated). */
     adoptVersion() { Storage.set('newestStamp', pubStamp); }, // takes effect after the reload that follows
     recheckVersion,
@@ -4931,10 +4957,10 @@ const Repo = (() => {
   /* Unpublished webshop changes are found by comparing the data with its state when it was last loaded
      (the publication, or the demo data when nothing is published): saving without changes, or changing
      something back, is no change. Kept as a short fingerprint, not as a second copy of the data. */
-  function fingerprint(sh) {
+  function fingerprint(sh, noStock = false) {
     const clean = Content.cleanShop(sh);
     if (!clean) return 'x';
-    clean.products = clean.products.map((p) => { const q = { ...p }; delete q.createdAt; delete q.updatedAt; return q; });
+    clean.products = clean.products.map((p) => { const q = { ...p }; delete q.createdAt; delete q.updatedAt; if (noStock) delete q.stock; return q; });
     const str = stableStringify(clean);
     let h1 = 0xdeadbeef; let h2 = 0x41c6ce57;
     for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
@@ -4951,7 +4977,8 @@ const Repo = (() => {
     ver += 1;
     cache[key] = value; Storage.set(key, value);
     // Webshop changes made in Beheer stay unpublished until the next "Publiceren".
-    if (SHOP_KEYS.includes(key) && document.body.classList.contains('is-admin')) Storage.set('shopDirty', true);
+    // (A save that leaves the data equal to its base, e.g. without changes or changed back, is no change.)
+    if (SHOP_KEYS.includes(key) && document.body.classList.contains('is-admin')) { Storage.set('shopDirty', true); if (!Repo.shopDirty()) Storage.set('shopDirty', false); }
   };
   const SCHEMA = 1;
   return {
@@ -4973,7 +5000,8 @@ const Repo = (() => {
           Storage.set('pubStamp', Content.pubStamp); Storage.set('shopDirty', false); this.markShopBase(pub);
         } else if (Content.isEditor() && !pub) {
           Storage.set('pubStamp', Content.pubStamp); // a page without webshop data (the unpublished file): the editor's data stays
-        } else if (Content.isEditor() && local) {
+        } else if (Content.isEditor() && local && !(pub && fingerprint(this.shopSnapshot(), true) === fingerprint(pub, true))) {
+          // (Only stock differs, e.g. a test order: the publication's data simply applies.)
           this.shopParked = true; // unpublished edits and a different publication: the editor chooses
         } else this.loadPublishedShop({ silent: true });
       }
@@ -9974,7 +10002,8 @@ const SiteStatus = {
     const shown = Repo.shopParked
       ? (Content.parked ? 'Tot u kiest, ziet u de gepubliceerde teksten en inhoud; producten, projecten en webshopinstellingen zijn nog uw eigen concept.' : 'Producten, projecten en webshopinstellingen in deze browser zijn nog uw eigen concept.')
       : 'Tot u kiest, ziet u de gepubliceerde inhoud.';
-    return UI.notice(`<strong>Er staat een nieuwere gepubliceerde versie online.</strong> Uw concept in deze browser is gebaseerd op een oudere versie. Kies met welke versie u verder wilt werken; publiceren kan pas daarna. ${shown}`,
+    const rollback = Content.parked && Content.draftBase > Content.pubStamp;
+    return UI.notice(`${rollback ? '<strong>Er is een oudere versie van de website teruggezet.</strong> Uw concept in deze browser is gebaseerd op een nieuwere versie en bevat wijzigingen die nog niet zijn gepubliceerd.' : '<strong>Er staat een nieuwere gepubliceerde versie online.</strong> Uw concept in deze browser is gebaseerd op een oudere versie.'} Kies met welke versie u verder wilt werken; publiceren kan pas daarna. ${shown}`,
       { type: 'warn', ic: 'alert', actions: '<button class="btn btn--dark btn--xs" type="button" data-parked="published">Gepubliceerde versie gebruiken</button><button class="btn btn--light btn--xs" type="button" data-parked="keep">Mijn concept behouden</button>' });
   },
 };
@@ -10115,7 +10144,7 @@ const Publisher = {
   /** The bundle that a publication embeds: the working content plus the webshop data. */
   bundle(stamp) {
     const b = Content.working();
-    delete b.base; delete b.updatedAt;
+    delete b.base; delete b.baseFp; delete b.updatedAt;
     b.v = 1; b.stamp = stamp;
     b.shop = Repo.shopSnapshot();
     return b;
@@ -10335,7 +10364,7 @@ Pages.adminWebsite = adminPage({
     });
     $('[data-backup]', root).addEventListener('click', () => {
       const why = SiteStatus.blocked(); if (why) { Toast.show(why, { error: true }); return; }
-      const c = Content.working(); delete c.base;
+      const c = Content.working(); delete c.base; delete c.baseFp;
       downloadJson(`cartronic-backup-${nowIso().slice(0, 10)}.json`, { format: 'cartronic-site', version: 1, exportedAt: nowIso(), content: c, shop: Repo.shopSnapshot() });
       Toast.show('Back-up gedownload.');
     });
