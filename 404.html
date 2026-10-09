@@ -4669,7 +4669,8 @@ const Content = (() => {
     const s = isEditor() ? Storage.get('siteDraft', null) : null;
     draft = plainObj(s) ? s : null;
     parked = false;
-    if (draft && (draft.base || '') !== pubStamp) {
+    // On the unpublished starting file ('' = no publication) a draft is simply the editor's work: never parked.
+    if (draft && (draft.base || '') !== pubStamp && !(pubStamp === '' && !stale)) {
       // Equal to this publication: nothing to decide. It now counts as based on this publication (kept, not
       // deleted), so after a later rollback it is not silently taken for unpublished changes.
       if (stableStringify(contentOf(draft)) === stableStringify(contentOf(published))) {
@@ -4843,10 +4844,16 @@ const Content = (() => {
       if (!stale && isEditor() && typeof v === 'string' && v !== pubStamp) { stale = true; Bus.emit('content:stale'); }
       return;
     }
+    if (e.key === `${Storage.PREFIX}editor`) recheckVersion();
     if (e.key !== null && e.key !== `${Storage.PREFIX}siteDraft` && e.key !== `${Storage.PREFIX}editor`) return;
     if (stale) return; // an outdated tab keeps showing what it has until it is reloaded
     syncDraft(); apply({ external: true });
   });
+  /** A page opened by a visitor becomes an editor's page at login: another version may have been opened since. */
+  function recheckVersion() {
+    const v = Storage.get('newestStamp', null);
+    if (!stale && isEditor() && typeof v === 'string' && v !== pubStamp) { stale = true; Bus.emit('content:stale'); }
+  }
   function hasDraftChanges() { return !!draft && !parked && stableStringify(contentOf(draft)) !== stableStringify(contentOf(published)); }
 
   /** Per-section summary of what the draft changes compared with the published version. */
@@ -4871,6 +4878,7 @@ const Content = (() => {
     get stale() { return stale; },
     /** Makes this page's publication the current one in this browser (other open tabs become outdated). */
     adoptVersion() { Storage.set('newestStamp', pubStamp); }, // takes effect after the reload that follows
+    recheckVersion,
     get draft() { return draft; },
     isEditor,
     texts() { return texts; },
@@ -8755,6 +8763,7 @@ function mountLogin(root) {
     if (DemoAuth.login(f.u.value, f.p.value)) {
       // This browser now edits the website: its drafts are kept until they are published or discarded.
       Storage.set('editor', true);
+      Content.recheckVersion(); // another version may have been opened in this browser since this page loaded
       Toast.show('Ingelogd in de demo-beheeromgeving.'); Router.render({ force: true });
     }
     else { $('[data-login-err]', f).textContent = 'Onjuiste gebruikersnaam of wachtwoord.'; f.p.value = ''; f.p.focus(); }
@@ -9948,6 +9957,10 @@ const SiteStatus = {
     const n = this.changes().length;
     return n ? `<a class="pill pill--warn" href="#/admin/website" title="Bekijk wat nog gepubliceerd moet worden">${icon('upload')} ${n} niet gepubliceerd</a>` : '';
   },
+  /** For an editor on a public page of an outdated version: a short note (no change to the page itself). */
+  staleHint() {
+    if (Content.stale) Toast.show('In deze browser is een andere versie van de website geopend dan deze pagina (bijvoorbeeld na het terugzetten van een oudere versie). Beheer laat zien hoe u verder kunt.', { action: { label: 'Naar Beheer', href: '#/admin' } });
+  },
   /** True while publishing must wait: a newer publication awaits the editor's decision, or this tab is outdated. */
   undecided() { return Content.stale || Content.parked || Repo.shopParked; },
   /** Why publishing (or a backup) cannot happen now, or ''. */
@@ -10007,6 +10020,7 @@ Bus.on('content:stale', () => {
   const el = document.querySelector('[data-site-notice]');
   if (el) el.innerHTML = SiteStatus.parkedNotice();
   if (document.body.classList.contains('is-admin')) Toast.show(RELOAD_FIRST, { error: true });
+  else SiteStatus.staleHint();
 });
 
 /* ---------- Publisher: rebuilds this page as a complete website ---------- */
@@ -11836,6 +11850,7 @@ function init() {
   registerRoutes();
   bindGlobal();
   Router.start();
+  if (Content.stale && !document.body.classList.contains('is-admin')) SiteStatus.staleHint();
   Motion.init();
   // Debug/QA handle (no secrets live in this prototype).
   window.CT = { Repo, Cart, Router, VehicleStore, VehicleLookup, VehicleMatcher, Plate, Pricing, Money, Analytics, Search, Payments, OrderService, CheckoutService, Compat, Content, Seo, Publisher, SiteStatus, fmtText,
