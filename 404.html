@@ -1175,7 +1175,8 @@ a.pill--outline:hover { border-color: var(--ink); color: var(--ink); }
 }
 .modal.is-open { transform: translate(-50%, -50%); opacity: 1; }
 /* While opening or closing, a (transparent) dialog must not catch clicks meant for the page. */
-.overlay-backdrop:not(.is-open), .modal:not(.is-open) { pointer-events: none; }
+/* (The fading backdrop still absorbs a trailing double-click until it is removed.) */
+.modal:not(.is-open) { pointer-events: none; }
 .modal--wide { width: min(880px, calc(100vw - 32px)); }
 .modal--sm { width: min(460px, calc(100vw - 32px)); }
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--line); }
@@ -2675,11 +2676,12 @@ const Router = (() => {
      new pages start at the top. The browser's own restoration is off, because it would also restore a
      position after the app steps back to a form entry with unsaved changes. */
   const scrollAt = new Map();
+  /** A new entry at position `from` replaces any Forward entries: their positions no longer apply. */
+  const forget = (from) => [...scrollAt.keys()].forEach((k) => { if (k >= from) scrollAt.delete(k); });
   function pushUrl(url) {
     try { history.replaceState({ ...stamp(idx), ctY: window.scrollY }, ''); } catch (e) { /* ignore */ }
     scrollAt.set(idx, window.scrollY);
-    idx += 1;
-    [...scrollAt.keys()].forEach((k) => { if (k >= idx) scrollAt.delete(k); });
+    idx += 1; forget(idx);
     history.pushState(stamp(idx), '', url); lastKey = urlKey();
   }
   function replaceUrl(url) { history.replaceState(stamp(idx), '', url); lastKey = urlKey(); }
@@ -2757,7 +2759,7 @@ const Router = (() => {
     }
     if (!pathMode && !known && location.hash && !location.hash.startsWith('#/')) {
       // A typed in-page anchor (e.g. "#main") is not a route: keep the route address and focus the target.
-      idx += 1; history.replaceState(stamp(idx), '', keyUrl(lastKey));
+      idx += 1; forget(idx); history.replaceState(stamp(idx), '', keyUrl(lastKey));
       focusAnchor(anchorId(location.hash));
       return;
     }
@@ -2771,7 +2773,7 @@ const Router = (() => {
       if (back) { history.go(to - idx); return; } // continue the traversal; its event renders the page
       pushUrl(target); render(); return;
     }
-    if (!known) history.replaceState(stamp(to), '');
+    if (!known) { history.replaceState(stamp(to), ''); forget(to); }
     idx = to; lastKey = key;
     render({ scrollY: known ? rememberedY() : undefined });
   }
@@ -2787,9 +2789,9 @@ const Router = (() => {
     if (location.hash.startsWith('#/')) {
       const target = href(location.hash.slice(1));
       if (guard && guard()) { if (await ask(-1)) { pushUrl(target); render(); } return; }
-      idx += 1; replaceUrl(target); render(); return;
+      idx += 1; forget(idx); replaceUrl(target); render(); return;
     }
-    idx += 1; history.replaceState(stamp(idx), '');
+    idx += 1; forget(idx); history.replaceState(stamp(idx), '');
     if (location.hash.length > 1) focusAnchor(anchorId(location.hash));
   }
   /** fn(path) → new path or null. Old URLs are replaced in history, so Back skips them. */
@@ -2872,7 +2874,8 @@ const Router = (() => {
     Motion.page(app, { late: prevPath === path }); // same-page refresh: do not re-animate visible content
     if (restore) { // after mount: the page has its full height now
       window.scrollTo(0, scrollY);
-      if (Math.abs(window.scrollY - scrollY) > 2) requestAnimationFrame(() => window.scrollTo(0, scrollY));
+      // Once more after the next frame: late layout (and Motion's ScrollTrigger refresh) may move the page.
+      requestAnimationFrame(() => { if (Math.abs(window.scrollY - scrollY) > 2) window.scrollTo(0, scrollY); });
     }
     RouteProgress.done();
   }
@@ -2896,7 +2899,10 @@ const Router = (() => {
     window.addEventListener('click', onLinkClick);
     window.addEventListener('scroll', () => { if (!deciding) scrollAt.set(idx, window.scrollY); }, { passive: true });
     // Keep the position for a reload or a later return to this entry from another page.
-    window.addEventListener('pagehide', () => { try { history.replaceState({ ...(history.state || {}), ctY: window.scrollY }, ''); } catch (e) { /* ignore */ } });
+    // (beforeunload too: Chromium keeps a history write made there across a reload, not one made in pagehide.)
+    const keepY = () => { if (deciding) return; try { history.replaceState({ ...(history.state || {}), ctY: window.scrollY }, ''); } catch (e) { /* ignore */ } };
+    window.addEventListener('pagehide', keepY);
+    window.addEventListener('beforeunload', keepY);
     lastKey = urlKey();
     render({ scrollY: y0 });
   }
@@ -2913,7 +2919,12 @@ const Router = (() => {
     /** True while the open form reports unsaved changes. */
     hasUnsaved() { return !!(guard && guard()); },
     /** Asks about unsaved changes (if any) before the page is rebuilt; false when the user stays. */
-    confirmLeave() { return deciding ? Promise.resolve(false) : passGuard(); },
+    async confirmLeave() {
+      if (deciding) return false;
+      if (!(guard && guard())) return true;
+      deciding = true; // Back or a typed address while this question is open is undone, as for the other questions
+      try { return await passGuard(); } finally { deciding = false; }
+    },
     setGuard,
   };
 })();
@@ -4581,12 +4592,14 @@ const Content = (() => {
   }
   const published = readPublished();
   const pubStamp = typeof published.stamp === 'string' ? published.stamp : '';
-  /* Which publication was opened last in this browser. When another tab opens a different one (for
-     example the new version right after uploading it), this tab is outdated: it keeps its own view,
-     and saving and publishing stop until it is reloaded. Written before the draft is read below, so
-     other tabs hear about it before any change to the draft. */
-  let stale = false;
-  Storage.set('openStamp', pubStamp);
+  /* The newest publication opened in this browser (stamps are ISO times; '' = the unpublished starting file).
+     A page with an older publication, or a tab that is open while another tab opens a different one, is
+     outdated: it keeps its own view, and saving and publishing stop until the editor works on in the newest
+     version (or explicitly chooses this one, see adoptVersion). Written before the draft is read below, so
+     other tabs hear about it before anything else. */
+  const newest = Storage.get('newestStamp', null);
+  let stale = typeof newest === 'string' && newest > pubStamp;
+  if (!stale) Storage.set('newestStamp', pubStamp);
   // Cleaned on first use (Repo.init), when every part of the page script is ready.
   let pubShop; let pubShopRead = false;
   function readPubShop() {
@@ -4638,7 +4651,9 @@ const Content = (() => {
     draft = plainObj(s) ? s : null;
     parked = false;
     if (draft && (draft.base || '') !== pubStamp) {
-      if (stableStringify(contentOf(draft)) === stableStringify(contentOf(published))) { Storage.remove('siteDraft'); draft = null; }
+      // Equal to this publication: nothing to decide. Ignored here, but kept in storage: another file of the
+      // site (for example the working copy next to a downloaded preview) may still be based on it.
+      if (stableStringify(contentOf(draft)) === stableStringify(contentOf(published))) draft = null;
       else parked = true;
     }
   }
@@ -4801,8 +4816,9 @@ const Content = (() => {
   function resumeParked() { syncDraft(); if (!draft) { apply(); return; } draft.base = pubStamp; parked = false; Storage.set('siteDraft', draft); apply(); }
   // A draft saved in another tab: use it here too, so open screens and the site show the latest version.
   window.addEventListener('storage', (e) => {
-    if (e.key === `${Storage.PREFIX}openStamp`) {
-      if (!stale && Storage.get('openStamp', pubStamp) !== pubStamp) { stale = true; Bus.emit('content:stale'); }
+    if (e.key === `${Storage.PREFIX}newestStamp`) {
+      const v = Storage.get('newestStamp', null);
+      if (!stale && typeof v === 'string' && v !== pubStamp) { stale = true; Bus.emit('content:stale'); }
       return;
     }
     if (e.key !== null && e.key !== `${Storage.PREFIX}siteDraft` && e.key !== `${Storage.PREFIX}editor`) return;
@@ -4831,6 +4847,8 @@ const Content = (() => {
     get parked() { return parked; },
     /** True when another tab opened a different publication: this tab must be reloaded before saving. */
     get stale() { return stale; },
+    /** Makes this page's publication the current one in this browser (other open tabs become outdated). */
+    adoptVersion() { Storage.set('newestStamp', pubStamp); stale = false; },
     get draft() { return draft; },
     isEditor,
     texts() { return texts; },
@@ -4879,6 +4897,7 @@ const Repo = (() => {
   const SHOP_KEYS = ['products', 'shopCategories', 'projects', 'settings'];
   let ver = 0; // changes whenever stored data may have changed
   let dirtyMemo = null;
+  let pubFp; // fingerprint of this page's published webshop data (null: none)
   /* Unpublished webshop changes are found by comparing the data with its state when it was last loaded
      (the publication, or the demo data when nothing is published): saving without changes, or changing
      something back, is no change. Kept as a short fingerprint, not as a second copy of the data. */
@@ -4894,6 +4913,11 @@ const Repo = (() => {
     return `${str.length}:${(h2 >>> 0).toString(36)}${(h1 >>> 0).toString(36)}`;
   }
   const write = (key, value) => {
+    if (SHOP_KEYS.includes(key) && Content.stale && document.body.classList.contains('is-admin')) {
+      // An outdated tab must not overwrite the webshop data of a newer version: stop here, nothing is saved.
+      Toast.show(RELOAD_FIRST, { error: true });
+      const er = new Error('Opslaan gestopt: deze pagina toont een verouderde versie.'); er.ctStale = true; throw er;
+    }
     ver += 1;
     cache[key] = value; Storage.set(key, value);
     // Webshop changes made in Beheer stay unpublished until the next "Publiceren".
@@ -4906,17 +4930,20 @@ const Repo = (() => {
     init() {
       const v = Storage.get('schema', 0);
       if (!Storage.get('seeded', false) || v !== SCHEMA) this.reset({ silent: true });
-      else if (Storage.get('pubStamp', '') !== Content.pubStamp) {
-        // A new publication: visitors get it straight away; an editor's unpublished changes are kept until they choose.
+      else if (!Content.stale && Storage.get('pubStamp', '') !== Content.pubStamp) {
+        // A new publication: visitors get it straight away; an editor's unpublished changes are kept until they
+        // choose. Data that already equals the publication is left as it is (nothing to load, nothing lost).
+        // An outdated page (Content.stale) never replaces the data of a newer version.
         const pub = Content.publishedShop();
-        // Compared in the published shape, so data that only differs in form (not in content) is not a conflict.
-        const keep = Content.isEditor() && Storage.get('shopDirty', false) === true
-          && (!pub || stableStringify(Content.cleanShop(this.shopSnapshot())) !== stableStringify(pub));
-        if (keep) this.shopParked = true; else this.loadPublishedShop({ silent: true });
+        const same = !!pub && fingerprint(this.shopSnapshot()) === fingerprint(pub);
+        if (Content.isEditor() && this.shopDirty()) this.shopParked = true;
+        else if (!same) this.loadPublishedShop({ silent: true });
       }
       window.addEventListener('storage', (e) => {
         if (!e.key || !e.key.startsWith(Storage.PREFIX)) return;
         this.invalidate();
+        // A decision about this publication taken in another tab ("Mijn concept behouden" or loading it).
+        if (this.shopParked && Storage.get('pubStamp', '') === Content.pubStamp) this.shopParked = false;
         Bus.emit('data:changed', { external: true });
       });
     },
@@ -4964,9 +4991,12 @@ const Repo = (() => {
       const s = { ...this.settings() }; delete s.orderSeq;
       return { products: this.products(), shopCategories: this.shopCategories(), projects: this.projects(), settings: s };
     },
+    /** Unpublished webshop changes: the data differs from the publication of this page (or, when it carries
+        none, from the state remembered when the data was loaded). */
     shopDirty() {
       if (Storage.get('shopDirty', false) !== true) return false;
-      const base = Storage.get('shopBase', null);
+      if (pubFp === undefined) { const pub = Content.publishedShop(); pubFp = pub ? fingerprint(pub) : null; }
+      const base = pubFp || Storage.get('shopBase', null);
       if (typeof base !== 'string') return true; // stored by an older version: trust the flag
       if (!dirtyMemo || dirtyMemo.ver !== ver || dirtyMemo.base !== base) dirtyMemo = { ver, base, value: fingerprint(this.shopSnapshot()) !== base };
       return dirtyMemo.value;
@@ -9785,8 +9815,10 @@ function overMax(form, el) {
 /** Shows field errors ({name: message}); focuses the first. Returns true when there are none.
     Multi-line fields longer than their maximum (data-max) are reported here too. */
 function showErrors(form, errs) {
-  $$('[data-max]', form).forEach((el) => { if (el.name && el.value.length > Number(el.dataset.max) && !errs[el.name]) errs[el.name] = maxMsg(el); });
-  $$('[data-err]', form).forEach((el) => { el.textContent = errs[el.dataset.err] || ''; el.dataset.maxShown = ''; });
+  const fromMax = new Set();
+  $$('[data-max]', form).forEach((el) => { if (el.name && el.value.length > Number(el.dataset.max) && !errs[el.name]) { errs[el.name] = maxMsg(el); fromMax.add(el.name); } });
+  // A length message keeps updating while the text is edited (see overMax); other messages stay until the next save.
+  $$('[data-err]', form).forEach((el) => { el.textContent = errs[el.dataset.err] || ''; el.dataset.maxShown = fromMax.has(el.dataset.err) ? '1' : ''; });
   $$('[aria-invalid]', form).forEach((el) => el.removeAttribute('aria-invalid'));
   const keys = Object.keys(errs);
   keys.forEach((k) => { const el = form.elements[k]; if (el && el.setAttribute) el.setAttribute('aria-invalid', 'true'); });
@@ -9799,7 +9831,7 @@ function showErrors(form, errs) {
   return !keys.length;
 }
 const DECIDE_FIRST = 'Kies eerst met welke versie u verder wilt werken (zie de melding bovenaan).';
-const RELOAD_FIRST = 'In een ander tabblad is een andere versie van de website geopend. Laad deze pagina opnieuw; er is niets opgeslagen.';
+const RELOAD_FIRST = 'In deze browser is een andere versie van de website geopend. Er is niets opgeslagen; zie de melding bovenaan.';
 /** Applies a change to the website draft; false (with a message) while a decision on a newer publication is pending. */
 function saveContent(fn, message = 'Opgeslagen. De wijziging staat direct op de website in deze browser.') {
   if (Content.stale) { Toast.show(RELOAD_FIRST, { error: true }); return false; }
@@ -9892,8 +9924,8 @@ const SiteStatus = {
   blocked() { return Content.stale ? RELOAD_FIRST : (this.undecided() ? DECIDE_FIRST : ''); },
   parkedNotice() {
     if (Content.stale) {
-      return UI.notice('<strong>Deze pagina is verouderd.</strong> In een ander tabblad is een andere versie van de website geopend (bijvoorbeeld de nieuwe versie na het uploaden). Laad deze pagina opnieuw om verder te werken; wat u eerder heeft opgeslagen, blijft bewaard.',
-        { type: 'warn', ic: 'alert', actions: '<button class="btn btn--dark btn--xs" type="button" data-reload>Pagina opnieuw laden</button>' });
+      return UI.notice('<strong>Deze pagina is verouderd.</strong> In deze browser is een andere versie van de website geopend (bijvoorbeeld de nieuwe versie na het uploaden). Werk verder in die nieuwste versie: open of herlaad die pagina. Wilt u bewust met déze versie verder (bijvoorbeeld omdat u een oudere versie terugzet), kies dan “Met deze versie verder”.',
+        { type: 'warn', ic: 'alert', actions: '<button class="btn btn--dark btn--xs" type="button" data-reload>Pagina opnieuw laden</button><button class="btn btn--light btn--xs" type="button" data-adopt>Met deze versie verder</button>' });
     }
     if (!this.undecided()) return '';
     const shown = Repo.shopParked
@@ -9905,11 +9937,15 @@ const SiteStatus = {
 };
 document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-reload]')) { location.reload(); return; }
+  if (e.target.closest('[data-adopt]')) {
+    if (!(await Overlay.confirm({ title: 'Met deze versie verder?', message: 'Deze versie wordt in deze browser de actuele. Andere tabbladen met een andere versie stoppen dan met opslaan. Publiceert u hierna, dan vervangt deze versie de nieuwere op de website.', confirmLabel: 'Met deze versie verder' }))) return;
+    Content.adoptVersion(); location.reload(); return;
+  }
   const b = e.target.closest('[data-parked]');
   if (!b) return;
   if (Content.stale) { Toast.show(RELOAD_FIRST, { error: true }); return; }
-  // The page is rebuilt with the chosen version: text typed in the open form would be lost, so ask first.
-  if (!(await Router.confirmLeave())) return;
+  // The page is rebuilt with the chosen version: text typed in the open form would be lost, so that is asked
+  // just before anything changes (after the choice itself is confirmed).
   if (b.dataset.parked === 'published') {
     // Only the part that waits for a decision is thrown away; later changes to the other part stay.
     const content = Content.parked; const shop = Repo.shopParked;
@@ -9918,11 +9954,13 @@ document.addEventListener('click', async (e) => {
       : (content ? 'Uw concept van de website-inhoud in deze browser wordt weggegooid. Wijzigingen in producten, projecten en webshopinstellingen blijven staan.'
         : 'Uw concept van producten, projecten en webshopinstellingen in deze browser wordt weggegooid. Wijzigingen in de website-inhoud blijven staan.');
     if (!(await Overlay.confirm({ title: 'Gepubliceerde versie gebruiken?', message: `${what} Dit kan niet ongedaan worden gemaakt.`, confirmLabel: 'Concept weggooien', danger: true }))) return;
+    if (!(await Router.confirmLeave())) return;
     if (Content.stale) { Toast.show(RELOAD_FIRST, { error: true }); return; }
     if (content && Content.parked) Content.discardDraft();
     if (shop && Repo.shopParked) { Repo.loadPublishedShop(); Cart.validate(); }
     Toast.show('U werkt nu met de gepubliceerde versie.');
   } else {
+    if (!(await Router.confirmLeave())) return;
     if (Content.parked) Content.resumeParked();
     if (Repo.shopParked) { Storage.set('pubStamp', Content.pubStamp); Repo.shopParked = false; Repo.markShopBase(Content.publishedShop()); }
     Toast.show('Uw concept is weer actief.');
@@ -10719,7 +10757,7 @@ function openSeoEditor(path, onSaved) {
         $('[data-c="title"]', panel).textContent = `${title.length} tekens in Google${title.length > SEO_LIMITS.title ? ' — waarschijnlijk ingekort' : ''}`;
         $('[data-c="description"]', panel).textContent = `${desc.length} tekens${desc.length > SEO_LIMITS.desc ? ' — waarschijnlijk ingekort' : ''}`;
       };
-      f.addEventListener('input', draw); draw();
+      f.addEventListener('input', (e) => { draw(); if (e.target.dataset && e.target.dataset.max) overMax(f, e.target); }); draw();
       const save = (entry) => {
         if (!saveContent((d) => {
           d.seo = d.seo || {}; d.seo.pages = { ...(d.seo.pages || {}) };
@@ -11480,6 +11518,8 @@ Pages.adminMoreWork = adminPage({
     $('[data-w-add]', f).addEventListener('click', () => { rows.insertAdjacentHTML('beforeend', workRow()); st.set(true); $$('.row-edit', rows).pop().querySelector('input').focus(); });
     const raw = () => $$('.row-edit', rows).map((row) => ['title', 'text', 'links'].map((k) => $(`[data-w="${k}"]`, row).value.trim()));
     let shown = raw();
+    const listNow = () => stableStringify(MORE_WORK); // kept up to date when another tab saves
+    let base = listNow();
     f.addEventListener('submit', (e) => {
       e.preventDefault();
       let bad = '';
@@ -11496,8 +11536,11 @@ Pages.adminMoreWork = adminPage({
       if (items.length > 24) bad = 'Gebruik maximaal 24 kaarten.';
       if (bad) { Toast.show(bad, { error: true }); return; }
       const next = raw();
-      // The cards are one list: saved when it changed in this form, so a change saved meanwhile in another tab stays otherwise.
-      if (saveContent((d) => { if (stableStringify(next) !== stableStringify(shown)) d.moreWork = items; }, 'Opgeslagen.')) { st.set(false); shown = next; }
+      // The cards are one list: saved when it changed in this form. If another tab saved the list meanwhile,
+      // saving here would undo that, so it is refused with a message.
+      const changedHere = stableStringify(next) !== stableStringify(shown);
+      if (changedHere && listNow() !== base) { Toast.show('Deze kaarten zijn intussen in een ander tabblad gewijzigd. Laad de pagina opnieuw en voer uw wijziging opnieuw in.', { error: true }); return; }
+      if (saveContent((d) => { if (changedHere) d.moreWork = items; }, 'Opgeslagen.')) { st.set(false); shown = next; base = listNow(); }
     });
     return () => Router.setGuard(null);
   },
@@ -11570,7 +11613,8 @@ const Motion = {
         });
       }
     }, root);
-    requestAnimationFrame(() => ST.refresh());
+    // ScrollTrigger.refresh can move the window to a position it remembered from the previous page: keep ours.
+    requestAnimationFrame(() => { const y = window.scrollY; ST.refresh(); if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y); });
   },
   /** Short entrance for re-rendered lists (filters). */
   swap(container, selector) {
@@ -11580,7 +11624,7 @@ const Motion = {
   enter(els) {
     if (!this.on || !els || !els.length) return;
     this.g.fromTo(els, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.38, stagger: 0.035, ease: 'power2.out', overwrite: true, clearProps: 'transform,opacity' });
-    window.ScrollTrigger.refresh();
+    const y = window.scrollY; window.ScrollTrigger.refresh(); if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
   },
   vehicleFound(el) {
     if (!el || !this.on) return;
@@ -11744,8 +11788,9 @@ function bindGlobal() {
   Bus.on('content:changed', () => { Layout.renderHeader(); Layout.renderFooter(); Layout.markNav(); Layout.refreshDynamic(); });
   let lastErr = 0;
   const friendly = () => { if (Date.now() - lastErr < 5000) return; lastErr = Date.now(); Toast.show('Er ging iets mis. Probeer het opnieuw of ververs de pagina.', { error: true }); };
-  window.addEventListener('unhandledrejection', (e) => { console.error(e.reason); friendly(); });
-  window.addEventListener('error', (e) => { if (e.target && e.target !== window) return; console.error(e.error || e.message); friendly(); });
+  // A save stopped in an outdated tab already showed its own message.
+  window.addEventListener('unhandledrejection', (e) => { if (e.reason && e.reason.ctStale) { e.preventDefault(); return; } console.error(e.reason); friendly(); });
+  window.addEventListener('error', (e) => { if (e.target && e.target !== window) return; if (e.error && e.error.ctStale) { e.preventDefault(); return; } console.error(e.error || e.message); friendly(); });
 }
 
 function init() {
