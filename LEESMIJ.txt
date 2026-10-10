@@ -1,0 +1,25 @@
+CarTronic — website
+Gepubliceerd: 10 okt 2026, 10:00
+
+Online zetten (Netlify):
+1. Pak dit zip-bestand uit. U krijgt de map "cartronic-website".
+2. Ga naar app.netlify.com → uw site → Deploys.
+3. Sleep de HELE map "cartronic-website" naar het vak "Drag and drop your site output folder here".
+4. Wacht tot de deploy klaar is en controleer de website.
+
+Online zetten (Vercel, gekoppeld aan GitHub):
+1. Pak dit zip-bestand uit en open de map "cartronic-website".
+2. Ga op github.com naar uw repository → Add file → Upload files.
+3. Sleep ALLE bestanden en mappen uit "cartronic-website" (niet de map zelf) naar het vak en klik op Commit changes.
+4. Vercel zet de nieuwe versie daarna vanzelf online. Controleer de website.
+
+Inhoud van de map:
+- index.html   de website (alle inhoud, teksten, foto’s en instellingen zitten erin)
+- 404.html     kopie van de website voor servers zonder _redirects
+- _redirects   zorgt dat nette adressen zoals /mogelijkheden werken (Netlify)
+- vercel.json  hetzelfde voor Vercel
+- robots.txt   instructies voor zoekmachines
+- sitemap.xml  lijst van alle pagina’s voor zoekmachines (als het website-adres is ingevuld)
+- og-image.jpg afbeelding voor links die worden gedeeld via WhatsApp, Facebook en LinkedIn
+
+Let op: wijzigingen in Beheer staan eerst alleen in uw browser. Pas na publiceren en uploaden ziet iedereen ze.

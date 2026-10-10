@@ -118,15 +118,27 @@ rebuilds this exact page in the browser with the new content embedded, and packs
 - `index.html` — the website with all content, texts, photos and settings;
 - `404.html` — the same page, for hosts without a rewrite rule (e.g. GitHub Pages);
 - `_redirects` — Netlify rule so clean URLs such as `/mogelijkheden/…` work after a reload;
+- `vercel.json` — the same rule for Vercel;
 - `robots.txt`, `sitemap.xml` (when the website address is filled in) and `og-image.jpg` (link previews);
 - `LEESMIJ.txt` — the upload steps in Dutch.
 
-Unzip and drag the folder `cartronic-website` onto Netlify (Deploys → drag and drop). Visitors get the new version
+Unzip and drag the folder `cartronic-website` onto Netlify (Deploys → drag and drop), or — with Vercel linked to
+this GitHub repository — upload the contents of that folder to the repository root (GitHub → Add file → Upload
+files → Commit); Vercel deploys it automatically. Visitors get the new version
 on their next visit (their cart and saved items stay). An editor who opens a newer publication while holding
 unpublished changes from an older one is asked which version to keep; nothing is overwritten silently.
 Make a backup (Publiceren → Exporteer back-up) before large changes.
 
 Production: the same content bundle becomes a CMS/API document and publishing becomes a server action.
+
+### Hosting on Vercel (this repository)
+
+The repository root is a ready-to-host website: `index.html`, `404.html`, `vercel.json`, `_redirects`,
+`robots.txt`, `sitemap.xml`, `og-image.jpg` (exactly what Beheer → Publiceren produces with the default content).
+In Vercel: **Add New → Project → Import** this GitHub repository, Framework Preset **Other**, no build command,
+output directory = the root. Every push deploys. `release/` holds the complete delivery zip (website + source
+code) and is excluded from the deployment by `.vercelignore`. While the site runs on a temporary `*.vercel.app`
+address, turn on **Beheer → SEO → Zoekmachines tegenhouden** and publish; turn it off again on the final domain.
 
 ## Architecture (single file, production-ready seams)
 
@@ -195,6 +207,15 @@ position in both URL styles; two tabs on the same Beheer screen save only the fi
 limit now matches what a publication keeps (clear messages instead of silent cutting); the website address is
 normalised; "Webshop & projecten" is only listed as unpublished when the data really differs; rich texts support
 **vet** and links; opening hours such as "Ma t/m vr, za" become the right days for Google.
+
+Rounds 3–7: each fix round was again reviewed by independent reviewers with a separate verifier per finding
+(35 → 15 → 11 → 5 → 1 confirmed problems, each fixed). These rounds settled the rules for versions in one browser:
+visitors always get the publication they open (a rollback reaches them); only an editor's page that is older than a
+version already opened is outdated (saving stops, with "Pagina opnieuw laden" or an explicit "Met deze versie
+verder"); a draft or webshop data without edits since its base never becomes a "concept"; real edits are kept and
+the editor chooses; stock changed by orders is not an edit, stock set in Beheer is. Covered by `qa/round3-fixes.cjs`
+(37 checks). The final round's reviewers ran into usage limits for part of their verifications; the findings they
+reported were checked and fixed by hand and are covered by the same suite.
 
 Beheer & SEO round: a snapshot of all 372 public routes (header, page, footer, mobile menu, title, description) was
 compared before and after the content layer — identical except the intentionally shortened search descriptions.
