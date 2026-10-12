@@ -1,230 +1,141 @@
-# CarTronic — interactive prototype
+# CarTronic — website
 
-One self-contained file: **`index.html`**. Open it in a browser (double-click works; no server or build step needed).
-The layout follows the approved CarTronic design screens (desktop) and the reference phone screenshots (mobile):
-same section order, Helvetica Neue/Arial typography (system fonts, no external font requests), measured sizes and
-colours. Company facts come from cartronic.nl and its public Klantenvertellen profile.
+Eén zelfstandig bestand: **`index.html`** (alle pagina's, teksten, foto's en Beheer). Het werkt op een webserver met
+nette adressen (`/producten`, `/storingen/…`) en ook lokaal (dubbelklikken; dan met `#/…`-adressen). De root van deze
+repository is direct te hosten (Vercel/Netlify); `release/` bevat de volledige oplever-zip met broncode.
 
-## What to review
+## Pagina's
 
-| Area | Where |
+| Pagina | Adres |
 | --- | --- |
-| Homepage: hero, brands, finder (merk/model, kenteken one click away), categories, services, technique, projects, reviews, webshop, CTA | `#/` |
-| Catalog with filters, search, statuses, shareable selection | `#/mogelijkheden` |
-| Retrofit detail with compatibility, specifications (warranty, price) and related upgrades | e.g. `#/mogelijkheden/audi-a3-8v-virtual-cockpit` |
-| Smart search (model + option) | e.g. search "Golf 7 camera", "A4 B9 CarPlay", "Kodiaq camera" |
-| Brands → models | `#/merken` |
-| Portfolio with filters | `#/projecten` |
-| Expertise, services | `#/expertise`, `#/diensten/kalibratie-rijhulpsystemen` |
-| Smart contact flow (topic choice incl. optielijst € 10, VIN, WhatsApp / e-mail prefill) | `#/contact`, `#/contact?onderwerp=optielijst` |
-| Customer reviews (Klantenvertellen 9,4 / 229 reviews, verbatim quotes) | `#/beoordelingen` |
-| Knowledge articles (online connection, ACC/Lane Assist calibration, SCM alarm, CarPlay, models not listed, optielijst) | `#/kennis` |
-| Product information (OEM parts, warranty, prices, compatibility statuses, optielijst) | `#/productinformatie` |
-| Privacy (what is stored, RDW lookup, wipe everything) | `#/privacy` |
-| Saved options, recent items, vehicle context | `#/mijn-auto` |
-| Webshop, product, cart, checkout, payment states | `#/webshop` |
-| Admin (demo) | `#/admin` — user `demo`, password `cartronic-demo` |
-| Website management in Beheer (texts, company data, options, services, articles, reviews, display, SEO, publishing) | `#/admin/website`, `#/admin/teksten`, `#/admin/opties`, `#/admin/seo` |
+| Home: hero, merken, voertuigzoeker (eerst kenteken, daarna merk/model), categorieën, diensten, werkwijze, beveiliging (klasse 1–5), portfolio, beoordelingen | `/` |
+| Producten (catalogus met filters, zoeken, statuses, deelbare selectie) | `/producten`, `/producten/<slug>` |
+| Merken en modellen (elk model is een eigen link naar de gefilterde producten) | `/merken`, `/merken/<merk>` |
+| Diensten (menu met submenu) | `/diensten`, `/diensten/<slug>` |
+| Storingen & oplossingen (filter op merk, eigen pagina per storing met WhatsApp/contact) | `/storingen`, `/storingen/<slug>` |
+| Beveiliging: klasse 1–5, peilsystemen, SCM/CCV/VbV, origineel alarm | `/beveiliging` |
+| Portfolio (projecten + “Meer van ons werk”) | `/portfolio`, `/portfolio/<slug>` |
+| Video's (YouTube incl. Shorts, TikTok, Instagram, Facebook; laden pas na een klik) | `/videos` |
+| Over ons, Contact, Beoordelingen, Berichten & kennis, Productinformatie, Privacy, Mijn auto | `/over`, `/contact`, … |
+| Webshop (staat standaard **uit**, de code is aanwezig) | `/webshop` |
+| Beheer (niet gelinkt, niet in sitemap of zoeken, `noindex`) | `/admin` — alleen door het adres in te typen |
 
-**Kenteken:** real plates are looked up live through RDW Open Data. To test every state without a real plate,
-open "Demo-kentekens" under the plate field (e.g. `TE-ST-01` Golf 7, `TE-ST-06` generation choice,
-`TE-ST-05` unsupported brand, `TE-ST-08` not found, `TE-ST-09` RDW unavailable). Demo results are labelled as demo data.
+**Oude adressen sturen door** naar de nieuwe: `/mogelijkheden…` → `/producten…`, `/projecten…` → `/portfolio…`,
+`/expertise` → `/diensten`, ook met `#/` ervoor en met de filters erachter. Op de server gebeurt dat met permanente
+redirects (301) in `_redirects` (Netlify) en `vercel.json` (Vercel); in de pagina zelf nog een keer, zodat oude links
+in teksten en bladwijzers altijd werken. Canonieke adressen en de sitemap gebruiken alleen de nieuwe adressen.
 
-**Payments:** checkout ends on a clearly labelled *demo* payment page where the tester picks the outcome
-(paid / processing / failed / cancelled). Nothing is charged and this is not Mollie.
+## Beheer
 
-## Real vs. demo content
+Wijzigingen ziet u direct in uw eigen browser; bezoekers zien ze na **publiceren en uploaden** (zie onder).
 
-- **Real (from cartronic.nl):** address (Patrijsweg 22, 2289 EX Rijswijk), phone/WhatsApp 070 383 9836,
-  info@cartronic.nl, opening hours, services (retrofits, online programming, ACC/Lane Assist/Night Vision
-  calibration, diagnostics), and the CarTronic retrofit catalog: **285 options for 38 models** (Volkswagen, Audi,
-  SEAT, Škoda): **327 options for 43 models**, merged from the approved selection, the full product list and 42
-options from the newer cartronic.nl product pages (Tiguan AD, Golf 8, ID.3/ID.4, Sharan, A3 8Y, A6 C8, A7 C8, Q8,
-Q4 e-tron, Kamiq, Enyaq) — see *Catalog data* below.
-- **Reviews:** score 9,4 from 229 reviews and four verbatim quotes from the public Klantenvertellen profile.
-  The star row shows 4,7 of 5 stars (= 9,4/10). Please update when the profile changes.
-- **"Meer van ons werk":** texts from the reference site; the links open CarTronic's Facebook page (the individual
-  posts could not be located), the video card links two verified Facebook videos (Q7, 360° camera).
-- **Photos:** taken from the approved design screens (hero, workshop projects, catalog images). A catalog photo is
-  only reused for the same product (e.g. the Audi Smartphone Interface photo for Audi Smartphone Interface options).
-  Everything else shows a technical line drawing labelled "Illustratie".
-- **Demo only:** all webshop products, prices, stock, shipping rates and the seeded orders.
-  Products carry `isDemo: true`; the shop shows a "Testomgeving" notice.
-- **Before/after slider:** built and working, but only shown when a project has real before *and* after photos
-  (none exist yet). They can be added under Admin → Projecten.
-
-### Please verify before going live
-- Opening hours: directory listings show di–za **9:30–17:00**; new.cartronic.nl lists **09:00–17:00**. The prototype uses 9:30.
-- "Ruim 14 jaar ervaring" is CarTronic's own wording; business registers give August 2005 as start date, so the
-  number may be outdated.
-- KvK/BTW numbers are not on the site yet; add them once CarTronic confirms them.
-- Retrofit catalog details. cartronic.nl could not be opened directly from the build environment, so product details
-  were collected from search-engine results for cartronic.nl pages and could not be re-checked a second time. Please spot-check:
-  - prices shown: Golf 7 Active Info Display *€ 1.099 excl. btw* / *€ 1.499 inclusief montage*; VW App Connect
-    *vanaf € 199 inclusief montage*; Discover navigatie met CarPlay *€ 899* (btw not stated);
-  - Audi Smartphone Interface: the model pages show the price that the catalog and the product page agree on
-    (A4 B9 and Q2 GA *€ 399*, Q5 FY and Q7 4M *€ 299*). The offer page says *vanaf € 349 inclusief montage* with
-    different per-model prices; that wording is shown on the general Audi Smartphone Interface page. Please align;
-  - year ranges added from product pages (e.g. Audi "2015–2019 (ook S4, RS4 en S-line)"); vehicles outside them get
-    *Neem contact op*;
-  - "Yeti II" options are treated as Yeti 2013–2017 (facelift); Caddy SA = Caddy 4 (2015–2020); a Multivan registered
-    from 2022 (T7) is not matched to the Transporter T6.
-- RDW type codes used to disambiguate generations (`MODELS[].types` in the data section) should be spot-checked;
-  conflicts are flagged to the visitor instead of being trusted.
-
-## Catalog data
-
-All options live in one dataset, `RETROFITS` (data section of `index.html`). Each entry names a `feature`
-(e.g. `achteruitrijcamera`); the `FEATURES` table supplies the shared name, category, illustration, description and
-search terms. Fields on an entry (title, text, years, specs, warranty, price, offer) always win over those defaults,
-so the 58 originally approved entries kept their exact texts, slugs and order.
-
-- **Redirects:** `aliases` holds older URLs (35, e.g. cartronic.nl slugs such as `audi-a4-b9-8w-virtual-cockpit` or
-  `aanbieding-1-…`). They redirect to the current page; no duplicate pages exist.
-- **Not shown:** the source URLs are kept only for reconciliation; there is no "bronpagina" link on the site.
-- **Retrofits are not webshop products:** catalog options link to the contact/WhatsApp flow, never to the cart.
-- **Adding an option:** in Beheer → Opties (no code needed), or in code: add one line to `RETROFITS` with `slug`,
-  `feature`, `brand`, `models` (+ `years`, `specs`, `price` when CarTronic publishes them). New models go in `MODELS`
-  with RDW match tokens and year range (code only, because they drive the kenteken matching).
-
-## Managing the website (Beheer)
-
-Almost everything on the site can be changed in Beheer without touching code. Changes are visible immediately in the
-editor's own browser; visitors see them after **publishing** (below).
-
-| Beheer screen | What it manages |
+| Scherm | Wat u er beheert |
 | --- | --- |
-| Publiceren | Status of unpublished changes, **Download website (zip)**, backup export/import (JSON), discard draft, restore built-in content, browser storage meter |
-| Bedrijfsgegevens | Name, address, route link, phone (display + international), WhatsApp number, e-mail, opening hours (rows), website, Facebook and other profiles, KvK and btw number (shown in the footer only when filled in) |
-| Teksten | 177 texts of every page (hero, section titles and intros, page headers, call-to-action band, footer, contact form, product information, privacy text, …), searchable, with **bold**, links and line breaks; "Standaardtekst terugzetten" per field |
-| Weergave | Show/hide each homepage section, the closing call-to-action band, "Recent bekeken", the footer Beheer link; switch the webshop off (menu, cart and product links disappear, shop pages explain it); announcement bar with text, link and colour |
-| SEO | Website address, homepage title, default description, title suffix, share title/description, Google/Bing verification, "keep search engines out" (test phase); a list of all ~360 pages with their title and description in Google, issues (too long, too short, duplicate) and a per-page editor with a Google preview |
-| Opties | The full retrofit catalog: search/filter (brand, model, category, status), edit any field (title, texts, models or brand-wide, years, specifications, warranty, price, offer, keywords, photo, Google title/description), hide/show, duplicate, add new options, restore the built-in text. Built-in options store only the changed fields. |
-| Categorieën & merken | Category names, slogans and the "Technische informatie" texts (installed, programmed, calibration, benefits); brand introductions |
-| Diensten | Add, edit, reorder (the first three are on the homepage) and remove services |
-| Berichten & kennis | Add, edit, reorder and remove articles (headings, lists, links) |
-| Beoordelingen | Score, number of reviews, source links and the quotes (real reviews only) |
-| Meer van ons werk | The portfolio cards with links on the Projects page |
-| Projecten, Producten, Shopcategorieën, Bestellingen, Acties, Voorraad, Instellingen | As before (webshop and portfolio) |
+| Publiceren | Status, **Download website (zip)**, back-up exporteren/importeren, concept weggooien, standaardinhoud herstellen, opslagmeter |
+| Bedrijfsgegevens | Naam, adres, telefoon, WhatsApp, e-mail, openingstijden, profielen, KvK en btw (in de footer zodra ingevuld) |
+| Teksten | Alle teksten van alle pagina's (ook de nieuwe), doorzoekbaar, met **vet**, links en regels |
+| Weergave | Onderdelen van de homepage aan/uit (ook het blok Beveiliging), afsluitende balk, “Recent bekeken”, webshop aan/uit, mededelingsbalk |
+| SEO | Website-adres, titels, omschrijvingen, verificatiecodes, zoekmachines tegenhouden (standaard uit), alle pagina's met Google-voorbeeld |
+| Producten (catalogus) | Alle 327 producten: bewerken, verbergen, dupliceren, toevoegen |
+| Categorieën & merken | Categorieteksten en merkintroducties |
+| **Merken & modellen** | Modellen toevoegen, bewerken, volgorde, verbergen en verwijderen: naam, slug, bouwjaren, merk, RDW-zoekwoorden, typecodes en uitzonderingen (met uitleg). Verwijderen van een model dat in gebruik is, geeft een waarschuwing en biedt “Verbergen” aan, zodat er nooit kapotte pagina's ontstaan. Nieuwe modellen verschijnen in de zoeker, merkpagina's, filters, het zoeken en de sitemap. |
+| Diensten | Toevoegen, bewerken, volgorde, verwijderen |
+| **Storingen** | Storingen toevoegen, bewerken, volgorde, verbergen, verwijderen: titel, merk, modellen, symptomen, oorzaak, oplossing, foto's (upload, vervangen, volgorde, verwijderen, verplichte beschrijving), illustratie, gerelateerde dienst/product, Google-titel; plus de koppen en introductie van de pagina |
+| **Beveiliging** | Alle teksten, de klassen (toevoegen, volgorde, verbergen, verwijderen), peilsystemen, het verzekeraarsblok, keurmerken, foto's, knoppen en het blok op de homepage |
+| Portfolio | Projecten met foto's, voertuig, tekst en koppelingen; aan/uit per project |
+| **Meer van ons werk** | Kop en introductie, kaarten toevoegen/bewerken/verwijderen/volgorde, titel, tekst, links, foto (upload, vervangen, verwijderen) |
+| **Video's** | Video's toevoegen via een geplakte link (platform wordt herkend, duidelijke fout bij een ongeldige of verkorte link), titel, beschrijving, eigen voorbeeldafbeelding, uitgelicht, zichtbaar, volgorde; koppen en “Volg ons”-rij |
+| Berichten & kennis, Beoordelingen | Zoals voorheen |
+| Webshopproducten, Shopcategorieën, Bestellingen, Acties, Voorraad, Instellingen | De webshop (standaard uitgeschakeld) |
+| **Account & wachtwoord** | Wachtwoord en gebruikersnaam wijzigen |
 
-Every value is validated when it is saved and again when the site loads; a damaged or hand-edited value falls back
-to the built-in default instead of breaking a page.
+Foto's worden in de browser verkleind tot maximaal 1600 px en opgeslagen als WebP (of JPEG). Is de opslag van de
+browser vol, dan wordt niets opgeslagen en ziet u een duidelijke melding.
 
-## Publishing
+## Inloggen en wachtwoord
 
-The site is static, so Beheer cannot write to the server. Instead **Beheer → Publiceren → Download website (zip)**
-rebuilds this exact page in the browser with the new content embedded, and packs:
+- De inloggegevens staan **niet** in deze README, de code, de tests of de gepubliceerde bestanden. De website bewaart
+  alleen een gezouten hash van het wachtwoord (PBKDF2-SHA-256, 600.000 iteraties, via WebCrypto) en vergelijkt
+  daartegen.
+- Na 5 mislukte pogingen moet u steeds langer wachten (30 seconden, oplopend tot 15 minuten). Na 30 minuten zonder
+  activiteit wordt u automatisch uitgelogd.
+- **Wachtwoord wijzigen:** Beheer → Account & wachtwoord. Vul het huidige wachtwoord in en het nieuwe twee keer
+  (minimaal 10 tekens, anders dan het huidige); de gebruikersnaam kunt u daar ook wijzigen.
+  *Het nieuwe wachtwoord geldt in deze browser direct; op andere apparaten pas nadat u de website opnieuw hebt
+  gepubliceerd en geüpload.* De hash reist mee in de publicatie.
+- Een back-up bevat geen inloggegevens. Een back-up terugzetten, het concept weggooien of de standaardinhoud
+  herstellen zet nooit stilletjes een oud wachtwoord terug.
+- **Eerlijk gezegd:** dit is een controle in de browser, geen serverbeveiliging. Iemand met technische kennis kan in
+  zijn eigen browser Beheer openen, maar kan daarmee niets aan de website van bezoekers veranderen: dat kan alleen
+  wie de website publiceert en uploadt (toegang tot GitHub/Vercel of Netlify). Voor een webshop met echte betalingen
+  is server-side authenticatie nodig.
+- Een nieuwe standaard-hash maken (bijvoorbeeld voor een nieuwe installatie): `CT_ADMIN_USER=… CT_ADMIN_PASSWORD=…
+  node qa/make-auth.cjs` en de uitvoer in `DEFAULT_AUTH` (src/03-domain.js) zetten. Het wachtwoord staat daarbij
+  alleen in de omgevingsvariabele.
 
-- `index.html` — the website with all content, texts, photos and settings;
-- `404.html` — the same page, for hosts without a rewrite rule (e.g. GitHub Pages);
-- `_redirects` — Netlify rule so clean URLs such as `/mogelijkheden/…` work after a reload;
-- `vercel.json` — the same rule for Vercel;
-- `robots.txt`, `sitemap.xml` (when the website address is filled in) and `og-image.jpg` (link previews);
-- `LEESMIJ.txt` — the upload steps in Dutch.
+## Publiceren
 
-Unzip and drag the folder `cartronic-website` onto Netlify (Deploys → drag and drop), or — with Vercel linked to
-this GitHub repository — upload the contents of that folder to the repository root (GitHub → Add file → Upload
-files → Commit); Vercel deploys it automatically. Visitors get the new version
-on their next visit (their cart and saved items stay). An editor who opens a newer publication while holding
-unpublished changes from an older one is asked which version to keep; nothing is overwritten silently.
-Make a backup (Publiceren → Exporteer back-up) before large changes.
+Beheer → Publiceren → **Download website (zip)** maakt in de browser de complete website met alle inhoud:
+`index.html`, `404.html`, `_redirects` (Netlify, met de 301-redirects), `vercel.json` (Vercel, met dezelfde
+redirects), `robots.txt`, `sitemap.xml`, `og-image.jpg` en `LEESMIJ.txt` (stappen in het Nederlands).
 
-Production: the same content bundle becomes a CMS/API document and publishing becomes a server action.
+- **Netlify:** pak de zip uit en sleep de map `cartronic-website` naar Deploys.
+- **Vercel (deze repository):** upload de inhoud van `cartronic-website` naar de root van de repository (GitHub → Add
+  file → Upload files → Commit). Vercel zet de nieuwe versie automatisch online. In Vercel: *Add New → Project →
+  Import* deze repository, Framework Preset *Other*, geen build command, output = root. `release/` wordt door
+  `.vercelignore` niet gepubliceerd.
 
-### Hosting on Vercel (this repository)
+Zoekmachines staan standaard **aan** (`index, follow`); `/admin` is uitgesloten in `robots.txt` en `noindex`.
 
-The repository root is a ready-to-host website: `index.html`, `404.html`, `vercel.json`, `_redirects`,
-`robots.txt`, `sitemap.xml`, `og-image.jpg` (exactly what Beheer → Publiceren produces with the default content).
-In Vercel: **Add New → Project → Import** this GitHub repository, Framework Preset **Other**, no build command,
-output directory = the root. Every push deploys. `release/` holds the complete delivery zip (website + source
-code) and is excluded from the deployment by `.vercelignore`. While the site runs on a temporary `*.vercel.app`
-address, turn on **Beheer → SEO → Zoekmachines tegenhouden** and publish; turn it off again on the final domain.
+## Nog aan te leveren / te controleren door CarTronic
 
-## Architecture (single file, production-ready seams)
+| Wat | Waar in Beheer |
+| --- | --- |
+| Openingstijden: op cartronic.nl staat 9:30–17:00, op new.cartronic.nl 09:00–17:00. De website toont nu 9:30. | Bedrijfsgegevens → Openingstijden |
+| “Ruim 14 jaar ervaring” (eigen formulering van CarTronic; registers noemen augustus 2005 als start) | Teksten → Over ons → Opmerking onderaan |
+| KvK- en btw-nummer (alleen invullen als ze kloppen) | Bedrijfsgegevens |
+| Prijzen in de catalogus (o.a. Golf 7 Active Info Display, App Connect, Discover/CarPlay, Audi Smartphone Interface) | Producten (catalogus) |
+| Echte storingen met foto's: de vier storingen zijn algemene voorbeelden op basis van de diensten van CarTronic, zonder foto's | Storingen |
+| Beveiliging: welke klassen, systemen (alarm, volgsysteem, peilsysteem) en certificaten CarTronic zelf levert en inbouwt; eventueel foto's van een inbouw. Er staan bewust geen merken, prijzen of certificaatnummers | Beveiliging |
+| Video's: twee echte Facebook-video's staan erin; meer video's (YouTube, TikTok, Instagram) en eigen voorbeeldafbeeldingen | Video's |
+| Links en profielen voor “Volg ons” (Instagram, YouTube, TikTok …) en het aanzetten van die rij | Bedrijfsgegevens → Andere profielen; Video's → Volg ons |
+| Foto's bij “Meer van ons werk” | Meer van ons werk |
+| RDW-typecodes van modellen steekproefsgewijs controleren | Merken & modellen |
+| Webshop: producten en prijzen zijn voorbeeldgegevens en betalingen zijn gesimuleerd; laat de webshop uit tot er echte producten en een betaalkoppeling (Mollie, server-side) zijn | Weergave → Webshop |
+| Website-adres (nu https://www.cartronic.nl) controleren vóór publicatie | SEO |
+| Na de eerste keer inloggen: eigen wachtwoord instellen en de website publiceren | Account & wachtwoord, Publiceren |
 
-All adapters are isolated so the UI does not change when they are replaced:
+## Architectuur
 
-| Concern | Prototype | Production |
+| Onderdeel | Nu | Productie |
 | --- | --- | --- |
-| Persistence (`Repo`) | `localStorage` | REST API + database |
-| Vehicle lookup | RDW Open Data from the browser + demo plates | Own backend proxy (caching, rate limiting) |
-| Payments (`Payments`) | `DemoPaymentAdapter` (simulated) | Server-side Mollie, **test mode first** |
-| Admin auth (`DemoAuth`) | Browser check — **not secure** | Server sessions, hashed passwords, 2FA, server-side authorisation |
-| Analytics | In-memory event layer, nothing sent | Consent-aware endpoint, no plates/personal data |
+| Opslag (`Repo`, `Content`) | Concept in de browser, publicatie in `index.html` | CMS/API + database |
+| Kenteken | RDW Open Data vanuit de browser | Eigen proxy (caching, rate limiting) |
+| Betalingen | Gesimuleerd (webshop staat uit) | Server-side Mollie, eerst testmodus |
+| Inloggen (`Auth`) | PBKDF2-hash in de browser, vergrendeling, automatisch uitloggen | Serversessies, 2FA, autorisatie per wijziging |
+| Statistieken | Niets wordt verstuurd | Toestemmingsbewust endpoint |
 
-**Mollie flow (server):** cart → checkout → server validates products & stock → server calculates totals
-(never trusts browser prices) → server creates order with snapshots → server creates Mollie payment →
-Mollie Checkout → return page shows server status → Mollie webhook → server fetches real status → order *Betaald*.
-No API keys or secrets exist in this file.
-
-Other built-in safeguards: prices in integer cents; order line snapshots (later price changes don't alter orders);
-idempotency key per checkout (double click / refresh / back don't create duplicate orders); cart re-validation
-(inactive, sold out, stock and price changes); archive instead of delete for products that appear in orders;
-kenteken kept only in session storage (max. 24 h) and never placed in share links.
+Broncode: `src/` (JavaScript-modules en CSS) wordt door `node build.mjs` tot één `index.html` samengevoegd.
 
 ## SEO
 
-- **Clean URLs:** on a web server the site uses real paths (`/mogelijkheden/audi-a3-8v-virtual-cockpit`) through the
-  History API; old `#/…` links are redirected. Opened as a local file it keeps `#/…` routes. The server must answer
-  every path with `index.html` (`_redirects` on Netlify, `404.html` elsewhere — both are in the publish zip and in this repo).
-- **Per page:** title, meta description (automatic ones are kept within 160 characters), `robots` (search, cart,
-  checkout, garage, 404, admin, demo products and a closed webshop are `noindex`), canonical URL on the website
-  address from Beheer → SEO (catalog filters keep only merk/model/cat), Open Graph tags.
-- **Structured data:** `AutoRepair` organization built from Bedrijfsgegevens (address, phone, e-mail, opening hours
-  parsed from the rows, profiles), `Service` + `BreadcrumbList` for options and services, `Article` for knowledge
-  articles, `Product` only for non-demo products. No ratings markup (the reviews are third-party and self-serving
-  review markup is not allowed by Google).
-- **Sitemap:** every indexable page plus one catalog page per model with options, regenerated at each publication.
-- Search engines execute the JavaScript that fills each page. Fully server-rendered pages remain the production
-  recommendation for the best results.
+Per pagina titel, omschrijving, canonical, Open Graph en `robots`; structured data (`AutoRepair`, `Service`,
+`BreadcrumbList`, `Article`). De sitemap bevat alle indexeerbare pagina's met de nieuwe adressen (ook storingen,
+beveiliging, video's, portfolio en per model een productenpagina) en geen verborgen inhoud.
 
-## QA performed
-Automated browser tests (Playwright) covered all routes at 1440/768/390 px and the header at 1280–1920 px (no console errors, no horizontal
-overflow), kenteken states (live RDW mocked + all demo states), manual selection, search/autocomplete with keyboard,
-filters and share state, cart/drawer/checkout validation, duplicate-order protection, all four payment results,
-stock decrement and order snapshots, the full admin flow (login, quick edit, create/validate/archive/delete products,
-categories, order status, promotions, stock, settings, reset), mobile menu/sheets/drawers, motion with and without the
-GSAP CDN, and an axe-core accessibility audit (no violations on the audited pages).
+## Tests
 
-Catalog QA (after the catalog merge): data validation of all 327 entries (unique slugs and titles, valid
-brand/model/category/illustration, no "Aanbieding" text as a model, no empty or generic texts, existing images,
-aliases resolve), every detail page rendered without errors, example searches ("Golf 7 camera", "A4 B9 CarPlay",
-"T-Roc inklapbare spiegels", "A3 Virtual Cockpit", "Kodiaq camera", "Ateca parkeerhulp"), 16 representative
-RDW records across VW, Audi, SEAT and Škoda, redirects with back/forward, and all earlier suites re-run.
+Playwright-suites in `qa/`. Beheer-tests lezen het wachtwoord uit een omgevingsvariabele (nooit uit een bestand):
 
-Review round (Beheer, SEO, publishing): six independent reviewers (content layer, router/SEO, publishing,
-catalog screens, public pages, security) reported 31 bugs, each reproduced by a separate verifier before it was
-accepted — e.g. damaged published shop data breaking pages, edits lost across two tabs, Back with unsaved changes
-rewriting history, placeholders in editor text expanding in the published file, sub-path zip layout, opening-hours
-parsing. All 31 are fixed and covered by `qa/review-fixes.cjs` (41 checks), and a second, independent round
-re-verified the fixes and hunted for regressions introduced by them.
+```
+CT_ADMIN_PASSWORD=… sh qa/run-all.sh index.html     # alle suites
+CT_ADMIN_PASSWORD=… CT_URL=file://$PWD/index.html node qa/launch.cjs
+```
 
-Second review round: that re-verification confirmed 35 further problems (each reproduced by its own verifier), all
-fixed and covered by `qa/round2-fixes.cjs` (69 checks). Among them: a Beheer tab left open on an older version
-could undo a fresh publication (an outdated tab now stops saving and asks for a reload); unsaved edits are now also
-protected on reload/close (browser prompt) and for typed addresses; Back/Forward return to the previous scroll
-position in both URL styles; two tabs on the same Beheer screen save only the fields they changed; every form
-limit now matches what a publication keeps (clear messages instead of silent cutting); the website address is
-normalised; "Webshop & projecten" is only listed as unpublished when the data really differs; rich texts support
-**vet** and links; opening hours such as "Ma t/m vr, za" become the right days for Google.
-
-Rounds 3–7: each fix round was again reviewed by independent reviewers with a separate verifier per finding
-(35 → 15 → 11 → 5 → 1 confirmed problems, each fixed). These rounds settled the rules for versions in one browser:
-visitors always get the publication they open (a rollback reaches them); only an editor's page that is older than a
-version already opened is outdated (saving stops, with "Pagina opnieuw laden" or an explicit "Met deze versie
-verder"); a draft or webshop data without edits since its base never becomes a "concept"; real edits are kept and
-the editor chooses; stock changed by orders is not an edit, stock set in Beheer is. Covered by `qa/round3-fixes.cjs`
-(37 checks). The final round's reviewers ran into usage limits for part of their verifications; the findings they
-reported were checked and fixed by hand and are covered by the same suite.
-
-Beheer & SEO round: a snapshot of all 372 public routes (header, page, footer, mobile menu, title, description) was
-compared before and after the content layer — identical except the intentionally shortened search descriptions.
-New suites: every Beheer screen at 1440 and 390 px (no errors, no overflow), 58 checks that each screen saves,
-validates and changes the site, 25 checks of the full publish round trip (zip contents, `unzip -t`, sitemap,
-robots, `_redirects`, static head, visitor on the served zip with clean URLs, publishing again from the published
-site, outdated drafts), backup/discard/factory reset, path-mode navigation, axe-core on all new screens, and all
-earlier suites re-run.
-
-Layout round (reference screenshots): every page re-measured against the phone screenshots at 390 and 428 px and the
-desktop screens at 1920 px; all suites re-run (flows, mobile menu as a modal with inert background, catalog with all
-327 detail pages, axe-core with the new pages, overflow sweeps at 390/428/768/1440 px).
+`qa/launch.cjs` test de lanceringsupdate: redirects en canonicals, menu en submenu, modellinks (ook met het
+toetsenbord), kenteken eerst, storingen (CRUD, foto upload/vervangen/volgorde, alt-tekst, verbergen), beveiliging,
+video's (geen verzoeken vóór een klik, youtube-nocookie), modellen (toevoegen, verbergen, verwijderen met
+waarschuwing, RDW-herkenning), Meer van ons werk, inloggen (fout wachtwoord, vergrendeling, inactiviteit),
+wachtwoord wijzigen (alle foutgevallen, back-up en reset houden het nieuwe wachtwoord), de volledige
+publicatie-ronde (zip, 301-redirects, sitemap, robots, nieuw wachtwoord op een ander apparaat pas na publiceren)
+en controleert dat het wachtwoord in geen enkel bestand voorkomt.
