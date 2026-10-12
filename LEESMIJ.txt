@@ -1,5 +1,5 @@
 CarTronic — website
-Gepubliceerd: 10 okt 2026, 10:00
+Gepubliceerd: 12 okt 2026, 21:46
 
 Online zetten (Netlify):
 1. Pak dit zip-bestand uit. U krijgt de map "cartronic-website".
@@ -16,10 +16,11 @@ Online zetten (Vercel, gekoppeld aan GitHub):
 Inhoud van de map:
 - index.html   de website (alle inhoud, teksten, foto’s en instellingen zitten erin)
 - 404.html     kopie van de website voor servers zonder _redirects
-- _redirects   zorgt dat nette adressen zoals /mogelijkheden werken (Netlify)
+- _redirects   zorgt dat nette adressen zoals /producten werken en oude adressen doorsturen (Netlify)
 - vercel.json  hetzelfde voor Vercel
 - robots.txt   instructies voor zoekmachines
 - sitemap.xml  lijst van alle pagina’s voor zoekmachines (als het website-adres is ingevuld)
 - og-image.jpg afbeelding voor links die worden gedeeld via WhatsApp, Facebook en LinkedIn
 
 Let op: wijzigingen in Beheer staan eerst alleen in uw browser. Pas na publiceren en uploaden ziet iedereen ze.
+Dat geldt ook voor een nieuw wachtwoord van Beheer: dat werkt op andere apparaten pas na publiceren en uploaden.

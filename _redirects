@@ -1,2 +1,7 @@
-# Netlify: elke pagina wordt door index.html getoond (nette URL's).
+# Netlify: hernoemde pagina's sturen door, daarna wordt elke pagina door index.html getoond (nette URL's).
+/mogelijkheden    /producten    301
+/mogelijkheden/*    /producten/:splat    301
+/projecten    /portfolio    301
+/projecten/*    /portfolio/:splat    301
+/expertise    /diensten    301
 /*    /index.html    200

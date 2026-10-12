@@ -1,4 +1,31 @@
 {
+  "redirects": [
+    {
+      "source": "/mogelijkheden",
+      "destination": "/producten",
+      "permanent": true
+    },
+    {
+      "source": "/mogelijkheden/:path*",
+      "destination": "/producten/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/projecten",
+      "destination": "/portfolio",
+      "permanent": true
+    },
+    {
+      "source": "/projecten/:path*",
+      "destination": "/portfolio/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/expertise",
+      "destination": "/diensten",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
